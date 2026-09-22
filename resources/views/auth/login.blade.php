@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>iARIS login</h1>
-    //ERRORS
+    <!-- //ERRORS -->
     @if ($errors ->any())
     <div style="color: red;">
         <ul>
