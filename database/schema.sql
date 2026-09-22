@@ -60,3 +60,19 @@ CREATE TABLE applicants (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Step 4: Create the payments table
+-- One applicant can have multiple fee events (application fee,
+-- then later a reservation fee), so this is its own table
+-- linked back to applicants instead of extra columns on applicants.
+
+CREATE TABLE payments (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  applicant_id BIGINT UNSIGNED NOT NULL,
+  fee_type ENUM('application_fee', 'reservation_fee') NOT NULL,
+  status ENUM('paid', 'waived', 'unpaid') NOT NULL DEFAULT 'unpaid',
+  amount DECIMAL(10, 2) NULL,
+  paid_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (applicant_id) REFERENCES applicants(id)
+);
