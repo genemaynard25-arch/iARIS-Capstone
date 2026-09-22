@@ -97,3 +97,20 @@ CREATE TABLE import_batches (
 ALTER TABLE applicants
   ADD COLUMN imported_batch_id BIGINT UNSIGNED NULL AFTER id,
   ADD FOREIGN KEY (imported_batch_id) REFERENCES import_batches(id);
+
+-- Step 6: Create the audit_logs table
+-- Records every create/update/delete made to applicant data:
+-- who did it, what changed, and when. Fixes the "no audit trail,
+-- can't hold anyone accountable" problem from Chapter 1.
+
+CREATE TABLE audit_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NULL,
+  table_name VARCHAR(50) NOT NULL,
+  record_id BIGINT UNSIGNED NOT NULL,
+  action ENUM('create', 'update', 'delete') NOT NULL,
+  old_values JSON NULL,
+  new_values JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
