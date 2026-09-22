@@ -16,7 +16,16 @@ CREATE TABLE users (
   name VARCHAR(100) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'iato_staff', 'program_chair', 'dean', 'president', 'chancellor') NOT NULL DEFAULT 'iato_staff',
+  role ENUM(
+    'admin', 'iato_staff', 'program_chair', 'dean',
+    'president', 'vice_president', 'principal',
+    'chancellor', 'vice_chancellor', 'registrar', 'lamp'
+  ) NOT NULL DEFAULT 'iato_staff',
+  access_type ENUM('viewer', 'editor') NOT NULL DEFAULT 'viewer',
+  assigned_level ENUM(
+    'kindergarten', 'is', 'jhs', 'shs',
+    'college', 'graduate_school', 'eteeap'
+  ) NULL,
   mfa_secret VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
