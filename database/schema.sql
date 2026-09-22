@@ -76,3 +76,24 @@ CREATE TABLE payments (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (applicant_id) REFERENCES applicants(id)
 );
+
+-- Step 5: Create the import_batches table
+-- One row per weekly Excel upload. This traces every applicant
+-- record back to exactly which upload created/updated it, and
+-- who uploaded it — fixing the "lost timestamp" problem from
+-- Chapter 1, where updates silently overwrote when data arrived.
+
+CREATE TABLE import_batches (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  uploaded_by BIGINT UNSIGNED NOT NULL,
+  original_filename VARCHAR(255) NOT NULL,
+  row_count INT UNSIGNED NULL,
+  status ENUM('processing', 'completed', 'failed') NOT NULL DEFAULT 'processing',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id)
+);
+
+-- Step 5b: Link applicants back to the import batch that created them
+ALTER TABLE applicants
+  ADD COLUMN imported_batch_id BIGINT UNSIGNED NULL AFTER id,
+  ADD FOREIGN KEY (imported_batch_id) REFERENCES import_batches(id);
