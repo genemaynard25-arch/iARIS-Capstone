@@ -30,3 +30,33 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Step 3: Create the applicants table
+-- This holds the actual admissions records IATO manages,
+-- one row per applicant per application cycle (school year).
+
+CREATE TABLE applicants (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  reference_number VARCHAR(30) NOT NULL UNIQUE,
+  school_year VARCHAR(9) NOT NULL,
+  level ENUM(
+    'kindergarten', 'is', 'jhs', 'shs',
+    'college', 'graduate_school', 'eteeap'
+  ) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  gender ENUM('male', 'female') NOT NULL,
+  feeder_school VARCHAR(150) NULL,
+  program_or_track VARCHAR(150) NULL,
+  applicant_type ENUM('regular', 'scholar') NOT NULL DEFAULT 'regular',
+  admission_test_status ENUM(
+    'not_taken', 'took_test', 'passed', 'failed',
+    'qualified_other_degree', 'reconsidered'
+  ) NOT NULL DEFAULT 'not_taken',
+  noa_issued BOOLEAN NOT NULL DEFAULT FALSE,
+  application_status ENUM(
+    'pooling', 'submitted', 'completed', 'not_submitted'
+  ) NOT NULL DEFAULT 'pooling',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
