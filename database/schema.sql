@@ -53,6 +53,7 @@ CREATE TABLE applicants (
   application_status ENUM(
     'pooling', 'submitted', 'completed', 'not_submitted'
   ) NOT NULL DEFAULT 'pooling',
+  archived_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
