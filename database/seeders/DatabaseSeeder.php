@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
     \App\Models\User::firstOrCreate(
-        ['email' => 'admin@iaris.local'],
+        ['email' => 'admin@gmail.com'],
         [
             'name' => 'Test Admin',
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
     );
 
     \App\Models\User::firstOrCreate(
-        ['email' => 'dean@iaris.local'],
+        ['email' => 'dean@gmail.com'],
         [
             'name' => 'Test Dean',
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
@@ -37,7 +37,7 @@ class DatabaseSeeder extends Seeder
     );
 
     \App\Models\User::firstOrCreate(
-        ['email' => 'staff@iaris.local'],
+        ['email' => 'staff@gmail.com'],
         [
             'name' => 'Test IATO Staff',
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
