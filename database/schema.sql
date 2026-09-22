@@ -22,10 +22,8 @@ CREATE TABLE users (
     'chancellor', 'vice_chancellor', 'registrar', 'lamp'
   ) NOT NULL DEFAULT 'iato_staff',
   access_type ENUM('viewer', 'editor') NOT NULL DEFAULT 'viewer',
-  assigned_level ENUM(
-    'kindergarten', 'is', 'jhs', 'shs',
-    'college', 'graduate_school', 'eteeap'
-  ) NULL,
+  assigned_level ENUM('is', 'college', 'graduate_school', 'eteeap') NULL,
+  assigned_sub_level ENUM('kindergarten', 'jhs', 'shs') NULL,
   mfa_secret VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -39,10 +37,8 @@ CREATE TABLE applicants (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   reference_number VARCHAR(30) NOT NULL UNIQUE,
   school_year VARCHAR(9) NOT NULL,
-  level ENUM(
-    'kindergarten', 'is', 'jhs', 'shs',
-    'college', 'graduate_school', 'eteeap'
-  ) NOT NULL,
+  level ENUM('is', 'college', 'graduate_school', 'eteeap') NOT NULL,
+  sub_level ENUM('kindergarten', 'jhs', 'shs') NULL,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
   gender ENUM('male', 'female') NOT NULL,
