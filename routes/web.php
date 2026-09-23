@@ -20,3 +20,5 @@ Route::get('/', function () {
 Route::get('/home', function () {
     return view('home');
 }) ->middleware ('auth'); 
+
+Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');

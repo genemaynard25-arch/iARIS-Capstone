@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Applicant;
 use App\Models\ImportBatch;
 use App\Imports\ApplicantsImport;
 use Illuminate\Http\Request;
@@ -30,6 +31,16 @@ class ImportController extends Controller
 
         $batch->update(['status' => 'completed']);
 
-        return redirect('/import')->with('success', 'Import completed!');
+        return redirect("/import/{$batch->id}");
+    }
+
+    public function results(ImportBatch $batch)
+    {
+        $applicants = Applicant::where('imported_batch_id', $batch->id)->get();
+
+        return view('import-results', [
+            'batch' => $batch,
+            'applicants' => $applicants,
+        ]);
     }
 }
