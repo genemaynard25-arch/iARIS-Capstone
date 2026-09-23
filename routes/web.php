@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TwoFactorAuthenticationController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\AiChatController;
 
 
 // Two-factor authentication routes
@@ -22,3 +23,7 @@ Route::get('/home', function () {
 }) ->middleware ('auth'); 
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
+
+// AI Chat routes
+Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
+Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
