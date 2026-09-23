@@ -1,16 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iARIS Home</title>
-</head>
-<body>
-    <h1>Welcome, you are loggined in!</h1>
+@extends('layouts.app')
 
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type='submit'>Log Out</button>
-    </form>
-</body>
-</html>
+@section('title', 'iARIS — Dashboard')
+@section('page-title', 'Admissions Overview')
+@section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
+
+@section('content')
+    @include('home.partials.stats')
+    @include('home.partials.charts')
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            @include('home.partials.recent-applicants')
+        </div>
+        <div class="col-12 col-xl-5">
+            @include('home.partials.notifications')
+        </div>
+    </div>
+@endsection

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TwoFactorAuthenticationController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\AiChatController;
+use App\Http\Controllers\HomeController;
 
 
 // Two-factor authentication routes
@@ -18,9 +19,7 @@ Route::post('/import', [ImportController::class, 'store'])->middleware('auth');
 Route::get('/', function () {
     return redirect('/login');
 });
-Route::get('/home', function () {
-    return view('home');
-}) ->middleware ('auth'); 
+Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home'); 
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
