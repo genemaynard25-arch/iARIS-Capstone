@@ -16,10 +16,15 @@ Route::post('/two-factor/confirm', [TwoFactorAuthenticationController::class, 'c
 Route::get('/import', [ImportController::class, 'show'])->middleware('auth');
 Route::post('/import', [ImportController::class, 'store'])->middleware('auth');
 
-// Splash screen, then on to the login page (or the dashboard if already signed in)
 Route::get('/', function () {
-    return view('splash', ['next' => auth()->check() ? url('/home') : route('login')]);
+    return auth()->check() ? redirect('/home') : redirect()->route('login');
 });
+
+// Splash screen shown right after signing in (see App\Http\Responses\LoginResponse),
+// then on to the page the user was heading to, or the dashboard.
+Route::get('/loading', function () {
+    return view('splash', ['next' => session()->pull('url.intended', url('/home'))]);
+})->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
@@ -27,3 +32,8 @@ Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(
 // AI Chat routes
 Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
 Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
+
+// Test route for RBAC middleware (DEAN)
+Route::get('/records/college', function () {
+    return 'You can see College records.';
+})->middleware(['auth', 'level:college']);
