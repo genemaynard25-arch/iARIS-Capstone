@@ -1,0 +1,113 @@
+/*
+ * iARIS theme
+ * Bootstrap handles layout, spacing and components.
+ * This file only sets the brand: colours, fonts and a few helpers Bootstrap doesn't have.
+ */
+
+/* 1. Brand colours, plugged into Bootstrap's own variables */
+:root {
+    --iaris-green: #00674F;
+    --iaris-green-hover: #005C46;
+    --iaris-green-dark: #00503D;
+    --iaris-green-pale: #A8D5C5;
+
+    --bs-body-font-family: 'Inter', system-ui, sans-serif;
+    --bs-body-color: #1A2B26;
+    --bs-secondary-color: rgba(26, 43, 38, 0.6);
+    --bs-border-color: #D2DDD9;
+
+    /* bg-primary, text-primary, bg-primary-subtle, etc. */
+    --bs-primary: #00674F;
+    --bs-primary-rgb: 0, 103, 79;
+    --bs-primary-bg-subtle: #E6F5EF;
+    --bs-primary-border-subtle: #A8D5C5;
+    --bs-primary-text-emphasis: #00503D;
+
+    --bs-link-color: #00674F;
+    --bs-link-color-rgb: 0, 103, 79;
+    --bs-link-hover-color: #005C46;
+    --bs-link-hover-color-rgb: 0, 92, 70;
+}
+
+/* Page background. (Not --bs-body-bg: Bootstrap also uses that for cards, modals and inputs, which should stay white.) */
+body { background-color: #F3F6F5; }
+
+/* Buttons and form controls keep their own colour variables, so set those too */
+.btn-primary {
+    --bs-btn-bg: var(--iaris-green);
+    --bs-btn-border-color: var(--iaris-green);
+    --bs-btn-hover-bg: var(--iaris-green-hover);
+    --bs-btn-hover-border-color: var(--iaris-green-hover);
+    --bs-btn-active-bg: var(--iaris-green-dark);
+    --bs-btn-active-border-color: var(--iaris-green-dark);
+    --bs-btn-disabled-bg: var(--iaris-green);
+    --bs-btn-disabled-border-color: var(--iaris-green);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--iaris-green);
+    --bs-btn-border-color: var(--iaris-green);
+    --bs-btn-hover-bg: var(--iaris-green);
+    --bs-btn-hover-border-color: var(--iaris-green);
+    --bs-btn-active-bg: var(--iaris-green-dark);
+    --bs-btn-active-border-color: var(--iaris-green-dark);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--iaris-green);
+    box-shadow: 0 0 0 0.25rem rgba(0, 103, 79, 0.15);
+}
+
+.form-check-input:checked {
+    background-color: var(--iaris-green);
+    border-color: var(--iaris-green);
+}
+
+/* 2. Helpers Bootstrap doesn't have */
+.font-brand { font-family: 'Montserrat', sans-serif; }
+.tracking-wide { letter-spacing: 0.12em; }
+.text-iaris-pale { color: var(--iaris-green-pale); }
+.icon-circle { width: 2.5rem; height: 2.5rem; flex-shrink: 0; }
+.auth-card { max-width: 420px; }
+
+/* Emerald gradient used on the splash, the login panel, modal headers and the sidebar */
+.bg-iaris {
+    background: linear-gradient(160deg, #00674F 0%, #00503D 60%, #003D2E 100%);
+}
+
+/* Soft decorative circles in the corners of a .bg-iaris panel */
+.bg-iaris-circles { position: relative; overflow: hidden; }
+
+.bg-iaris-circles::before,
+.bg-iaris-circles::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+}
+
+.bg-iaris-circles::before { width: 400px; height: 400px; top: -140px; right: -140px; }
+.bg-iaris-circles::after { width: 320px; height: 320px; bottom: -120px; left: -100px; }
+
+/* 3. Dashboard sidebar */
+.sidebar {
+    width: 270px;
+    --bs-offcanvas-width: 270px;
+}
+
+.sidebar .nav-link {
+    --bs-nav-link-color: rgba(255, 255, 255, 0.85);
+    --bs-nav-link-hover-color: #fff;
+    --bs-nav-pills-link-active-bg: rgba(255, 255, 255, 0.18);
+    --bs-nav-pills-link-active-color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    font-weight: 600;
+}
+
+.sidebar .nav-link:hover:not(.active) { background: rgba(255, 255, 255, 0.08); }
