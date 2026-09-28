@@ -42,6 +42,7 @@ class FortifyServiceProvider extends ServiceProvider
     Fortify::loginView(fn () => view('auth.login'));
     Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
     Fortify::resetPasswordView(fn ($request) => view('auth.reset-password', ['request' => $request]));
+    
     // The 2FA code step reuses the login page, with the code pop-up opened on top.
     Fortify::twoFactorChallengeView(fn () => view('auth.login', ['twoFactor' => true]));
 

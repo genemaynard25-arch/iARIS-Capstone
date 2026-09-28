@@ -214,6 +214,7 @@
                     </div>
                     <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+                
                 <!-- Forgot Email -->
                <form method="POST" action="{{ route('password.email') }}" class="modal-body p-4">
                 @csrf
@@ -253,13 +254,14 @@
                     <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <form class="modal-body p-4 js-demo-form">
+                <form method="POST" action="{{ route('password.email') }}" class="modal-body p-4">
+                    @csrf
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6">
                             <label for="regLast" class="form-label small fw-bold text-uppercase">Last Name</label>
                             <input type="text" id="regLast" class="form-control" placeholder="e.g. Renegado" required>
                         </div>
-                        <div class="col-sm-6">
+                         <div class="col-sm-6">
                             <label for="regFirst" class="form-label small fw-bold text-uppercase">First Name</label>
                             <input type="text" id="regFirst" class="form-control" placeholder="e.g. Randolph" required>
                         </div>
