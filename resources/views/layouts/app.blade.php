@@ -8,16 +8,16 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
-        /* Palette taken from the login page */
+        /* Palette taken from the login page (v2 emerald) */
         :root {
-            --iaris-green: #059669;
-            --iaris-green-dark: #047857;
-            --iaris-green-light: #a7f3d0;
-            --iaris-green-tint: #f0fdf4;
-            --iaris-page-bg: #f5f5f0;
+            --iaris-green: #00674F;
+            --iaris-green-dark: #00503D;
+            --iaris-green-light: #A8D5C5;
+            --iaris-green-tint: #EEF5F3;
+            --iaris-page-bg: #F3F6F5;
             --iaris-card-bg: #ffffff;
-            --iaris-text: #1f2b24;
-            --iaris-text-soft: rgba(31, 43, 36, 0.55);
+            --iaris-text: #1A2B26;
+            --iaris-text-soft: rgba(26, 43, 38, 0.55);
             --iaris-border: #eef1ee;
             --iaris-radius: 13px;
             --iaris-shadow: 0 4px 4px -3px rgba(0, 0, 0, 0.08), 0 0 3px 0 rgba(0, 0, 0, 0.06);
@@ -32,7 +32,7 @@
         .iaris-sidebar {
             width: 270px;
             flex-shrink: 0;
-            background: linear-gradient(135deg, var(--iaris-green), var(--iaris-green-dark));
+            background: linear-gradient(160deg, var(--iaris-green) 0%, var(--iaris-green-dark) 60%, #003D2E 100%);
             color: #fff;
             overflow: hidden;
         }
@@ -65,7 +65,14 @@
         .iaris-logo-mark {
             width: 40px;
             height: 40px;
-            background-color: rgba(255, 255, 255, 0.15);
+            flex-shrink: 0;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .iaris-logo-mark svg {
+            width: 24px;
+            height: 24px;
         }
 
         .iaris-logo {
@@ -189,6 +196,16 @@
             font-size: 14px;
         }
 
+        .iaris-menu-btn {
+            color: var(--iaris-green);
+            border: 1.5px solid var(--iaris-green);
+        }
+
+        .iaris-menu-btn:hover {
+            color: #fff;
+            background: var(--iaris-green);
+        }
+
         .iaris-card-link {
             font-size: 12.5px;
             font-weight: 600;
@@ -201,7 +218,7 @@
         }
 
         /* Tones shared by tags, badges and icons */
-        .tone-green { background: #ecfdf5; color: var(--iaris-green-dark); }
+        .tone-green { background: #E6F5EF; color: var(--iaris-green); }
         .tone-blue { background: #eaf2ff; color: #2563eb; }
         .tone-orange { background: #fff4e5; color: #c2750c; }
         .tone-red { background: #fdeaea; color: #c0392b; }

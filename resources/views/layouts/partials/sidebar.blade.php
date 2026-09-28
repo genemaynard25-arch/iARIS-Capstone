@@ -4,7 +4,7 @@
         <div class="iaris-logo d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center">
                 <div class="iaris-logo-mark d-flex align-items-center justify-content-center rounded-3">
-                    <span class="text-white fw-bold">i</span>
+                    @include('partials.logo-mark')
                 </div>
                 <div class="ms-2">
                     <div class="text-white fw-bold fs-5" id="iarisSidebarLabel">iARIS</div>
