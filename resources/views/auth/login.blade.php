@@ -4,6 +4,9 @@
 
 {{-- $twoFactor is true on the second step of signing in (see FortifyServiceProvider) --}}
 @php($twoFactor = $twoFactor ?? false)
+{{-- $resetPassword is true when opened from the reset link in the email (see reset-password.blade.php) --}}
+@php($resetPassword = $resetPassword ?? false)
+@php($openForgot = $openForgot ?? false)
 
 @section('content')
     <div class="container-fluid">
@@ -59,7 +62,7 @@
                         </div>
                     @endif
 
-                    @if ($errors->any() && ! $twoFactor)
+                    @if ($errors->any() && ! $twoFactor && ! $resetPassword && ! $openForgot)
                         <div class="alert alert-danger d-flex gap-2" role="alert">
                             <i class="bi bi-exclamation-circle"></i>
                             <div>
@@ -203,8 +206,92 @@
         </div>
     @endif
 
+    {{-- Reset password modal: opens automatically from the link in the reset email --}}
+    @if ($resetPassword)
+        <div class="modal fade" id="resetModal" data-open-on-load data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="resetTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4 overflow-hidden">
+                    <div class="modal-header bg-iaris text-white border-0 p-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="icon-circle rounded-circle bg-white bg-opacity-10 fs-5 d-flex align-items-center justify-content-center">
+                                <i class="bi bi-key"></i>
+                            </div>
+                            <div>
+                                <h3 class="modal-title fs-5 fw-bold" id="resetTitle">Set a New Password</h3>
+                                <p class="small text-white-50 mb-0">Choose a new password for your iARIS account</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ route('password.update') }}" class="modal-body p-4">
+                        @csrf
+                        {{-- The token from the email link proves this person may reset the password --}}
+                        <input type="hidden" name="token" value="{{ $request->route('token') }}">
+
+                        @if ($errors->any())
+                            <div class="alert alert-danger d-flex gap-2 small" role="alert">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <div>
+                                    @foreach ($errors->all() as $error)
+                                        <div>{{ $error }}</div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="mb-3">
+                            <label for="resetEmail" class="form-label small fw-bold text-uppercase">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-body-tertiary text-body-secondary"><i class="bi bi-envelope"></i></span>
+                                <input type="email" name="email" id="resetEmail" value="{{ old('email', $request->email) }}"
+                                    class="form-control bg-body-tertiary @error('email') is-invalid @enderror" readonly required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="resetPassword" class="form-label small fw-bold text-uppercase">New Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-lock"></i></span>
+                                <input type="password" name="password" id="resetPassword"
+                                    class="form-control @error('password') is-invalid @enderror"
+                                    placeholder="Enter a new password" autocomplete="new-password" minlength="8" required>
+                                <button type="button" class="input-group-text bg-white text-body-secondary" data-toggle-password="resetPassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">At least 8 characters.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="resetPasswordConfirm" class="form-label small fw-bold text-uppercase">Confirm New Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-lock"></i></span>
+                                <input type="password" name="password_confirmation" id="resetPasswordConfirm"
+                                    class="form-control" placeholder="Type it again" autocomplete="new-password" required>
+                                <button type="button" class="input-group-text bg-white text-body-secondary" data-toggle-password="resetPasswordConfirm" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback d-block d-none" id="resetMismatch">The passwords don't match.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+                            <i class="bi bi-check2-circle me-1"></i> Reset Password
+                        </button>
+
+                        <div class="text-center mt-3 small">
+                            <a href="{{ route('login') }}" class="fw-semibold text-body-secondary text-decoration-none">
+                                <i class="bi bi-arrow-left"></i> Back to sign in
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Forgot password modal. TODO: submit to Fortify's password.email route once reset emails are set up. Front end only for now. --}}
-    <div class="modal fade" id="forgotModal" tabindex="-1" aria-labelledby="forgotTitle" aria-hidden="true">
+    <div class="modal fade" id="forgotModal" {{ $openForgot ? 'data-open-on-load' : '' }} tabindex="-1" aria-labelledby="forgotTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4 overflow-hidden">
                 <div class="modal-header bg-iaris text-white border-0 p-4">
@@ -218,6 +305,12 @@
                 <!-- Forgot Email -->
                <form method="POST" action="{{ route('password.email') }}" class="modal-body p-4">
                 @csrf
+                @if ($openForgot && $errors->any())
+                    <div class="alert alert-danger d-flex gap-2 small" role="alert">
+                        <i class="bi bi-exclamation-circle"></i>
+                        <div>{{ $errors->first() }}</div>
+                    </div>
+                @endif
                 <label for="forgotEmail" class="form-label small fw-bold text-uppercase">Email Address</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-envelope"></i></span>
@@ -361,6 +454,38 @@
                 success.classList.add('d-none');
             });
         });
+
+        // Open any modal marked data-open-on-load as soon as the page loads (reset password, /forgot-password)
+        document.querySelectorAll('.modal[data-open-on-load]').forEach(modal => {
+            modal.addEventListener('shown.bs.modal', () => modal.querySelector('input:not([type=hidden]):not([readonly])')?.focus());
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        });
+
+        // Show / hide buttons for the reset password fields
+        document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.togglePassword);
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                btn.innerHTML = show ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        });
+
+        // Reset password: warn before submitting if the two passwords don't match
+        const resetConfirm = document.getElementById('resetPasswordConfirm');
+        if (resetConfirm) {
+            const resetNew = document.getElementById('resetPassword');
+            const mismatch = document.getElementById('resetMismatch');
+            const check = () => {
+                const bad = resetConfirm.value !== '' && resetConfirm.value !== resetNew.value;
+                resetConfirm.classList.toggle('is-invalid', bad);
+                mismatch.classList.toggle('d-none', !bad);
+                resetConfirm.setCustomValidity(bad ? "The passwords don't match." : '');
+            };
+            resetNew.addEventListener('input', check);
+            resetConfirm.addEventListener('input', check);
+        }
 
         // Two-factor code modal (only on the page when $twoFactor is true)
         const twoFactorModal = document.getElementById('twoFactorModal');
