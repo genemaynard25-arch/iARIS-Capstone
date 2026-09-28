@@ -2,6 +2,9 @@
 
 @section('title', 'iARIS — Login')
 
+{{-- $twoFactor is true on the second step of signing in (see FortifyServiceProvider) --}}
+@php($twoFactor = $twoFactor ?? false)
+
 @section('content')
     <div class="container-fluid">
         <div class="row min-vh-100">
@@ -56,7 +59,7 @@
                         </div>
                     @endif
 
-                    @if ($errors->any())
+                    @if ($errors->any() && ! $twoFactor)
                         <div class="alert alert-danger d-flex gap-2" role="alert">
                             <i class="bi bi-exclamation-circle"></i>
                             <div>
@@ -134,6 +137,71 @@
 
         </div>
     </div>
+
+    {{-- Two-factor code modal: opens automatically after a correct password when the account has 2FA on --}}
+    @if ($twoFactor)
+        @php($useRecovery = $errors->has('recovery_code'))
+        <div class="modal fade" id="twoFactorModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="twoFactorTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4 overflow-hidden">
+                    <div class="modal-header bg-iaris text-white border-0 p-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="icon-circle rounded-circle bg-white bg-opacity-10 fs-5 d-flex align-items-center justify-content-center">
+                                <i class="bi bi-shield-lock"></i>
+                            </div>
+                            <div>
+                                <h3 class="modal-title fs-5 fw-bold" id="twoFactorTitle">Two-Factor Verification</h3>
+                                <p class="small text-white-50 mb-0" id="twoFactorHint">
+                                    {{ $useRecovery ? 'Enter one of your emergency recovery codes' : 'Enter the 6-digit code from your authenticator app' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ route('two-factor.login') }}" class="modal-body p-4" id="twoFactorForm">
+                        @csrf
+
+                        @if ($errors->any())
+                            <div class="alert alert-danger d-flex gap-2 small" role="alert">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <div>{{ $errors->first() }}</div>
+                            </div>
+                        @endif
+
+                        {{-- Only one of these two inputs is enabled at a time, so only one gets sent --}}
+                        <div class="mb-4 {{ $useRecovery ? 'd-none' : '' }}" id="codeField">
+                            <label for="code" class="form-label small fw-bold text-uppercase">Authentication Code</label>
+                            <input type="text" name="code" id="code"
+                                class="form-control form-control-lg text-center fs-2 fw-bold tracking-wide @error('code') is-invalid @enderror"
+                                inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"
+                                placeholder="••••••" {{ $useRecovery ? 'disabled' : 'required' }}>
+                        </div>
+
+                        <div class="mb-4 {{ $useRecovery ? '' : 'd-none' }}" id="recoveryField">
+                            <label for="recovery_code" class="form-label small fw-bold text-uppercase">Recovery Code</label>
+                            <input type="text" name="recovery_code" id="recovery_code"
+                                class="form-control form-control-lg text-center @error('recovery_code') is-invalid @enderror"
+                                autocomplete="off" placeholder="xxxxxxxxxx-xxxxxxxxxx" {{ $useRecovery ? 'required' : 'disabled' }}>
+                            <div class="form-text">Each recovery code can only be used once.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+                            <i class="bi bi-check2-circle me-1"></i> Verify
+                        </button>
+
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mt-3 small">
+                            <button type="button" class="btn btn-link btn-sm p-0 fw-semibold text-decoration-none" id="toggleRecovery">
+                                {{ $useRecovery ? 'Use authenticator code instead' : 'Use a recovery code instead' }}
+                            </button>
+                            <a href="{{ route('login') }}" class="fw-semibold text-body-secondary text-decoration-none">
+                                <i class="bi bi-arrow-left"></i> Back to sign in
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Forgot password modal. TODO: submit to Fortify's password.email route once reset emails are set up. Front end only for now. --}}
     <div class="modal fade" id="forgotModal" tabindex="-1" aria-labelledby="forgotTitle" aria-hidden="true">
@@ -271,9 +339,9 @@
             toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
         });
 
-        // The two modals are front end only: on submit, show the success message instead of sending anything.
-        document.querySelectorAll('.modal').forEach(modal => {
-            const form = modal.querySelector('.js-demo-form');
+        // Forgot Password and Request Access are front end only: on submit, show the success message instead of sending anything.
+        document.querySelectorAll('.js-demo-form').forEach(form => {
+            const modal = form.closest('.modal');
             const success = modal.querySelector('.js-demo-success');
 
             form.addEventListener('submit', e => {
@@ -290,5 +358,40 @@
                 success.classList.add('d-none');
             });
         });
+
+        // Two-factor code modal (only on the page when $twoFactor is true)
+        const twoFactorModal = document.getElementById('twoFactorModal');
+        if (twoFactorModal) {
+            const code = document.getElementById('code');
+            const recovery = document.getElementById('recovery_code');
+            const codeField = document.getElementById('codeField');
+            const recoveryField = document.getElementById('recoveryField');
+            const toggleRecovery = document.getElementById('toggleRecovery');
+            const hint = document.getElementById('twoFactorHint');
+
+            // Open it as soon as the page loads, and put the cursor in the box
+            twoFactorModal.addEventListener('shown.bs.modal', () => (recovery.disabled ? code : recovery).focus());
+            bootstrap.Modal.getOrCreateInstance(twoFactorModal).show();
+
+            // Digits only; submit automatically once all 6 are typed
+            code.addEventListener('input', () => {
+                code.value = code.value.replace(/\D/g, '').slice(0, 6);
+                if (code.value.length === 6) document.getElementById('twoFactorForm').requestSubmit();
+            });
+
+            // Switch between the 6-digit code and a recovery code
+            toggleRecovery.addEventListener('click', () => {
+                const useRecovery = recovery.disabled;
+                codeField.classList.toggle('d-none', useRecovery);
+                recoveryField.classList.toggle('d-none', !useRecovery);
+                code.disabled = useRecovery;
+                code.required = !useRecovery;
+                recovery.disabled = !useRecovery;
+                recovery.required = useRecovery;
+                toggleRecovery.textContent = useRecovery ? 'Use authenticator code instead' : 'Use a recovery code instead';
+                hint.textContent = useRecovery ? 'Enter one of your emergency recovery codes' : 'Enter the 6-digit code from your authenticator app';
+                (useRecovery ? recovery : code).focus();
+            });
+        }
     </script>
 @endsection
