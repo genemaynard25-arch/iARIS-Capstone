@@ -1,6 +1,6 @@
 <div class="iaris-topbar d-flex align-items-center justify-content-between gap-3 mb-4">
     <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-outline-success btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#iarisSidebar" aria-controls="iarisSidebar" aria-label="Open menu">
+        <button class="btn btn-sm iaris-menu-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#iarisSidebar" aria-controls="iarisSidebar" aria-label="Open menu">
             <i class="bi bi-list fs-5"></i>
         </button>
         <div>

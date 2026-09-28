@@ -16,10 +16,11 @@ Route::post('/two-factor/confirm', [TwoFactorAuthenticationController::class, 'c
 Route::get('/import', [ImportController::class, 'show'])->middleware('auth');
 Route::post('/import', [ImportController::class, 'store'])->middleware('auth');
 
+// Splash screen, then on to the login page (or the dashboard if already signed in)
 Route::get('/', function () {
-    return redirect('/login');
+    return view('splash', ['next' => auth()->check() ? url('/home') : route('login')]);
 });
-Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home'); 
+Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
