@@ -1,23 +1,25 @@
-<div class="iaris-card">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h3 class="fs-6 fw-bold mb-0">Notifications</h3>
-        <a href="#" class="iaris-card-link">Mark all read</a>
-    </div>
+<div class="card border-0 shadow-sm rounded-4 h-100">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="fs-6 fw-bold mb-0">Notifications</h2>
+            <a href="#" class="small fw-semibold text-decoration-none">Mark all read</a>
+        </div>
 
-    @forelse ($notifications as $date => $items)
-        <div class="notif-date">{{ $date }}</div>
-        @foreach ($items as $notif)
-            <div class="notif-item d-flex gap-3 py-3">
-                <div class="notif-icon tone-{{ $notif['tone'] }} rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i class="bi {{ $notif['icon'] }}"></i>
+        @forelse ($notifications as $date => $items)
+            <div class="small fw-bold text-uppercase tracking-wide text-primary {{ $loop->first ? '' : 'mt-3' }}">{{ $date }}</div>
+            @foreach ($items as $notif)
+                <div class="d-flex gap-3 py-3 {{ $loop->first ? '' : 'border-top' }}">
+                    <div class="icon-circle rounded-circle bg-{{ $notif['tone'] }}-subtle text-{{ $notif['tone'] }}-emphasis d-flex align-items-center justify-content-center">
+                        <i class="bi {{ $notif['icon'] }}"></i>
+                    </div>
+                    <div>
+                        <p class="small fw-semibold mb-1">{{ $notif['title'] }}</p>
+                        <span class="small text-body-secondary">{{ $notif['body'] }}</span>
+                    </div>
                 </div>
-                <div>
-                    <p class="fw-semibold small mb-1">{{ $notif['title'] }}</p>
-                    <span class="iaris-text-soft small">{{ $notif['body'] }}</span>
-                </div>
-            </div>
-        @endforeach
-    @empty
-        <p class="iaris-text-soft small text-center py-4 mb-0">You're all caught up.</p>
-    @endforelse
+            @endforeach
+        @empty
+            <p class="small text-body-secondary text-center py-4 mb-0">You're all caught up.</p>
+        @endforelse
+    </div>
 </div>

@@ -17,8 +17,14 @@ Route::get('/import', [ImportController::class, 'show'])->middleware('auth');
 Route::post('/import', [ImportController::class, 'store'])->middleware('auth');
 
 Route::get('/', function () {
-    return redirect('/login');
+    return auth()->check() ? redirect('/home') : redirect()->route('login');
 });
+
+// Splash screen shown right after signing in (see App\Http\Responses\LoginResponse),
+// then on to the page the user was heading to, or the dashboard.
+Route::get('/loading', function () {
+    return view('splash', ['next' => session()->pull('url.intended', url('/home'))]);
+})->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
