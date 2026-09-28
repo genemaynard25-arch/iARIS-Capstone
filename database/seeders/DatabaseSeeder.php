@@ -45,5 +45,15 @@ class DatabaseSeeder extends Seeder
             'access_type' => 'editor',
         ]
     );
+
+     \App\Models\User::firstOrCreate(
+        ['email' => 'raphael_lorenzo_go@dlsl.edu.ph'],
+        [
+            'name' => 'Raphael Go',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'admin',
+            'access_type' => 'editor',
+        ]
+    );
     }
 }
