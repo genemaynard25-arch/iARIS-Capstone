@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -29,4 +29,4 @@
         <button type="submit" class="btn btn-success">Send Reset Link</button>
     </form>
 </body>
-</html>
+</html> -->

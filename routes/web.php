@@ -32,3 +32,8 @@ Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(
 // AI Chat routes
 Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
 Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
+
+// Test route for RBAC middleware (DEAN)
+Route::get('/records/college', function () {
+    return 'You can see College records.';
+})->middleware(['auth', 'level:college']);

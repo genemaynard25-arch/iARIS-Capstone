@@ -55,5 +55,17 @@ class DatabaseSeeder extends Seeder
             'access_type' => 'editor',
         ]
     );
+
+    \App\Models\User::firstOrCreate(
+        ['email' => 'shsprincipal@gmail.com'],
+        [
+            'name' => 'Test SHS Principal',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'admin',
+            'access_type' => 'viewer',
+            'assigned_level' => 'is',
+            'assigned_sub_level' => 'shs',
+        ]
+        );
     }
 }
