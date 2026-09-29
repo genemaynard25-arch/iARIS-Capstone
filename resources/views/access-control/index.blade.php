@@ -132,7 +132,7 @@
                 </table>
             </div>
             <p class="small text-body-secondary mt-3 mb-0">
-                <i class="bi bi-lock-fill me-1"></i> Locked: IATO Admin always has every module, and Access Control and Staff Accounts are for the IATO Admin only.
+                <i class="bi bi-lock-fill me-1"></i> Locked: IATO Admin always has every module, and Access Control and User Accounts are for the IATO Admin only.
             </p>
         </div>
     </div>

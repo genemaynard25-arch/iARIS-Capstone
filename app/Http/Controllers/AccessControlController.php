@@ -55,7 +55,7 @@ class AccessControlController extends Controller
                     'on' => ['iato_staff']],
                 ['key' => 'access', 'name' => 'Access Control', 'description' => 'Manage role permissions',
                     'on' => [], 'adminOnly' => true],
-                ['key' => 'accounts', 'name' => 'Staff Accounts', 'description' => 'Manage user accounts and roles',
+                ['key' => 'accounts', 'name' => 'User Accounts', 'description' => 'Manage user accounts and roles',
                     'on' => [], 'adminOnly' => true],
                 ['key' => 'audit', 'name' => 'Audit Logs', 'description' => 'View system activity history',
                     'on' => ['iato_staff']],
