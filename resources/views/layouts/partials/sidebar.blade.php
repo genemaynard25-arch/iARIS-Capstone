@@ -39,7 +39,7 @@
             {{-- RBAC: admin only --}}
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">SYSTEM</div>
             <nav class="nav nav-pills flex-column">
-                <a href="#" class="nav-link"><i class="bi bi-shield-lock"></i> Access Control</a>
+                <a href="{{ url('/access-control') }}" class="nav-link {{ request()->is('access-control*') ? 'active' : '' }}"><i class="bi bi-shield-lock"></i> Access Control</a>
                 <a href="#" class="nav-link"><i class="bi bi-person-badge"></i> Staff Accounts</a>
                 <a href="#" class="nav-link"><i class="bi bi-clipboard-data"></i> Audit Logs</a>
             </nav>

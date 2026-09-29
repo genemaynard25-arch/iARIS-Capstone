@@ -141,3 +141,14 @@ body { background-color: #F3F6F5; }
 .chart-box-lg { height: 320px; }
 .chart-box-donut { max-width: 220px; height: 220px; }
 
+
+/* 6. Access Control matrix: keep the module names visible while the role columns scroll sideways */
+.matrix-table th:first-child,
+.matrix-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 10rem; box-shadow: inset -1px 0 0 var(--bs-border-color); }
+.matrix-table th:first-child,
+.matrix-table td:first-child:not(.bg-body-tertiary) { background-color: #fff; }
+.matrix-table .form-check-input { width: 2.25em; height: 1.25em; cursor: pointer; }
+/* Bootstrap draws the switch knob blue while focused; make it pale green instead */
+.form-switch .form-check-input:focus:not(:checked) {
+    --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%237FC4AB'/%3e%3c/svg%3e");
+}
