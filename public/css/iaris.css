@@ -65,6 +65,22 @@ body { background-color: #F3F6F5; }
     border-color: var(--iaris-green);
 }
 
+/* Pagination and underline tabs in the brand colour */
+.pagination {
+    --bs-pagination-color: var(--iaris-green);
+    --bs-pagination-hover-color: var(--iaris-green-hover);
+    --bs-pagination-focus-color: var(--iaris-green-hover);
+    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(0, 103, 79, 0.15);
+    --bs-pagination-active-bg: var(--iaris-green);
+    --bs-pagination-active-border-color: var(--iaris-green);
+}
+
+.nav-underline {
+    --bs-nav-link-color: var(--bs-secondary-color);
+    --bs-nav-link-hover-color: var(--bs-body-color);
+    --bs-nav-underline-link-active-color: var(--iaris-green);
+}
+
 /* 2. Helpers Bootstrap doesn't have */
 .font-brand { font-family: 'Montserrat', sans-serif; }
 .tracking-wide { letter-spacing: 0.12em; }
@@ -111,3 +127,11 @@ body { background-color: #F3F6F5; }
 }
 
 .sidebar .nav-link:hover:not(.active) { background: rgba(255, 255, 255, 0.08); }
+
+/* 4. Printing an applicant profile: only the open drawer is printed */
+@media print {
+    body * { visibility: hidden; }
+    #applicantDrawer, #applicantDrawer * { visibility: visible; }
+    #applicantDrawer { position: absolute; inset: 0; width: 100% !important; transform: none !important; border: 0; }
+    #applicantDrawer .no-print, .offcanvas-backdrop { display: none !important; }
+}

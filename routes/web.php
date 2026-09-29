@@ -5,6 +5,7 @@ use App\Http\Controllers\TwoFactorAuthenticationController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ApplicantController;
 
 
 // Two-factor authentication routes
@@ -26,6 +27,7 @@ Route::get('/loading', function () {
     return view('splash', ['next' => session()->pull('url.intended', url('/home'))]);
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
+Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('auth')->name('applicants');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
