@@ -8,6 +8,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\AccessControlController;
 
 
 // Two-factor authentication routes
@@ -32,6 +33,7 @@ Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name(
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('auth')->name('applicants');
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports');
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
+Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth')->name('access-control');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 

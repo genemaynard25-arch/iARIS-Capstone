@@ -30,7 +30,7 @@
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">RECORDS</div>
             <nav class="nav nav-pills flex-column mb-3">
                 <a href="#" class="nav-link"><i class="bi bi-mortarboard"></i> College</a>
-                <a href="#" class="nav-link"><i class="bi bi-building"></i> Senior High</a>
+                <a href="#" class="nav-link"><i class="bi bi-building"></i> Integrated School</a>
                 <a href="#" class="nav-link"><i class="bi bi-award"></i> Scholars</a>
                 {{-- RBAC: wrap in @can('import-applicants') --}}
                 <a href="{{ url('/import') }}" class="nav-link {{ request()->is('import*') ? 'active' : '' }}"><i class="bi bi-cloud-arrow-up"></i> Import Data</a>
@@ -39,7 +39,7 @@
             {{-- RBAC: admin only --}}
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">SYSTEM</div>
             <nav class="nav nav-pills flex-column">
-                <a href="#" class="nav-link"><i class="bi bi-shield-lock"></i> Access Control</a>
+                <a href="{{ url('/access-control') }}" class="nav-link {{ request()->is('access-control*') ? 'active' : '' }}"><i class="bi bi-shield-lock"></i> Access Control</a>
                 <a href="#" class="nav-link"><i class="bi bi-person-badge"></i> Staff Accounts</a>
                 <a href="#" class="nav-link"><i class="bi bi-clipboard-data"></i> Audit Logs</a>
             </nav>
