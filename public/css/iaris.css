@@ -135,3 +135,9 @@ body { background-color: #F3F6F5; }
     #applicantDrawer { position: absolute; inset: 0; width: 100% !important; transform: none !important; border: 0; }
     #applicantDrawer .no-print, .offcanvas-backdrop { display: none !important; }
 }
+
+/* 5. Analytics charts: Chart.js needs a container with a fixed height */
+.chart-box { position: relative; height: 260px; }
+.chart-box-lg { height: 320px; }
+.chart-box-donut { max-width: 220px; height: 220px; }
+
