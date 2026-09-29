@@ -7,6 +7,7 @@ use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AnalyticsController;
 
 
 // Two-factor authentication routes
@@ -30,6 +31,7 @@ Route::get('/loading', function () {
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('auth')->name('applicants');
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports');
+Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
