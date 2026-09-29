@@ -22,7 +22,7 @@
             <nav class="nav nav-pills flex-column mb-3">
                 <a href="{{ url('/home') }}" class="nav-link {{ request()->is('home') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                 <a href="{{ url('/applicants') }}" class="nav-link {{ request()->is('applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
-                <a href="#" class="nav-link"><i class="bi bi-file-earmark-text"></i> Reports</a>
+                <a href="{{ url('/reports') }}" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports</a>
                 <a href="#" class="nav-link"><i class="bi bi-bar-chart-line"></i> Analytics</a>
                 <a href="{{ url('/ai-chat') }}" class="nav-link {{ request()->is('ai-chat') ? 'active' : '' }}"><i class="bi bi-stars"></i> AI Assistant</a>
             </nav>
