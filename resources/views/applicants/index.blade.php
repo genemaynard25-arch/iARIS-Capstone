@@ -1,13 +1,35 @@
 @extends('layouts.app')
 
-{{-- This view is used twice: /applicants ($scope = 'all') and /records/college ($scope = 'college') --}}
+{{--
+    This view is used by three pages, picked by $scope:
+    'all' = /applicants, 'college' = /records/college, 'is' = /records/is.
+    $page holds what's different between them. 'extra' is the one extra column
+    the Records pages get: which field it shows, its heading, and whether it
+    goes before the Program / Strand column ('first') or after it.
+--}}
 @php
-    $isCollege = $scope === 'college';
+    $page = [
+        'all' => [
+            'title' => 'All Applicants', 'subtitle' => "Academic Year {$academicYear} · {$periodLabel}",
+            'total' => 'Total Applicants', 'totalSub' => 'College + IS combined', 'noun' => 'applicant', 'extra' => null,
+        ],
+        'college' => [
+            'title' => 'College Records', 'subtitle' => "All college applicant and enrolled student records for AY {$academicYear}",
+            'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'student',
+            'extra' => ['key' => 'year', 'label' => 'Year Level', 'first' => false],
+        ],
+        'is' => [
+            'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
+            'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
+            'extra' => ['key' => 'level', 'label' => 'Grade / Level', 'first' => true],
+        ],
+    ][$scope];
+    $extra = $page['extra'];
 @endphp
 
-@section('title', $isCollege ? 'iARIS — College Records' : 'iARIS — Applicants')
-@section('page-title', $isCollege ? 'College Records' : 'All Applicants')
-@section('page-subtitle', $isCollege ? "All college applicant and enrolled student records for AY {$academicYear}" : "Academic Year {$academicYear} · {$periodLabel}")
+@section('title', 'iARIS — ' . $page['title'])
+@section('page-title', $page['title'])
+@section('page-subtitle', $page['subtitle'])
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -16,8 +38,9 @@
     // Add display-ready fields to each placeholder applicant
     $rows = collect($applicants)->map(fn ($a) => $a + [
         'name' => "{$a['last']}, {$a['first']} {$a['mi']}.",
-        'group' => $a['unit'] === 'college' ? $a['college'] : $a['level'],
-        'unit_label' => $a['unit'] === 'college' ? $a['college'] : 'Integrated School · ' . $a['level'],
+        // IS Records groups by sub-level (Preschool, Grade School, ...); the Applicants IS tab by grade
+        'group' => $a['unit'] === 'college' ? $a['college'] : ($a['sub_level'] ?? $a['level']),
+        'unit_label' => $a['unit'] === 'college' ? $a['college'] : implode(' · ', array_filter(['Integrated School', $a['sub_level'] ?? null, $a['level']])),
         'applied_label' => \Illuminate\Support\Carbon::parse($a['applied'])->format('M j, Y'),
         'updated_label' => \Illuminate\Support\Carbon::parse($a['updated'])->format('M j, g:i A'),
         'dob_label' => \Illuminate\Support\Carbon::parse($a['dob'])->format('F j, Y'),
@@ -27,9 +50,7 @@
     ]);
 
     $stats = [
-        $isCollege
-            ? ['label' => 'Total College Students', 'value' => $rows->count(), 'sub' => 'All colleges combined', 'tone' => 'primary']
-            : ['label' => 'Total Applicants', 'value' => $rows->count(), 'sub' => 'College + IS combined', 'tone' => 'primary'],
+        ['label' => $page['total'], 'value' => $rows->count(), 'sub' => $page['totalSub'], 'tone' => 'primary'],
         ['label' => 'Pending', 'value' => $rows->where('status', 'Pending')->count(), 'sub' => 'Awaiting action', 'tone' => 'danger'],
         ['label' => 'For Exam', 'value' => $rows->where('status', 'For Exam')->count(), 'sub' => 'Scheduled / waiting', 'tone' => 'warning'],
         ['label' => 'Paid', 'value' => $rows->where('status', 'Paid')->count(), 'sub' => 'Reservation confirmed', 'tone' => 'info'],
@@ -54,8 +75,8 @@
     </div>
 
     <div class="card border-0 shadow-sm rounded-4">
-        {{-- Tabs (College Records only has college rows, so no tabs there) --}}
-        @unless ($isCollege)
+        {{-- Tabs (the Records pages only have one unit, so no tabs there) --}}
+        @if ($scope === 'all')
         <div class="card-header bg-white border-bottom rounded-top-4 px-4 pt-3 pb-0">
             <nav class="nav nav-underline" role="tablist">
                 <button type="button" class="nav-link active fw-bold d-flex align-items-center gap-2 pb-3" data-unit="college" role="tab" aria-selected="true">
@@ -68,7 +89,7 @@
                 </button>
             </nav>
         </div>
-        @endunless
+        @endif
 
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -108,9 +129,12 @@
                         <th class="ps-4" style="width: 1%;"><input type="checkbox" class="form-check-input" id="selectAll" aria-label="Select all on this page"></th>
                         <th class="text-body-secondary fw-bold">Applicant</th>
                         <th class="text-body-secondary fw-bold" id="groupHeading">College</th>
+                        @if ($extra && $extra['first'])
+                            <th class="text-body-secondary fw-bold">{{ $extra['label'] }}</th>
+                        @endif
                         <th class="text-body-secondary fw-bold" id="programHeading">Program</th>
-                        @if ($isCollege)
-                            <th class="text-body-secondary fw-bold">Year Level</th>
+                        @if ($extra && ! $extra['first'])
+                            <th class="text-body-secondary fw-bold">{{ $extra['label'] }}</th>
                         @endif
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date Applied</th>
@@ -131,9 +155,12 @@
                                 <div class="small text-body-secondary">{{ $a['id'] }}</div>
                             </td>
                             <td>{{ $a['group'] }}</td>
+                            @if ($extra && $extra['first'])
+                                <td class="text-nowrap">{{ $a[$extra['key']] }}</td>
+                            @endif
                             <td>{{ $a['program'] }}</td>
-                            @if ($isCollege)
-                                <td class="text-nowrap">{{ $a['year'] }}</td>
+                            @if ($extra && ! $extra['first'])
+                                <td class="text-nowrap">{{ $a[$extra['key']] }}</td>
                             @endif
                             <td><span class="badge rounded-pill bg-{{ $a['tone'] }}-subtle text-{{ $a['tone'] }}-emphasis">{{ $a['status'] }}</span></td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['applied_label'] }}</td>
@@ -142,7 +169,7 @@
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
-                        <td colspan="{{ $isCollege ? 9 : 8 }}" class="text-center text-body-secondary py-5">
+                        <td colspan="{{ $extra ? 9 : 8 }}" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
                             No applicants match your search or filters.
                         </td>
@@ -203,8 +230,8 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">College / Unit</div><div class="fw-semibold" data-field="unit_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Academic Year</div><div class="fw-semibold">{{ $academicYear }}</div></div>
-                    @if ($isCollege)
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Year Level</div><div class="fw-semibold" data-field="year"></div></div>
+                    @if ($extra)
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">{{ $extra['label'] }}</div><div class="fw-semibold" data-field="{{ $extra['key'] }}"></div></div>
                     @endif
                     <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Program / Track / Strand</div><div class="fw-semibold" data-field="program"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date Applied</div><div class="fw-semibold" data-field="applied_label"></div></div>
@@ -239,8 +266,11 @@
         const PAGE_SIZE = 10;
         const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
 
-        const state = { unit: 'college', status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
-        const IS_COLLEGE = @json($isCollege);
+        const SCOPE = @json($scope);
+        const PAGE = @json($page);
+        // Sub-levels go in school order, not A–Z
+        const GROUP_ORDER = @json($groupOrder ?? []);
+        const state = { unit: SCOPE === 'is' ? 'is' : 'college', status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
         let currentMatches = [];   // every row that passes the filters (all pages), used by Export
 
         const tbody = document.getElementById('applicantRows');
@@ -250,16 +280,21 @@
 
         // ---- Filtering, sorting and paging (all in the browser, on the placeholder data) ----
 
-        function fillSelect(select, allLabel, values) {
-            select.replaceChildren(new Option(allLabel, ''), ...[...new Set(values)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(v => new Option(v, v)));
+        // '—' (nothing to filter by) is left out of the options
+        function fillSelect(select, allLabel, values, order = []) {
+            const byOrder = (a, b) => order.indexOf(a) - order.indexOf(b);
+            const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+            const options = [...new Set(values)].filter(v => v !== '—').sort(order.length ? byOrder : byName);
+            select.replaceChildren(new Option(allLabel, ''), ...options.map(v => new Option(v, v)));
         }
 
         function setUpFiltersForTab() {
             const inTab = rows.filter(r => r.dataset.unit === state.unit);
             const isCollege = state.unit === 'college';
-            fillSelect(groupFilter, isCollege ? 'All Colleges' : 'All Levels', inTab.map(r => r.dataset.group));
+            const isRecords = SCOPE === 'is';
+            fillSelect(groupFilter, isCollege ? 'All Colleges' : (isRecords ? 'All Sub-Levels' : 'All Levels'), inTab.map(r => r.dataset.group), isRecords ? GROUP_ORDER : []);
             fillSelect(programFilter, isCollege ? 'All Programs' : 'All Strands / Tracks', inTab.map(r => r.dataset.program));
-            document.getElementById('groupHeading').textContent = isCollege ? 'College' : 'Level';
+            document.getElementById('groupHeading').textContent = isCollege ? 'College' : (isRecords ? 'Sub-Level' : 'Level');
             document.getElementById('programHeading').textContent = isCollege ? 'Program' : 'Strand / Track';
             state.group = state.program = '';
         }
@@ -292,7 +327,7 @@
             document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
 
             document.getElementById('showingText').textContent = matches.length
-                ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} ${IS_COLLEGE ? 'student' : 'applicant'}${matches.length === 1 ? '' : 's'}`
+                ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} ${PAGE.noun}${matches.length === 1 ? '' : 's'}`
                 : '';
             renderPagination(pages);
 
@@ -358,18 +393,29 @@
         // ---- Export: the filtered rows (all pages, not just this one) as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
             const isCollegeTab = state.unit === 'college';
-            const header = ['App No.', 'Name', isCollegeTab ? 'College' : 'Level', isCollegeTab ? 'Program' : 'Strand / Track',
-                ...(IS_COLLEGE ? ['Year Level'] : []), 'Status', 'Date Applied', 'Updated'];
+            // Same columns, in the same order, as the table
+            const extra = PAGE.extra;
+            const header = ['App No.', 'Name', isCollegeTab ? 'College' : (SCOPE === 'is' ? 'Sub-Level' : 'Level')];
+            if (extra && extra.first) header.push(extra.label);
+            header.push(isCollegeTab ? 'Program' : 'Strand / Track');
+            if (extra && !extra.first) header.push(extra.label);
+            header.push('Status', 'Date Applied', 'Updated');
+
             const lines = currentMatches.map(row => {
                 const a = APPLICANTS[row.dataset.index];
-                return [a.id, a.name, a.group, a.program, ...(IS_COLLEGE ? [a.year] : []), a.status, a.applied_label, a.updated_label];
+                const cols = [a.id, a.name, a.group];
+                if (extra && extra.first) cols.push(a[extra.key]);
+                cols.push(a.program);
+                if (extra && !extra.first) cols.push(a[extra.key]);
+                cols.push(a.status, a.applied_label, a.updated_label);
+                return cols;
             });
             // Wrap every value in quotes (and double any quotes inside) so commas in names don't break columns
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
             // \uFEFF at the start tells Excel the file is UTF-8 (for ñ, – and ₱)
             link.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }));
-            link.download = IS_COLLEGE ? 'college-records.csv' : `applicants-${state.unit}.csv`;
+            link.download = SCOPE === 'all' ? `applicants-${state.unit}.csv` : `${SCOPE}-records.csv`;
             link.click();
             URL.revokeObjectURL(link.href);
         });
