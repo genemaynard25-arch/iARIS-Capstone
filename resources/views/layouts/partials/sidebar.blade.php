@@ -29,9 +29,13 @@
 
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">RECORDS</div>
             <nav class="nav nav-pills flex-column mb-3">
-                <a href="#" class="nav-link"><i class="bi bi-mortarboard"></i> College</a>
                 <a href="#" class="nav-link"><i class="bi bi-building"></i> Integrated School</a>
+                <a href="{{ url('/records/college') }}" class="nav-link {{ request()->is('records/college*') ? 'active' : '' }}"><i class="bi bi-mortarboard"></i> College</a>
                 <a href="#" class="nav-link"><i class="bi bi-award"></i> Scholars</a>
+                <a href="#" class="nav-link"><i class="bi bi-journal-bookmark"></i> Graduate Programs</a>
+                <a href="#" class="nav-link"><i class="bi bi-bank2"></i> College of Law</a>
+                <a href="#" class="nav-link"><i class="bi bi-laptop"></i> iPACE</a>
+                <a href="#" class="nav-link"><i class="bi bi-briefcase"></i> ETEEAP</a>
                 {{-- RBAC: wrap in @can('import-applicants') --}}
                 <a href="{{ url('/import') }}" class="nav-link {{ request()->is('import*') ? 'active' : '' }}"><i class="bi bi-cloud-arrow-up"></i> Import Data</a>
             </nav>

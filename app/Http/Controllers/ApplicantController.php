@@ -17,7 +17,21 @@ class ApplicantController extends Controller
      */
     public function index()
     {
-        $applicants = [
+        return view('applicants.index', [
+            'scope' => 'all',
+            'academicYear' => '2025–2026',
+            'periodLabel' => 'June 2026',
+            'applicants' => self::sample(),
+        ]);
+    }
+
+    /**
+     * The placeholder applicants. Public and static so other pages
+     * (like College Records) can reuse the same made-up people.
+     */
+    public static function sample(): array
+    {
+        return [
             // College
             ['id' => 'APP-2026-0381', 'unit' => 'college', 'last' => 'Santos', 'first' => 'Maria Isabel', 'mi' => 'L', 'college' => 'CITE', 'program' => 'BS Computer Science', 'status' => 'Enrolled', 'applied' => '2026-05-14', 'updated' => '2026-06-08 09:14', 'dob' => '2005-03-03', 'gender' => 'Female', 'email' => 'm.santos@example.com', 'contact' => '0917 000 0381', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 8:00 AM', 'paid' => '2026-06-03', 'amount' => 2000],
             ['id' => 'APP-2026-0382', 'unit' => 'college', 'last' => 'Reyes', 'first' => 'Joshua', 'mi' => 'D', 'college' => 'CITE', 'program' => 'BS Information Technology', 'status' => 'Paid', 'applied' => '2026-05-16', 'updated' => '2026-06-08 10:02', 'dob' => '2004-07-22', 'gender' => 'Male', 'email' => 'j.reyes@example.com', 'contact' => '0917 000 0382', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => '2026-06-05', 'amount' => 2000],
@@ -40,11 +54,5 @@ class ApplicantController extends Controller
             ['id' => 'APP-IS-2026-0105', 'unit' => 'is', 'last' => 'Francisco', 'first' => 'Gabriel', 'mi' => 'N', 'level' => 'Grade 11', 'program' => 'HUMSS', 'status' => 'Enrolled', 'applied' => '2026-05-17', 'updated' => '2026-06-05 11:50', 'dob' => '2010-09-12', 'gender' => 'Male', 'email' => 'parent.francisco@example.com', 'contact' => '0917 000 0105', 'address' => 'San Juan, Batangas', 'exam' => 'Jun 11, 2026 · 8:00 AM', 'paid' => '2026-06-02', 'amount' => 1500],
             ['id' => 'APP-IS-2026-0106', 'unit' => 'is', 'last' => 'Morales', 'first' => 'Claire', 'mi' => 'D', 'level' => 'Grade 7', 'program' => 'Junior High School', 'status' => 'Paid', 'applied' => '2026-05-19', 'updated' => '2026-06-04 15:35', 'dob' => '2014-05-30', 'gender' => 'Female', 'email' => 'parent.morales@example.com', 'contact' => '0917 000 0106', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => '2026-06-04', 'amount' => 1500],
         ];
-
-        return view('applicants.index', [
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => $applicants,
-        ]);
     }
 }

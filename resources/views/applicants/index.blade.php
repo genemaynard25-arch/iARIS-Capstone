@@ -1,8 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — Applicants')
-@section('page-title', 'All Applicants')
-@section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
+{{-- This view is used twice: /applicants ($scope = 'all') and /records/college ($scope = 'college') --}}
+@php
+    $isCollege = $scope === 'college';
+@endphp
+
+@section('title', $isCollege ? 'iARIS — College Records' : 'iARIS — Applicants')
+@section('page-title', $isCollege ? 'College Records' : 'All Applicants')
+@section('page-subtitle', $isCollege ? "All college applicant and enrolled student records for AY {$academicYear}" : "Academic Year {$academicYear} · {$periodLabel}")
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -22,7 +27,9 @@
     ]);
 
     $stats = [
-        ['label' => 'Total Applicants', 'value' => $rows->count(), 'sub' => 'College + IS combined', 'tone' => 'primary'],
+        $isCollege
+            ? ['label' => 'Total College Students', 'value' => $rows->count(), 'sub' => 'All colleges combined', 'tone' => 'primary']
+            : ['label' => 'Total Applicants', 'value' => $rows->count(), 'sub' => 'College + IS combined', 'tone' => 'primary'],
         ['label' => 'Pending', 'value' => $rows->where('status', 'Pending')->count(), 'sub' => 'Awaiting action', 'tone' => 'danger'],
         ['label' => 'For Exam', 'value' => $rows->where('status', 'For Exam')->count(), 'sub' => 'Scheduled / waiting', 'tone' => 'warning'],
         ['label' => 'Paid', 'value' => $rows->where('status', 'Paid')->count(), 'sub' => 'Reservation confirmed', 'tone' => 'info'],
@@ -47,7 +54,8 @@
     </div>
 
     <div class="card border-0 shadow-sm rounded-4">
-        {{-- Tabs --}}
+        {{-- Tabs (College Records only has college rows, so no tabs there) --}}
+        @unless ($isCollege)
         <div class="card-header bg-white border-bottom rounded-top-4 px-4 pt-3 pb-0">
             <nav class="nav nav-underline" role="tablist">
                 <button type="button" class="nav-link active fw-bold d-flex align-items-center gap-2 pb-3" data-unit="college" role="tab" aria-selected="true">
@@ -60,6 +68,7 @@
                 </button>
             </nav>
         </div>
+        @endunless
 
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -75,6 +84,9 @@
                 <option value="az">Sort: Name A–Z</option>
                 <option value="za">Sort: Name Z–A</option>
             </select>
+            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
+                <i class="bi bi-download me-1"></i> Export
+            </button>
             {{-- TODO: needs an "add applicant" form + backend. Disabled for now. --}}
             <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" disabled title="Coming soon">
                 <i class="bi bi-plus-lg me-1"></i> Add Applicant
@@ -97,6 +109,9 @@
                         <th class="text-body-secondary fw-bold">Applicant</th>
                         <th class="text-body-secondary fw-bold" id="groupHeading">College</th>
                         <th class="text-body-secondary fw-bold" id="programHeading">Program</th>
+                        @if ($isCollege)
+                            <th class="text-body-secondary fw-bold">Year Level</th>
+                        @endif
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date Applied</th>
                         <th class="text-body-secondary fw-bold">Updated</th>
@@ -117,6 +132,9 @@
                             </td>
                             <td>{{ $a['group'] }}</td>
                             <td>{{ $a['program'] }}</td>
+                            @if ($isCollege)
+                                <td class="text-nowrap">{{ $a['year'] }}</td>
+                            @endif
                             <td><span class="badge rounded-pill bg-{{ $a['tone'] }}-subtle text-{{ $a['tone'] }}-emphasis">{{ $a['status'] }}</span></td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['applied_label'] }}</td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['updated_label'] }}</td>
@@ -124,7 +142,7 @@
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
-                        <td colspan="8" class="text-center text-body-secondary py-5">
+                        <td colspan="{{ $isCollege ? 9 : 8 }}" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
                             No applicants match your search or filters.
                         </td>
@@ -185,6 +203,9 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">College / Unit</div><div class="fw-semibold" data-field="unit_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Academic Year</div><div class="fw-semibold">{{ $academicYear }}</div></div>
+                    @if ($isCollege)
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Year Level</div><div class="fw-semibold" data-field="year"></div></div>
+                    @endif
                     <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Program / Track / Strand</div><div class="fw-semibold" data-field="program"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date Applied</div><div class="fw-semibold" data-field="applied_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Exam Schedule</div><div class="fw-semibold" data-field="exam"></div></div>
@@ -219,6 +240,8 @@
         const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
 
         const state = { unit: 'college', status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
+        const IS_COLLEGE = @json($isCollege);
+        let currentMatches = [];   // every row that passes the filters (all pages), used by Export
 
         const tbody = document.getElementById('applicantRows');
         const rows = [...tbody.querySelectorAll('.applicant-row')];
@@ -257,6 +280,7 @@
                 za: (a, b) => b.dataset.name.localeCompare(a.dataset.name),
             }[state.sort];
             matches.sort(compare);
+            currentMatches = matches;
 
             const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
             state.page = Math.min(state.page, pages);
@@ -268,7 +292,7 @@
             document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
 
             document.getElementById('showingText').textContent = matches.length
-                ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} applicant${matches.length === 1 ? '' : 's'}`
+                ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} ${IS_COLLEGE ? 'student' : 'applicant'}${matches.length === 1 ? '' : 's'}`
                 : '';
             renderPagination(pages);
 
@@ -329,6 +353,25 @@
         // Checkboxes (select all = the rows visible on this page)
         document.getElementById('selectAll').addEventListener('change', e => {
             rows.filter(r => !r.classList.contains('d-none')).forEach(r => { r.querySelector('.row-check').checked = e.target.checked; });
+        });
+
+        // ---- Export: the filtered rows (all pages, not just this one) as a CSV file ----
+        document.getElementById('exportButton').addEventListener('click', () => {
+            const isCollegeTab = state.unit === 'college';
+            const header = ['App No.', 'Name', isCollegeTab ? 'College' : 'Level', isCollegeTab ? 'Program' : 'Strand / Track',
+                ...(IS_COLLEGE ? ['Year Level'] : []), 'Status', 'Date Applied', 'Updated'];
+            const lines = currentMatches.map(row => {
+                const a = APPLICANTS[row.dataset.index];
+                return [a.id, a.name, a.group, a.program, ...(IS_COLLEGE ? [a.year] : []), a.status, a.applied_label, a.updated_label];
+            });
+            // Wrap every value in quotes (and double any quotes inside) so commas in names don't break columns
+            const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const link = document.createElement('a');
+            // \uFEFF at the start tells Excel the file is UTF-8 (for ñ, – and ₱)
+            link.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }));
+            link.download = IS_COLLEGE ? 'college-records.csv' : `applicants-${state.unit}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
         });
 
         // ---- Profile drawer ----
