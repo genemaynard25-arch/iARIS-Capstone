@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AccessControlController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\CollegeRecordController;
 
 
 // Two-factor authentication routes
@@ -43,7 +44,6 @@ Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(
 Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
 Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
 
-// Test route for RBAC middleware (DEAN)
-Route::get('/records/college', function () {
-    return 'You can see College records.';
-})->middleware(['auth', 'level:college']);
+// College Records. 'level:college' is the team's RBAC check: users with a
+// different assigned_level (e.g. Integrated School) get a 403.
+Route::get('/records/college', [CollegeRecordController::class, 'index'])->middleware(['auth', 'level:college'])->name('records.college');
