@@ -1,11 +1,12 @@
 @extends('layouts.app')
 
 {{--
-    This view is used by four pages, picked by $scope:
-    'all' = /applicants, 'college' = /records/college, 'is' = /records/is, 'law' = /records/law.
+    This view is used by five pages, picked by $scope:
+    'all' = /applicants, 'college' = /records/college, 'is' = /records/is,
+    'law' = /records/law, 'ipace' = /records/ipace.
     $page holds what's different between them ($defaults fills in anything a page leaves out):
-      extra        the one extra column: which field, its heading, and whether it goes
-                   before the second column ('first') or after it
+      extras       extra columns: which field, its heading, and whether it goes
+                   before the second column ('first' => true) or after it
       labels       headings / "All ..." filter text for the two filter columns
                    (null on Applicants, where they follow the College / IS tab).
                    'programAll' => null hides the second filter.
@@ -14,10 +15,15 @@
       programField the drawer's label for program_label
       drawerExtras more fields shown only in the drawer
       groupBadge   show the first column as a small tag
+      programBadges  show some second-column values as a badge: value => [colour, icon]
+      extraStep    one more timeline step after "Application Submitted"
+                   ({program} in its text is replaced with the second column's value)
+      examStep / finalStep   other titles for the exam and last timeline steps
 --}}
 @php
     $defaults = [
-        'extra' => null, 'labels' => null, 'groupBadge' => false,
+        'extras' => [], 'labels' => null, 'groupBadge' => false, 'programBadges' => [],
+        'extraStep' => null, 'examStep' => null, 'finalStep' => null,
         'statuses' => ['Pending', 'For Exam', 'Paid', 'Enrolled'], 'statusLabels' => [],
         'programField' => 'Program / Track / Strand', 'examField' => 'Exam Schedule', 'drawerExtras' => [],
     ];
@@ -29,29 +35,56 @@
         'college' => [
             'title' => 'College Records', 'subtitle' => "All college applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'student',
-            'extra' => ['key' => 'year', 'label' => 'Year Level', 'first' => false],
+            'extras' => [['key' => 'year', 'label' => 'Year Level', 'first' => false]],
             'labels' => ['group' => 'College', 'groupAll' => 'All Colleges', 'program' => 'Program', 'programAll' => 'All Programs'],
         ],
         'is' => [
             'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
-            'extra' => ['key' => 'level', 'label' => 'Grade / Level', 'first' => true],
+            'extras' => [['key' => 'level', 'label' => 'Grade / Level', 'first' => true]],
             'labels' => ['group' => 'Sub-Level', 'groupAll' => 'All Sub-Levels', 'program' => 'Strand / Track', 'programAll' => 'All Strands / Tracks'],
         ],
         // Law: the first column is the program (JD / LLM / JSD), the second is the undergraduate degree
         'law' => [
             'title' => 'College of Law Records', 'subtitle' => "Law program applicant records for AY {$academicYear}",
             'total' => 'Total Applicants', 'totalSub' => 'All law programs', 'noun' => 'applicant',
-            'extra' => ['key' => 'bar', 'label' => 'Bar Exam', 'first' => false],
+            'extras' => [['key' => 'bar', 'label' => 'Bar Exam', 'first' => false]],
             'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Undergraduate Degree', 'programAll' => null],
             'groupBadge' => true,
             'statuses' => ['Pending', 'For Exam', 'Paid'],
             'statusLabels' => ['For Exam' => 'For Exam / Interview'],
             'programField' => 'Program', 'examField' => 'Exam / Interview Schedule',
             'drawerExtras' => [['key' => 'program', 'label' => 'Undergraduate / Prior Degree']],
+            'extraStep' => ['title' => 'Documents Verified', 'icon' => 'bi-file-earmark-check', 'tone' => 'dark',
+                'done' => 'Transcript, IDs and credentials reviewed', 'waiting' => 'Not yet verified'],
+            'examStep' => 'Entrance Exam / Interview Scheduled',
+            'finalStep' => 'Admission Confirmed',
+        ],
+        // iPACE: the first column is the program (BSIT, BSCS, ...), the second is the delivery mode
+        'ipace' => [
+            'title' => 'iPACE Records', 'subtitle' => "Individualized Program for Adult and Continuing Education — applicant records for AY {$academicYear}",
+            'total' => 'Total Applicants', 'totalSub' => 'All programs combined', 'noun' => 'applicant',
+            'extras' => [
+                ['key' => 'year', 'label' => 'Year Level', 'first' => false],
+                ['key' => 'working', 'label' => 'Working Student', 'first' => false],
+            ],
+            'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Delivery Mode', 'programAll' => 'All Delivery Modes'],
+            'groupBadge' => true,
+            'programBadges' => ['Online' => ['info', 'bi-wifi'], 'Blended' => ['secondary', 'bi-layers']],
+            'statuses' => ['Pending', 'For Exam', 'Paid'],
+            'programField' => 'Program',
+            'drawerExtras' => [
+                ['key' => 'program', 'label' => 'Delivery Mode'],
+                ['key' => 'employer', 'label' => 'Employer / Position'],
+            ],
+            'extraStep' => ['title' => 'Delivery Mode Confirmed', 'icon' => 'bi-laptop', 'tone' => 'info',
+                'done' => '{program} delivery confirmed', 'waiting' => 'Not yet confirmed'],
+            'finalStep' => 'Admission Confirmed',
         ],
     ][$scope]);
-    $extra = $page['extra'];
+    // Extra columns that go before / after the second column
+    $extrasFirst = array_filter($page['extras'], fn ($x) => $x['first']);
+    $extrasAfter = array_filter($page['extras'], fn ($x) => ! $x['first']);
 @endphp
 
 @section('title', 'iARIS — ' . $page['title'])
@@ -166,13 +199,13 @@
                         <th class="ps-4" style="width: 1%;"><input type="checkbox" class="form-check-input" id="selectAll" aria-label="Select all on this page"></th>
                         <th class="text-body-secondary fw-bold">Applicant</th>
                         <th class="text-body-secondary fw-bold" id="groupHeading">College</th>
-                        @if ($extra && $extra['first'])
-                            <th class="text-body-secondary fw-bold">{{ $extra['label'] }}</th>
-                        @endif
+                        @foreach ($extrasFirst as $x)
+                            <th class="text-body-secondary fw-bold">{{ $x['label'] }}</th>
+                        @endforeach
                         <th class="text-body-secondary fw-bold" id="programHeading">Program</th>
-                        @if ($extra && ! $extra['first'])
-                            <th class="text-body-secondary fw-bold">{{ $extra['label'] }}</th>
-                        @endif
+                        @foreach ($extrasAfter as $x)
+                            <th class="text-body-secondary fw-bold">{{ $x['label'] }}</th>
+                        @endforeach
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date Applied</th>
                         <th class="text-body-secondary fw-bold">Updated</th>
@@ -198,13 +231,19 @@
                                     {{ $a['group'] }}
                                 @endif
                             </td>
-                            @if ($extra && $extra['first'])
-                                <td>{{ $a[$extra['key']] }}</td>
-                            @endif
-                            <td>{{ $a['program'] }}</td>
-                            @if ($extra && ! $extra['first'])
-                                <td>{{ $a[$extra['key']] }}</td>
-                            @endif
+                            @foreach ($extrasFirst as $x)
+                                <td>{{ $a[$x['key']] }}</td>
+                            @endforeach
+                            <td>
+                                @if ($badge = $page['programBadges'][$a['program']] ?? null)
+                                    <span class="badge rounded-pill bg-{{ $badge[0] }}-subtle text-{{ $badge[0] }}-emphasis"><i class="bi {{ $badge[1] }} me-1"></i>{{ $a['program'] }}</span>
+                                @else
+                                    {{ $a['program'] }}
+                                @endif
+                            </td>
+                            @foreach ($extrasAfter as $x)
+                                <td>{{ $a[$x['key']] }}</td>
+                            @endforeach
                             <td><span class="badge rounded-pill text-wrap bg-{{ $a['tone'] }}-subtle text-{{ $a['tone'] }}-emphasis">{{ $a['status_label'] }}</span></td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['applied_label'] }}</td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['updated_label'] }}</td>
@@ -212,7 +251,7 @@
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
-                        <td colspan="{{ $extra ? 9 : 8 }}" class="text-center text-body-secondary py-5">
+                        <td colspan="{{ 8 + count($page['extras']) }}" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
                             No applicants match your search or filters.
                         </td>
@@ -273,9 +312,9 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">College / Unit</div><div class="fw-semibold" data-field="unit_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Academic Year</div><div class="fw-semibold">{{ $academicYear }}</div></div>
-                    @if ($extra)
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">{{ $extra['label'] }}</div><div class="fw-semibold" data-field="{{ $extra['key'] }}"></div></div>
-                    @endif
+                    @foreach ($page['extras'] as $x)
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">{{ $x['label'] }}</div><div class="fw-semibold" data-field="{{ $x['key'] }}"></div></div>
+                    @endforeach
                     <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">{{ $page['programField'] }}</div><div class="fw-semibold" data-field="program_label"></div></div>
                     @foreach ($page['drawerExtras'] as $field)
                         <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">{{ $field['label'] }}</div><div class="fw-semibold" data-field="{{ $field['key'] }}"></div></div>
@@ -316,7 +355,8 @@
         const PAGE = @json($page);
         // Sub-levels go in school order, not A–Z
         const GROUP_ORDER = @json($groupOrder ?? []);
-        const state = { unit: { is: 'is', law: 'law' }[SCOPE] ?? 'college', status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
+        // Applicants starts on the College tab; each Records page's rows use its scope as their unit
+        const state = { unit: SCOPE === 'all' ? 'college' : SCOPE, status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
         let currentMatches = [];   // every row that passes the filters (all pages), used by Export
 
         const tbody = document.getElementById('applicantRows');
@@ -448,21 +488,13 @@
         document.getElementById('exportButton').addEventListener('click', () => {
             const labels = currentLabels();
             // Same columns, in the same order, as the table
-            const extra = PAGE.extra;
-            const header = ['App No.', 'Name', labels.group];
-            if (extra && extra.first) header.push(extra.label);
-            header.push(labels.program);
-            if (extra && !extra.first) header.push(extra.label);
-            header.push('Status', 'Date Applied', 'Updated');
+            const first = PAGE.extras.filter(x => x.first);
+            const after = PAGE.extras.filter(x => !x.first);
+            const header = ['App No.', 'Name', labels.group, ...first.map(x => x.label), labels.program, ...after.map(x => x.label), 'Status', 'Date Applied', 'Updated'];
 
             const lines = currentMatches.map(row => {
                 const a = APPLICANTS[row.dataset.index];
-                const cols = [a.id, a.name, a.group];
-                if (extra && extra.first) cols.push(a[extra.key]);
-                cols.push(a.program);
-                if (extra && !extra.first) cols.push(a[extra.key]);
-                cols.push(a.status_label, a.applied_label, a.updated_label);
-                return cols;
+                return [a.id, a.name, a.group, ...first.map(x => a[x.key]), a.program, ...after.map(x => a[x.key]), a.status_label, a.applied_label, a.updated_label];
             });
             // Wrap every value in quotes (and double any quotes inside) so commas in names don't break columns
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -508,11 +540,13 @@
                 { title: 'Reservation Payment', date: a.paid ? `${a.paid_label} · ${a.amount_label}` : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 2 },
                 { title: 'Enrolled', date: reached >= 3 ? a.updated_label : 'Not yet enrolled', icon: 'bi-check-circle', tone: 'primary', done: reached >= 3 },
             ];
-            // Law applicants have their documents checked first, an exam or interview, and "admission confirmed" instead of enrolled
-            if (SCOPE === 'law') {
-                steps.splice(1, 0, { title: 'Documents Verified', date: reached >= 1 ? 'Transcript, IDs and credentials reviewed' : 'Not yet verified', icon: 'bi-file-earmark-check', tone: 'dark', done: reached >= 1 });
-                steps[2].title = 'Entrance Exam / Interview Scheduled';
-                steps[4] = { ...steps[4], title: 'Admission Confirmed', date: reached >= 3 ? a.updated_label : 'Pending' };
+            // Page-specific changes (Law and iPACE): other titles and one more step
+            if (PAGE.examStep) steps[1].title = PAGE.examStep;
+            if (PAGE.finalStep) steps[3] = { ...steps[3], title: PAGE.finalStep, date: reached >= 3 ? a.updated_label : 'Pending' };
+            if (PAGE.extraStep) {
+                const s = PAGE.extraStep;
+                steps.splice(1, 0, { title: s.title, icon: s.icon, tone: s.tone, done: reached >= 1,
+                    date: reached >= 1 ? s.done.replace('{program}', a.program) : s.waiting });
             }
             const list = document.getElementById('timeline');
             list.replaceChildren();
