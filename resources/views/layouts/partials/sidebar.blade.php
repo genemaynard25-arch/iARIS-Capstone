@@ -32,7 +32,7 @@
                 <a href="{{ url('/records/is') }}" class="nav-link {{ request()->is('records/is*') ? 'active' : '' }}"><i class="bi bi-building"></i> Integrated School</a>
                 <a href="{{ url('/records/college') }}" class="nav-link {{ request()->is('records/college*') ? 'active' : '' }}"><i class="bi bi-mortarboard"></i> College</a>
                 <a href="{{ url('/records/scholars') }}" class="nav-link {{ request()->is('records/scholars*') ? 'active' : '' }}"><i class="bi bi-award"></i> Scholars</a>
-                <a href="#" class="nav-link"><i class="bi bi-journal-bookmark"></i> Graduate Programs</a>
+                <a href="{{ url('/records/graduate') }}" class="nav-link {{ request()->is('records/graduate*') ? 'active' : '' }}"><i class="bi bi-journal-bookmark"></i> Graduate Programs</a>
                 <a href="{{ url('/records/law') }}" class="nav-link {{ request()->is('records/law*') ? 'active' : '' }}"><i class="bi bi-bank2"></i> College of Law</a>
                 <a href="{{ url('/records/ipace') }}" class="nav-link {{ request()->is('records/ipace*') ? 'active' : '' }}"><i class="bi bi-laptop"></i> iPACE</a>
                 <a href="#" class="nav-link"><i class="bi bi-briefcase"></i> ETEEAP</a>
