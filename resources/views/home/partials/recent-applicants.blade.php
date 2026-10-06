@@ -1,8 +1,9 @@
 <div class="card border-0 shadow-sm rounded-4 h-100">
     <div class="card-body p-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="fs-6 fw-bold mb-0">Recent Applicants</h2>
-            <a href="#" class="small fw-semibold text-decoration-none">View all</a>
+            {{-- Pages that reuse this card can pass their own title and "View all" link --}}
+            <h2 class="fs-6 fw-bold mb-0">{{ $recentTitle ?? 'Recent Applicants' }}</h2>
+            <a href="{{ $recentLink ?? '#' }}" class="small fw-semibold text-decoration-none">View all</a>
         </div>
 
         @if (count($recentApplicants) === 0)

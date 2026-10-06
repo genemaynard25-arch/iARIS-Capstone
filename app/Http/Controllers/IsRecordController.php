@@ -29,6 +29,8 @@ class IsRecordController extends Controller
                     'program' => $subLevel === 'Senior High' ? $a['program'] : '—',
                 ]);
             })
+            // Role-based filtering: the SHS principal only sees Senior High students
+            ->when(auth()->user()->isShsPrincipal(), fn ($rows) => $rows->where('sub_level', 'Senior High'))
             ->values()
             ->all();
 

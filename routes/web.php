@@ -17,6 +17,7 @@ use App\Http\Controllers\IpaceRecordController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
+use App\Http\Controllers\ShsController;
 
 
 // Two-factor authentication routes
@@ -68,3 +69,7 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
     Route::get('/scholars', [LampController::class, 'scholars'])->name('scholars');
     Route::get('/reports', [LampController::class, 'reports'])->name('reports');
 });
+
+// SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to the SHS principal, plus IATO admins
+Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
