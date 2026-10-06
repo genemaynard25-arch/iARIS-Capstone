@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
 {{--
-    This view is used by five pages, picked by $scope:
+    This view is used by six pages, picked by $scope:
     'all' = /applicants, 'college' = /records/college, 'is' = /records/is,
-    'law' = /records/law, 'ipace' = /records/ipace.
+    'law' = /records/law, 'ipace' = /records/ipace, 'graduate' = /records/graduate.
     $page holds what's different between them ($defaults fills in anything a page leaves out):
       extras       extra columns: which field, its heading, and whether it goes
                    before the second column ('first' => true) or after it
@@ -79,6 +79,22 @@
             ],
             'extraStep' => ['title' => 'Delivery Mode Confirmed', 'icon' => 'bi-laptop', 'tone' => 'info',
                 'done' => '{program} delivery confirmed', 'waiting' => 'Not yet confirmed'],
+            'finalStep' => 'Admission Confirmed',
+        ],
+        // Graduate: the first column is the program (MBA, MEd, ...), the second is the level
+        'graduate' => [
+            'title' => 'Graduate Programs Records', 'subtitle' => "Master's and doctoral applicant records for AY {$academicYear}",
+            'total' => 'Total Applicants', 'totalSub' => 'All graduate programs', 'noun' => 'applicant',
+            // "Prior" because PhD applicants already have a master's
+            'extras' => [['key' => 'degree', 'label' => 'Prior Degree', 'first' => false]],
+            'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Level', 'programAll' => 'All Levels'],
+            'groupBadge' => true,
+            'programBadges' => ["Master's" => ['primary', 'bi-mortarboard'], 'Doctoral' => ['info', 'bi-journal-bookmark']],
+            'statuses' => ['Pending', 'For Exam', 'Paid'],
+            'statusLabels' => ['For Exam' => 'For Exam / Interview'],
+            'programField' => 'Program', 'examField' => 'Exam / Interview Schedule',
+            'drawerExtras' => [['key' => 'program', 'label' => 'Level']],
+            'examStep' => 'Exam / Interview Scheduled',
             'finalStep' => 'Admission Confirmed',
         ],
     ][$scope]);
