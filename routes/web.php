@@ -16,6 +16,7 @@ use App\Http\Controllers\LawRecordController;
 use App\Http\Controllers\IpaceRecordController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
+use App\Http\Controllers\LampController;
 
 
 // Two-factor authentication routes
@@ -59,3 +60,11 @@ Route::get('/records/law', [LawRecordController::class, 'index'])->middleware('a
 Route::get('/records/ipace', [IpaceRecordController::class, 'index'])->middleware('auth')->name('records.ipace');
 Route::get('/records/scholars', [ScholarController::class, 'index'])->middleware('auth')->name('records.scholars');
 Route::get('/records/graduate', [GraduateRecordController::class, 'index'])->middleware('auth')->name('records.graduate');
+
+// LAMP Office pages (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to users whose role is 'lamp', plus IATO admins
+Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
+    Route::get('/', [LampController::class, 'dashboard'])->name('dashboard');
+    Route::get('/scholars', [LampController::class, 'scholars'])->name('scholars');
+    Route::get('/reports', [LampController::class, 'reports'])->name('reports');
+});
