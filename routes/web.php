@@ -13,6 +13,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\CollegeRecordController;
 use App\Http\Controllers\IsRecordController;
 use App\Http\Controllers\LawRecordController;
+use App\Http\Controllers\IpaceRecordController;
 
 
 // Two-factor authentication routes
@@ -50,5 +51,6 @@ Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
 // different assigned_level (e.g. Integrated School) get a 403.
 Route::get('/records/college', [CollegeRecordController::class, 'index'])->middleware(['auth', 'level:college'])->name('records.college');
 Route::get('/records/is', [IsRecordController::class, 'index'])->middleware(['auth', 'level:is'])->name('records.is');
-// TODO (RBAC): no 'law' level exists yet, so only sign-in is checked for now
+// TODO (RBAC): no 'law' or 'ipace' level exists yet, so only sign-in is checked for these two
 Route::get('/records/law', [LawRecordController::class, 'index'])->middleware('auth')->name('records.law');
+Route::get('/records/ipace', [IpaceRecordController::class, 'index'])->middleware('auth')->name('records.ipace');
