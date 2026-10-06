@@ -17,10 +17,13 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // LAMP Office users have their own dashboard. Every sign-in ends up here
-        // (login -> splash -> /home), so this sends them to the right place.
-        if (auth()->user()->role === 'lamp') {
+        // LAMP Office and SHS principal users have their own dashboards. Every sign-in
+        // ends up here (login -> splash -> /home), so this sends them to the right place.
+        if (auth()->user()->isLamp()) {
             return redirect()->route('lamp.dashboard');
+        }
+        if (auth()->user()->isShsPrincipal()) {
+            return redirect()->route('shs.dashboard');
         }
 
         return view('home', [

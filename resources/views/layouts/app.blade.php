@@ -9,10 +9,13 @@
 
 <body>
     <div class="d-flex min-vh-100">
-        {{-- LAMP Office users get their own short sidebar. The /lamp pages use it too, so admins can preview them.
-             TODO (RBAC): also send 'lamp' users to /lamp after login, and keep them out of the admin pages. --}}
-        @if (request()->is('lamp*') || auth()->user()->role === 'lamp')
+        {{-- Each kind of user gets their own sidebar. The /lamp and /shs pages use theirs too,
+             so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)
+             TODO (RBAC): keep these users out of the admin pages. --}}
+        @if (request()->is('lamp*') || auth()->user()->isLamp())
             @include('layouts.partials.sidebar-lamp')
+        @elseif (request()->is('shs*') || auth()->user()->isShsPrincipal())
+            @include('layouts.partials.sidebar-shs')
         @else
             @include('layouts.partials.sidebar')
         @endif
