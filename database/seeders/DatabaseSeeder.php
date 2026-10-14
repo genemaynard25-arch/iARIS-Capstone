@@ -69,3 +69,12 @@ class DatabaseSeeder extends Seeder
         );
     }
 }
+\App\Models\User::firstOrCreate(
+        ['email' => 'gene_maynard_malibiran@dlsl.edu.ph'],
+        [
+            'name' => 'Gene Maynard Malibiran',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'admin',
+            'access_type' => 'editor',
+        ]
+    );
