@@ -36,7 +36,7 @@
                     </select>
                 </div>
             </div>
-            <div class="small text-body-secondary mt-3"><i class="bi bi-info-circle me-1"></i> Showing sample data. The filters will apply to every chart once analytics are connected to real records.</div>
+            <div class="small text-body-secondary mt-3"><i class="bi bi-info-circle me-1"></i> Stat cards and charts below are computed from imported admission data. The filters above are not wired to re-query yet.</div>
         </div>
     </div>
 
@@ -61,7 +61,7 @@
     {{-- Charts --}}
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-6">
-            @include('analytics.partials.chart-card', ['id' => 'trends', 'title' => 'Applicant trends over time', 'subtitle' => 'Monthly applicants this semester', 'types' => ['bar' => 'Bar chart', 'line' => 'Line chart']])
+           @include('analytics.partials.chart-card', ['id' => 'trends', 'title' => 'Applicants: current vs previous SY', 'subtitle' => 'Total applicants summed across all levels/programs', 'types' => ['bar' => 'Bar chart', 'line' => 'Line chart']])
         </div>
         <div class="col-12 col-xl-6">
             @include('analytics.partials.chart-card', ['id' => 'programs', 'title' => 'Top programs by applicants', 'subtitle' => 'Most applied-to programs this AY'])
@@ -322,7 +322,7 @@
         }
 
         // ---- School year comparison ----
-        let selectedYears = ['AY 2023–2024', 'AY 2024–2025', 'AY 2025–2026'];
+        let selectedYears = ['Previous SY', 'Current SY'];
         let comparisonTable = null;
 
         function renderYearChips() {

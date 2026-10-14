@@ -18,7 +18,12 @@ use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
 use App\Http\Controllers\ShsController;
+use App\Http\Controllers\AdmissionStatsImportController;
 
+// Admission Stats Import routes
+Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
+Route::post('/import/admission-stats', [AdmissionStatsImportController::class, 'store'])->middleware('auth');
+Route::get('/import/admission-stats/{batch}', [AdmissionStatsImportController::class, 'results'])->middleware('auth');
 
 // Two-factor authentication routes
 Route::get('/two-factor', [TwoFactorAuthenticationController::class, 'show']) ->middleware(['auth']);
@@ -42,7 +47,7 @@ Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name(
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('auth')->name('applicants');
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports');
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
-Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth')->name('access-control');
+Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::get('/accounts', [AccountController::class, 'index'])->middleware('auth')->name('accounts');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');

@@ -38,6 +38,14 @@ class User extends Authenticatable
     {
         return $this->role === 'lamp';
     }
+    
+   /**
+     * Which pages / sidebar a user gets. Used by the layout and HomeController.
+     */
+    public function isAdmin(): bool
+{
+    return $this->role === 'admin';
+}
 
     // The seeded SHS principal has role 'admin' but is assigned to IS / SHS,
     // so either the 'principal' role or the SHS assignment counts.
