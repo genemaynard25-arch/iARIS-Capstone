@@ -93,7 +93,7 @@ class ReportController extends Controller
         return view('reports.index', [
             'sections' => $sections,
             'history' => $history,
-            'periods' => ['Current School Year', 'Previous School Year'],~
+            'periods' => ['Current School Year', 'Previous School Year'],
         ]);
     }
 }

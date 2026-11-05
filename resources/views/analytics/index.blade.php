@@ -145,13 +145,18 @@
                 <span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2 fw-semibold">
                     <i class="bi bi-circle-fill text-iaris-pale me-1" style="font-size: 0.5rem;"></i> Last analyzed: {{ $lastAnalyzed }}
                 </span>
-                {{-- TODO: call the AI assistant on real data. Disabled for now. --}}
-                <button type="button" class="btn btn-sm btn-outline-light" disabled title="Coming soon"><i class="bi bi-arrow-repeat me-1"></i> Re-analyze</button>
+               <form method="POST" action="{{ url('/analytics/reanalyze') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-repeat me-1"></i> Re-analyze</button>
+                </form>
+                @if (session('insightsError'))
+                    <span class="badge bg-danger ms-2">{{ session('insightsError') }}</span>
+                @endif
                 <button type="button" class="btn btn-sm btn-light fw-semibold" disabled title="Coming soon"><i class="bi bi-download me-1"></i> Export insights</button>
             </div>
         </div>
     </div>
-    <div class="small text-body-secondary text-end mb-3">Sample insights · Data source: AY 2022–2023 to AY 2025–2026</div>
+    <div class="small text-body-secondary text-end mb-3">Data source: current imported admission data</div>
 
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
         @foreach ($insights as $insight)
