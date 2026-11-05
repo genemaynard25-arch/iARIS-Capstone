@@ -7,7 +7,7 @@ use App\Models\CachedInsight;
 class ChancellorController extends Controller
 {
     /**
-     * Chancellor / President dashboard: a read-only, university-wide view.
+     * President / Chancellor dashboard: a read-only, university-wide view.
      *
      * Placeholder data, same idea as the LAMP and SHS dashboards. Later the
      * numbers would come from the admission_stats table (the same data the
@@ -79,6 +79,69 @@ class ChancellorController extends Controller
                 ['name' => 'Dr. Tessie Palma', 'initials' => 'TP', 'title' => 'Vice Chancellor for Academics', 'tone' => 'info'],
                 ['name' => 'Dr. Sheila Maloles', 'initials' => 'SM', 'title' => 'Vice Chancellor for Research, Innovation & Internationalization', 'tone' => 'secondary'],
                 ['name' => 'Mr. Wenifredo Angeles', 'initials' => 'WA', 'title' => 'Vice Chancellor for Mission', 'tone' => 'warning'],
+            ],
+        ]);
+    }
+
+    /**
+     * President / Chancellor analytics: the same university-wide numbers, per unit,
+     * with charts the user can filter by unit.
+     *
+     * Placeholder data. Each unit's numbers add up to the dashboard's totals
+     * (3,294 applicants, 842 enrolled, 1,019 paid in AY 2025–26).
+     * 'applicants' and 'enrolled' have one number per entry in 'years' (oldest first).
+     * 'took', 'passed', 'paid' are this AY; 'paidPrevious' is last AY.
+     */
+    public function analytics()
+    {
+        return view('chancellor.analytics', [
+            'academicYear' => '2025–2026',
+            'years' => ['AY 2022–23', 'AY 2023–24', 'AY 2024–25', 'AY 2025–26'],
+
+            'units' => [
+                'College' => ['short' => 'College', 'applicants' => [1400, 1493, 1562, 1676], 'enrolled' => [338, 382, 417, 437],
+                    'took' => 1240, 'passed' => 1050, 'paid' => 495, 'paidPrevious' => 472, 'confidence' => 'High'],
+                'Integrated School' => ['short' => 'Int. School', 'applicants' => [640, 668, 694, 742], 'enrolled' => [160, 172, 180, 190],
+                    'took' => 598, 'passed' => 505, 'paid' => 254, 'paidPrevious' => 241, 'confidence' => 'Medium'],
+                'Graduate Programs' => ['short' => 'Graduate', 'applicants' => [226, 244, 262, 284], 'enrolled' => [52, 58, 62, 66],
+                    'took' => 228, 'passed' => 186, 'paid' => 98, 'paidPrevious' => 91, 'confidence' => 'High'],
+                'College of Law' => ['short' => 'Law', 'applicants' => [142, 156, 168, 186], 'enrolled' => [36, 40, 43, 47],
+                    'took' => 152, 'passed' => 120, 'paid' => 56, 'paidPrevious' => 52, 'confidence' => 'Medium'],
+                'iPACE' => ['short' => 'iPACE', 'applicants' => [150, 196, 252, 312], 'enrolled' => [40, 52, 66, 80],
+                    'took' => 207, 'passed' => 182, 'paid' => 92, 'paidPrevious' => 74, 'confidence' => 'Medium'],
+                'ETEEAP' => ['short' => 'ETEEAP', 'applicants' => [52, 63, 78, 94], 'enrolled' => [14, 18, 20, 22],
+                    'took' => 61, 'passed' => 51, 'paid' => 24, 'paidPrevious' => 19, 'confidence' => 'Medium'],
+            ],
+
+            'colleges' => ['CITE' => 512, 'CBEAM' => 398, 'CEAS' => 296, 'CON' => 268, 'CIHTM' => 202],
+
+            // Same keys as the Analytics page's AI insights (AnalyticsController), so real
+            // AI output could replace these later. 'tone' is a Bootstrap colour.
+            'insights' => [
+                ['type' => 'Growth', 'icon' => 'bi-graph-up-arrow', 'tone' => 'primary', 'title' => 'Adult-learner programs are surging',
+                    'stat' => '+108%', 'statLabel' => 'iPACE applicants since AY 2022–23',
+                    'body' => 'iPACE grew from 150 to 312 applicants. ETEEAP is up 81% over the same period (52 to 94). Both are still small shares of the total.',
+                    'tags' => ['iPACE', 'ETEEAP', '3-year trend']],
+                ['type' => 'Alert', 'icon' => 'bi-exclamation-triangle', 'tone' => 'danger', 'title' => 'Conversion dipped for the first time in four years',
+                    'stat' => '25.6%', 'statLabel' => 'applied-to-enrolled, down from 26.1%',
+                    'body' => 'Conversion rose from 24.5% to 25.6% to 26.1% before slipping to 25.6%. Applicants grew 9.2% but enrollment grew 6.9%.',
+                    'tags' => ['Institution-wide', 'Conversion']],
+                ['type' => 'Warning', 'icon' => 'bi-funnel', 'tone' => 'warning', 'title' => 'The biggest drop-off comes after passing the exam',
+                    'stat' => '51.3%', 'statLabel' => 'of exam passers did not pay a reservation',
+                    'body' => '1,075 of 2,094 applicants who passed did not complete payment, the largest loss at any funnel stage.',
+                    'tags' => ['Funnel', 'Pass to Paid']],
+                ['type' => 'Positive', 'icon' => 'bi-check-circle', 'tone' => 'info', 'title' => 'Integrated School converts applicants best',
+                    'stat' => '34.2%', 'statLabel' => 'applied-to-paid, vs 30.9% institution-wide',
+                    'body' => 'Integrated School turns 254 of 742 applicants into paid reservations, the strongest rate among all units.',
+                    'tags' => ['Integrated School', 'Conversion']],
+                ['type' => 'Neutral', 'icon' => 'bi-pie-chart', 'tone' => 'secondary', 'title' => 'College share of applicants is edging down',
+                    'stat' => '50.9%', 'statLabel' => 'of all applicants, from 53.6% in AY 2022–23',
+                    'body' => 'College volume still grew 19.7% over three years, but faster growth in other units is lowering its share.',
+                    'tags' => ['College', 'Share of total']],
+                ['type' => 'Growth', 'icon' => 'bi-bank', 'tone' => 'primary', 'title' => 'College of Law applications rose three years in a row',
+                    'stat' => '+31.0%', 'statLabel' => 'since AY 2022–23',
+                    'body' => 'Law applicants went 142 → 156 → 168 → 186. This is steady growth rather than a one-year spike.',
+                    'tags' => ['College of Law', '3-year trend']],
             ],
         ]);
     }

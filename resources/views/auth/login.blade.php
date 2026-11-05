@@ -37,7 +37,7 @@
                             ['bi-person-badge', 'IATO Staff'],
                             ['bi-award', 'LAMP Office'],
                             ['bi-person-vcard', 'Registrar'],
-                            ['bi-bank', 'Chancellor / President'],
+                            ['bi-bank', 'President / Chancellor'],
                             ['bi-person-video3', 'Dean / Program Chair'],
                             ['bi-building', 'SHS Principal'],
                         ] as [$icon, $role])
@@ -381,7 +381,7 @@
                             <option>SHS Principal</option>
                             <option>Registrar</option>
                             <option>LAMP Office</option>
-                            <option>Chancellor / President</option>
+                            <option>President / Chancellor</option>
                         </select>
                     </div>
 

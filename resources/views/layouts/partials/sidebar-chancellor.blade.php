@@ -1,4 +1,4 @@
-{{-- Sidebar for the Chancellor / President office. Same look as the admin sidebar, read-only links. --}}
+{{-- Sidebar for the President / Chancellor office. Same look as the admin sidebar, read-only links. --}}
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
 
@@ -10,7 +10,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">Chancellor / President</div>
+                    <div class="small text-white-50">President / Chancellor</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
@@ -27,8 +27,7 @@
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
             <nav class="nav nav-pills flex-column">
                 <a href="{{ url('/chancellor') }}" class="nav-link {{ request()->is('chancellor') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                {{-- TODO: a read-only Analytics page for this office --}}
-                <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+                <a href="{{ url('/chancellor/analytics') }}" class="nav-link {{ request()->is('chancellor/analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
                 {{-- For now, Reports jumps to the "Reports from IATO" card on the dashboard --}}
                 <a href="{{ url('/chancellor') }}#reports" class="nav-link"><i class="bi bi-file-earmark-text"></i> Reports
                     <span class="badge rounded-pill bg-danger ms-auto">1</span></a>

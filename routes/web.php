@@ -84,6 +84,7 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
 
-// Chancellor / President dashboard (their own sidebar: see layouts/app.blade.php)
+// President / Chancellor dashboard (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to the Chancellor's office, plus IATO admins
 Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
+Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');

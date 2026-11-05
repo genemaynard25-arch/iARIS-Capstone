@@ -47,7 +47,7 @@ class User extends Authenticatable
     return $this->role === 'admin';
 }
 
-    // Chancellor / President office: a read-only, university-wide dashboard
+    // President / Chancellor office: a read-only, university-wide dashboard
     public function isChancellor(): bool
     {
         return $this->role === 'chancellor';
