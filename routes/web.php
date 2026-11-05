@@ -20,6 +20,7 @@ use App\Http\Controllers\LampController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\ChancellorController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -83,4 +84,6 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
 
-
+// Chancellor / President dashboard (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to the Chancellor's office, plus IATO admins
+Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');

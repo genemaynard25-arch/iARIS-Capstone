@@ -47,6 +47,12 @@ class User extends Authenticatable
     return $this->role === 'admin';
 }
 
+    // Chancellor / President office: a read-only, university-wide dashboard
+    public function isChancellor(): bool
+    {
+        return $this->role === 'chancellor';
+    }
+
     // The seeded SHS principal has role 'admin' but is assigned to IS / SHS,
     // so either the 'principal' role or the SHS assignment counts.
     public function isShsPrincipal(): bool
