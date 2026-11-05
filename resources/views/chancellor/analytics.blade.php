@@ -176,7 +176,8 @@
             </div>
         </div>
 
-        {{-- AI insights --}}
+        {{-- AI insights (data-ai-content: hidden when "Show AI-written takeaways" is off in Settings) --}}
+        <div data-ai-content>
         <div class="d-flex align-items-center gap-3 mt-2 mb-3">
             <span class="badge bg-info-subtle text-info-emphasis px-3 py-2"><i class="bi bi-stars me-1"></i> AI INSIGHTS</span>
             <div>
@@ -208,6 +209,7 @@
                     </div>
                 </div>
             @endforeach
+        </div>
         </div>
 
         {{-- Next AY estimate --}}
@@ -461,6 +463,11 @@
             if (count < 1) { box.checked = true; pickNote.textContent = 'Keep at least one year selected.'; }
         }));
         document.getElementById('generate').addEventListener('click', () => { pickNote.textContent = ''; renderCompare(); });
+
+        // Start with the unit and chart type chosen in Settings → Display
+        const display = window.IARIS_SETTINGS?.display || {};
+        if (display.unit in UNITS) { unit = display.unit; choose(unitButtons, document.querySelector(`#unitPills [data-unit="${unit}"]`)); }
+        if (display.chart === 'bar') { trendType = 'bar'; choose(typeButtons, document.querySelector('[data-type="bar"]')); }
 
         renderFiltered();
         renderColleges();

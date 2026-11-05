@@ -13,7 +13,7 @@
         <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis px-3 py-2 d-none d-sm-inline-flex align-items-center gap-2">
             <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> System online
         </span>
-        <div class="icon-circle rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center" title="{{ auth()->user()->name }}">
+        <div class="icon-circle rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center overflow-hidden" title="{{ auth()->user()->name }}" data-avatar data-initials="{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}">
             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
         </div>
     </div>

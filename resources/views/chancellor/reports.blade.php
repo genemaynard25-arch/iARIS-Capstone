@@ -679,11 +679,13 @@
             $('genUnit').disabled = !!t.allUnits;
             $('genUnitHint').classList.toggle('d-none', !t.allUnits);
             $('genCompareRow').classList.toggle('d-none', !t.compare);
-            $('genCompare').checked = true;
+            // Starting values from Settings → Report Preferences
+            const prefs = window.IARIS_SETTINGS?.reports || {};
+            $('genCompare').checked = prefs.compare ?? true;
             $('genAiRow').classList.toggle('d-none', !t.ai);
-            $('genAi').checked = false;
-            $('formatPDF').checked = true;
-            document.querySelectorAll('#genTo input').forEach(box => box.checked = false);
+            $('genAi').checked = prefs.ai ?? false;
+            ($(`format${prefs.format}`) || $('formatPDF')).checked = true;
+            document.querySelectorAll('#genTo input').forEach(box => box.checked = (prefs.to || []).includes(box.value));
             generateModal.show();
         }));
 

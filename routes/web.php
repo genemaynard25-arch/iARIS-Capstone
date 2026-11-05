@@ -21,6 +21,7 @@ use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ChancellorController;
+use App\Http\Controllers\SettingsController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -89,3 +90,6 @@ Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->nam
 Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
 Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
 Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
+
+// Settings, for every role (sections depend on the role: see SettingsController)
+Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');

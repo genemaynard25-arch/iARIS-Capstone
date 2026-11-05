@@ -39,7 +39,7 @@
 
         {{-- Footer (always visible) --}}
         <div class="nav nav-pills flex-column px-3 py-3 border-top border-white border-opacity-25">
-            <a href="{{ url('/two-factor') }}" class="nav-link"><i class="bi bi-gear"></i> Settings</a>
+            <a href="{{ url('/settings') }}" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}"><i class="bi bi-gear"></i> Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="nav-link"><i class="bi bi-box-arrow-right"></i> Log Out</button>

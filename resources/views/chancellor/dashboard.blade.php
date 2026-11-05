@@ -65,8 +65,8 @@
         </div>
 
         <div class="row g-4 mb-4">
-            {{-- Applicants vs enrolled over the years --}}
-            <div class="col-12 col-xl-7">
+            {{-- Applicants vs enrolled over the years ("col-xl": fills the row if Key Takeaways is hidden in Settings) --}}
+            <div class="col-12 col-xl">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
@@ -98,8 +98,8 @@
                 </div>
             </div>
 
-            {{-- Key takeaways (AI) --}}
-            <div class="col-12 col-xl-5">
+            {{-- Key takeaways (AI). data-ai-content: hidden when "Show AI-written takeaways" is off in Settings --}}
+            <div class="col-12 col-xl-5" data-ai-content>
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
