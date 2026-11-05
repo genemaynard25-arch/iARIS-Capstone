@@ -172,3 +172,7 @@ body { background-color: #F3F6F5; }
        since our own eye button already does this (otherwise Edge shows two) */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear { display: none; }
+
+/* 11. Bootstrap's pill tabs (e.g. President / Chancellor Reports): green when active, not Bootstrap blue.
+       The sidebar's own rules (section 3) still style its links. */
+.nav-pills { --bs-nav-pills-link-active-bg: var(--iaris-green); }

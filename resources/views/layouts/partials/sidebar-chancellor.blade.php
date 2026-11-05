@@ -28,9 +28,12 @@
             <nav class="nav nav-pills flex-column">
                 <a href="{{ url('/chancellor') }}" class="nav-link {{ request()->is('chancellor') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                 <a href="{{ url('/chancellor/analytics') }}" class="nav-link {{ request()->is('chancellor/analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
-                {{-- For now, Reports jumps to the "Reports from IATO" card on the dashboard --}}
-                <a href="{{ url('/chancellor') }}#reports" class="nav-link"><i class="bi bi-file-earmark-text"></i> Reports
-                    <span class="badge rounded-pill bg-danger ms-auto">1</span></a>
+                {{-- The badge counts unread reports (the Reports page updates it as you open them) --}}
+                @php
+                    $unread = collect(\App\Http\Controllers\ChancellorController::received())->where('status', 'new')->count();
+                @endphp
+                <a href="{{ url('/chancellor/reports') }}" class="nav-link {{ request()->is('chancellor/reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports
+                    <span class="badge rounded-pill bg-danger ms-auto {{ $unread ? '' : 'd-none' }}" id="reportsBadge">{{ $unread }}</span></a>
             </nav>
         </div>
 

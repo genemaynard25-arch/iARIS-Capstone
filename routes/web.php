@@ -88,3 +88,4 @@ Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->nam
 // TODO (RBAC): limit to the Chancellor's office, plus IATO admins
 Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
 Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
+Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
