@@ -167,3 +167,8 @@ body { background-color: #F3F6F5; }
     body:has(#chancellorReport) #aiWidget,
     body:has(#chancellorReport) .no-print { display: none !important; }
 }
+
+/* 10. Password boxes: hide Microsoft Edge's built-in "show password" eye,
+       since our own eye button already does this (otherwise Edge shows two) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear { display: none; }
