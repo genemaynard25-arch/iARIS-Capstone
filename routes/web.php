@@ -48,6 +48,7 @@ Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name(
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('auth')->name('applicants');
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports');
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
+Route::post('/analytics/reanalyze', [AnalyticsController::class, 'reanalyze'])->middleware('auth');
 Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::get('/accounts', [AccountController::class, 'index'])->middleware('auth')->name('accounts');
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('auth', 'admin')->name('audit-logs');
@@ -57,6 +58,7 @@ Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(
 // AI Chat routes
 Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
 Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
+Route::post('/ai-widget/ask', [AiChatController::class, 'widgetAsk'])->middleware('auth');
 
 // College Records. 'level:college' is the team's RBAC check: users with a
 // different assigned_level (e.g. Integrated School) get a 403.
@@ -80,3 +82,5 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
+
+

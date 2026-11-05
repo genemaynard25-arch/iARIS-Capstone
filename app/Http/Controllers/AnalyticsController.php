@@ -3,56 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdmissionStat;
+use App\Models\CachedInsight;
+use App\Services\AiAssistant;
+use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
     public function index()
     {
-        $rows = AdmissionStat::all();
-
-        $submittedCurrent = (int) $rows->sum('submitted_current');
-        $submittedPrevious = (int) $rows->sum('submitted_previous');
-        $overallCurrent = (int) $rows->sum('overall_total_current');
-        $overallPrevious = (int) $rows->sum('overall_total_previous');
-        $tookTestCurrent = (int) $rows->sum('took_test_current');
-        $tookTestPrevious = (int) $rows->sum('took_test_previous');
-        $passedCurrent = (int) $rows->sum('passed_current');
-        $passedPrevious = (int) $rows->sum('passed_previous');
-        $reservedCurrent = (int) $rows->sum('total_reserved_current');
-        $reservedPrevious = (int) $rows->sum('total_reserved_previous');
-        $enrolledCurrent = (int) $rows->sum('officially_enrolled');
-
-        $passRateCurrent = $tookTestCurrent > 0 ? ($passedCurrent / $tookTestCurrent) * 100 : 0;
-        $passRatePrevious = $tookTestPrevious > 0 ? ($passedCurrent / $tookTestPrevious) * 100 : 0;
-        $conversionRateCurrent = $overallCurrent > 0 ? ($reservedCurrent / $overallCurrent) * 100 : 0;
-        $conversionRatePrevious = $overallPrevious > 0 ? ($reservedPrevious / $overallPrevious) * 100 : 0;
+        $summary = $this->computeSummary();
+        $rows = $summary['rows'];
 
         $stats = [
             [
                 'label' => 'Total applicants',
-                'value' => number_format($overallCurrent),
-                'change' => $this->pctChange($overallCurrent, $overallPrevious),
-                'good' => $overallCurrent >= $overallPrevious,
+                'value' => number_format($summary['overallCurrent']),
+                'change' => $this->pctChange($summary['overallCurrent'], $summary['overallPrevious']),
+                'good' => $summary['overallCurrent'] >= $summary['overallPrevious'],
                 'tone' => 'primary',
             ],
             [
                 'label' => 'Exam pass rate',
-                'value' => number_format($passRateCurrent, 1) . '%',
-                'change' => $this->ptsChange($passRateCurrent, $passRatePrevious),
-                'good' => $passRateCurrent >= $passRatePrevious,
+                'value' => number_format($summary['passRateCurrent'], 1) . '%',
+                'change' => $this->ptsChange($summary['passRateCurrent'], $summary['passRatePrevious']),
+                'good' => $summary['passRateCurrent'] >= $summary['passRatePrevious'],
                 'tone' => 'info',
             ],
             [
                 'label' => 'Conversion rate',
-                'value' => number_format($conversionRateCurrent, 1) . '%',
-                'change' => $this->ptsChange($conversionRateCurrent, $conversionRatePrevious),
-                'good' => $conversionRateCurrent >= $conversionRatePrevious,
+                'value' => number_format($summary['conversionRateCurrent'], 1) . '%',
+                'change' => $this->ptsChange($summary['conversionRateCurrent'], $summary['conversionRatePrevious']),
+                'good' => $summary['conversionRateCurrent'] >= $summary['conversionRatePrevious'],
                 'tone' => 'warning',
             ],
             [
-                // No prior-year "enrolled" column exists in the source file, so no trend is shown for this one.
                 'label' => 'Total enrolled',
-                'value' => number_format($enrolledCurrent),
+                'value' => number_format($summary['enrolledCurrent']),
                 'change' => 'No prior-year data',
                 'good' => true,
                 'tone' => 'primary',
@@ -60,10 +46,9 @@ class AnalyticsController extends Controller
         ];
 
         $charts = [
-            // Repurposed from "monthly trend" (no such data exists) to a straight current-vs-previous comparison.
             'trends' => [
                 'labels' => ['Previous SY', 'Current SY'],
-                'values' => [$overallPrevious, $overallCurrent],
+                'values' => [$summary['overallPrevious'], $summary['overallCurrent']],
             ],
             'programs' => $rows->isEmpty()
                 ? ['labels' => ['No data imported yet'], 'values' => [0]]
@@ -72,16 +57,9 @@ class AnalyticsController extends Controller
                     'values' => $rows->sortByDesc('overall_total_current')->take(5)->pluck('overall_total_current')->all(),
                 ],
             'funnel' => [
-                'labels' => ['Submitted', 'Took Exam', 'Passed Exam', 'Reserved', 'Enrolled'],
-                'values' => [
-                    max($submittedCurrent, 1), // guards against divide-by-zero in the funnel partial
-                    $tookTestCurrent,
-                    $passedCurrent,
-                    $reservedCurrent,
-                    $enrolledCurrent,
-                ],
+                'labels' => $summary['funnelLabels'],
+                'values' => $summary['funnelValues'],
             ],
-            // No location data exists anywhere in the source file — left as an explicit placeholder.
             'locations' => [
                 'labels' => ['No location data available'],
                 'values' => [1],
@@ -116,6 +94,14 @@ class AnalyticsController extends Controller
             })->values()->all(),
         ];
 
+        $cached = CachedInsight::where('key', 'analytics')->first();
+        $insights = $cached['payload'] ?? [[
+            'type' => 'Not analyzed yet', 'icon' => 'bi-stars', 'tone' => 'info',
+            'title' => 'Click "Re-analyze" to generate real AI insights',
+            'body' => 'This will send your current admission numbers to the AI assistant and have it write insights from them.',
+            'stat' => '—', 'statLabel' => '', 'trend' => '', 'tags' => [],
+        ]];
+
         return view('analytics.index', [
             'filters' => [
                 'ranges' => ['This Week', 'This Month', 'This Semester', 'This AY'],
@@ -125,10 +111,94 @@ class AnalyticsController extends Controller
             'stats' => $stats,
             'charts' => $charts,
             'comparison' => $comparison,
-            'insights' => $this->buildInsights($rows, $charts['funnel']),
+            'insights' => $insights,
             'projection' => $projection,
-            'lastAnalyzed' => now()->format('M j, Y · g:i A'),
+            'lastAnalyzed' => $cached?->generated_at?->format('M j, Y \a\t g:i A') ?? 'Never',
         ]);
+    }
+
+    public function reanalyze(Request $request, AiAssistant $ai)
+    {
+        $summary = $this->computeSummary();
+
+        $growers = $summary['rows']->sortByDesc('overall_pct_change')->take(3)
+            ->map(fn (AdmissionStat $r) => "{$r->level_program}: " . number_format($r->overall_pct_change ?? 0, 1) . '%')
+            ->implode('; ');
+        $decliners = $summary['rows']->sortBy('overall_pct_change')->take(3)
+            ->map(fn (AdmissionStat $r) => "{$r->level_program}: " . number_format($r->overall_pct_change ?? 0, 1) . '%')
+            ->implode('; ');
+
+        $prompt = 'You are analyzing real school admissions data for the IATO office at De La Salle Lipa. '
+            . "Here are the real current numbers:\n"
+            . "- Total applicants: {$summary['overallCurrent']} (previous SY: {$summary['overallPrevious']})\n"
+            . '- Exam pass rate: ' . number_format($summary['passRateCurrent'], 1) . '% (previous SY: ' . number_format($summary['passRatePrevious'], 1) . "%)\n"
+            . '- Conversion rate (applied to reserved): ' . number_format($summary['conversionRateCurrent'], 1) . "%\n"
+            . "- Total enrolled: {$summary['enrolledCurrent']}\n"
+            . "- Biggest growers in applications vs previous SY (level/program: % change): {$growers}\n"
+            . "- Biggest decliners in applications vs previous SY (level/program: % change): {$decliners}\n"
+            . '- Funnel stages (' . implode(' -> ', $summary['funnelLabels']) . '): ' . implode(' -> ', $summary['funnelValues']) . "\n\n"
+            . 'Write 3 short insight cards about this data for a school admissions dashboard. '
+            . 'Respond with ONLY a JSON array, no other text, no markdown, no code fences. '
+            . 'Each array item must be an object with exactly these keys: '
+            . '"type" (a short 1-3 word label), "icon" (a Bootstrap Icons class name like "bi-graph-up-arrow"), '
+            . '"tone" (one of: primary, danger, warning, info), "title" (a short headline), '
+            . '"body" (1-2 sentences), "stat" (a short number/percent string), "statLabel" (what the stat measures), '
+            . '"trend" (1-2 words), "tags" (an array of 1-3 short strings). '
+            . 'Use only the real numbers given above — never invent numbers.';
+
+            $raw = trim($ai->askQuestion($prompt));
+            preg_match('/\[[\s\S]*\]/', $raw, $matches);
+            $parsed = isset($matches[0]) ? json_decode($matches[0], true) : null;
+
+        $valid = is_array($parsed) && count($parsed) > 0 && collect($parsed)->every(
+            fn ($item) => is_array($item) && isset($item['title'], $item['body'])
+        );
+
+        if (! $valid) {
+            return back()->with('insightsError', 'The AI did not return valid insights. Please try again.');
+        }
+
+        CachedInsight::updateOrCreate(
+            ['key' => 'analytics'],
+            ['payload' => $parsed, 'generated_at' => now()]
+        );
+
+        return redirect('/analytics');
+    }
+
+    protected function computeSummary(): array
+    {
+        $rows = AdmissionStat::all();
+
+        $submittedCurrent = (int) $rows->sum('submitted_current');
+        $overallCurrent = (int) $rows->sum('overall_total_current');
+        $overallPrevious = (int) $rows->sum('overall_total_previous');
+        $tookTestCurrent = (int) $rows->sum('took_test_current');
+        $tookTestPrevious = (int) $rows->sum('took_test_previous');
+        $passedCurrent = (int) $rows->sum('passed_current');
+        $passedPrevious = (int) $rows->sum('passed_previous');
+        $reservedCurrent = (int) $rows->sum('total_reserved_current');
+        $reservedPrevious = (int) $rows->sum('total_reserved_previous');
+        $enrolledCurrent = (int) $rows->sum('officially_enrolled');
+
+        return [
+            'rows' => $rows,
+            'overallCurrent' => $overallCurrent,
+            'overallPrevious' => $overallPrevious,
+            'enrolledCurrent' => $enrolledCurrent,
+            'passRateCurrent' => $tookTestCurrent > 0 ? ($passedCurrent / $tookTestCurrent) * 100 : 0,
+            'passRatePrevious' => $tookTestPrevious > 0 ? ($passedPrevious / $tookTestPrevious) * 100 : 0,
+            'conversionRateCurrent' => $overallCurrent > 0 ? ($reservedCurrent / $overallCurrent) * 100 : 0,
+            'conversionRatePrevious' => $overallPrevious > 0 ? ($reservedPrevious / $overallPrevious) * 100 : 0,
+            'funnelLabels' => ['Submitted', 'Took Exam', 'Passed Exam', 'Reserved', 'Enrolled'],
+            'funnelValues' => [
+                max($submittedCurrent, 1),
+                $tookTestCurrent,
+                $passedCurrent,
+                $reservedCurrent,
+                $enrolledCurrent,
+            ],
+        ];
     }
 
     protected function pctChange(int $current, int $previous): string
@@ -147,81 +217,5 @@ class AnalyticsController extends Controller
         $change = $current - $previous;
 
         return ($change >= 0 ? '+' : '') . number_format($change, 1) . ' pts';
-    }
-
-    /**
-     * A few real insights computed from the imported numbers, replacing the
-     * fully hand-written placeholder ones. Simple on purpose.
-     */
-    protected function buildInsights($rows, array $funnel): array
-    {
-        if ($rows->isEmpty()) {
-            return [[
-                'type' => 'No data', 'icon' => 'bi-info-circle', 'tone' => 'info',
-                'title' => 'No admission data imported yet',
-                'body' => 'Import an admission stats file to see real insights here.',
-                'stat' => '—', 'statLabel' => '', 'trend' => '', 'tags' => [],
-            ]];
-        }
-
-        $insights = [];
-
-        $topGrower = $rows->sortByDesc('overall_pct_change')->first();
-        if ($topGrower && $topGrower->overall_pct_change !== null) {
-            $insights[] = [
-                'type' => 'Growth', 'icon' => 'bi-graph-up-arrow', 'tone' => 'primary',
-                'title' => "{$topGrower->level_program} grew the most this season",
-                'body' => "{$topGrower->level_program} recorded the largest increase in total applications compared to the previous school year.",
-                'stat' => ($topGrower->overall_pct_change >= 0 ? '+' : '') . number_format($topGrower->overall_pct_change, 1) . '%',
-                'statLabel' => 'Change in overall applications vs previous SY',
-                'trend' => $topGrower->overall_pct_change >= 0 ? 'Growing' : 'Declining',
-                'tags' => [$topGrower->level_program],
-            ];
-        }
-
-        $topDecliner = $rows->sortBy('overall_pct_change')->first();
-        if ($topDecliner && $topDecliner->overall_pct_change !== null && $topDecliner->level_program !== ($topGrower->level_program ?? null)) {
-            $insights[] = [
-                'type' => 'Needs attention', 'icon' => 'bi-exclamation-triangle', 'tone' => 'danger',
-                'title' => "{$topDecliner->level_program} had the biggest drop",
-                'body' => "{$topDecliner->level_program} recorded the largest decrease in total applications compared to the previous school year.",
-                'stat' => ($topDecliner->overall_pct_change >= 0 ? '+' : '') . number_format($topDecliner->overall_pct_change, 1) . '%',
-                'statLabel' => 'Change in overall applications vs previous SY',
-                'trend' => 'Declining',
-                'tags' => [$topDecliner->level_program],
-            ];
-        }
-
-        $labels = $funnel['labels'];
-        $values = $funnel['values'];
-        $biggestDropIndex = null;
-        $biggestDropPct = 0;
-        for ($i = 1; $i < count($values); $i++) {
-            if ($values[$i - 1] > 0) {
-                $drop = (1 - ($values[$i] / $values[$i - 1])) * 100;
-                if ($drop > $biggestDropPct) {
-                    $biggestDropPct = $drop;
-                    $biggestDropIndex = $i;
-                }
-            }
-        }
-        if ($biggestDropIndex !== null) {
-            $insights[] = [
-                'type' => 'Conversion drop', 'icon' => 'bi-funnel', 'tone' => 'warning',
-                'title' => "Biggest drop-off: {$labels[$biggestDropIndex - 1]} to {$labels[$biggestDropIndex]}",
-                'body' => "The largest share of applicants is lost between the \"{$labels[$biggestDropIndex - 1]}\" and \"{$labels[$biggestDropIndex]}\" stages of the funnel.",
-                'stat' => number_format($biggestDropPct, 1) . '%',
-                'statLabel' => "Drop-off from {$labels[$biggestDropIndex - 1]} to {$labels[$biggestDropIndex]}",
-                'trend' => 'High drop-off',
-                'tags' => ['Funnel', $labels[$biggestDropIndex]],
-            ];
-        }
-
-        return $insights ?: [[
-            'type' => 'No data', 'icon' => 'bi-info-circle', 'tone' => 'info',
-            'title' => 'Not enough data yet for insights',
-            'body' => 'Import more admission stats rows to see insights here.',
-            'stat' => '—', 'statLabel' => '', 'trend' => '', 'tags' => [],
-        ]];
     }
 }
