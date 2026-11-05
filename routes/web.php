@@ -19,6 +19,7 @@ use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
+use App\Http\Controllers\AuditLogController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -50,6 +51,7 @@ Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('aut
 Route::post('/analytics/reanalyze', [AnalyticsController::class, 'reanalyze'])->middleware('auth');
 Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::get('/accounts', [AccountController::class, 'index'])->middleware('auth')->name('accounts');
+Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('auth', 'admin')->name('audit-logs');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
