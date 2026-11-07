@@ -141,6 +141,26 @@ body { background-color: #F3F6F5; }
 }
 .sidebar .nav-sub .nav-link { padding-top: 0.45rem; padding-bottom: 0.45rem; font-size: 0.9rem; font-weight: 500; }
 
+/* Analytics & Reports: the "Charts in your report" tray. Hidden below the screen until a chart is added.
+   Centred on wide screens; on phones it leaves room on the right for the AI button. */
+.report-tray {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    z-index: 1040;
+    width: min(560px, calc(100vw - 2rem));
+    transform: translate(-50%, 200%);
+    visibility: hidden; /* also keeps its buttons out of the Tab order while hidden */
+    transition: transform 0.25s ease, visibility 0.25s;
+}
+.report-tray.show { transform: translate(-50%, 0); visibility: visible; }
+/* While the tray is showing, add room at the bottom so it never hides the last card */
+body:has(.report-tray.show) main { padding-bottom: 6rem; }
+@media (max-width: 767.98px) {
+    .report-tray { left: 1rem; width: calc(100vw - 6.5rem); transform: translateY(200%); }
+    .report-tray.show { transform: none; }
+}
+
 /* 4. Printing an applicant profile: only the open drawer is printed */
 @media print {
     body * { visibility: hidden; }

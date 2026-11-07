@@ -1,10 +1,25 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — Analytics')
-@section('page-title', 'Analytics')
-@section('page-subtitle', 'Visual insights on applicant trends, conversions, and enrollment data')
+@section('title', 'iARIS — Analytics & Reports')
+@section('page-title', 'Analytics & Reports')
+@section('page-subtitle', 'Explore admissions data, read the AI insights, and turn any view into an official report')
+
+@php
+    // Which tabs this user gets (see AnalyticsController::index) and the report data for the Reports tab
+    $hasAnalytics = in_array('overview', $tabs);
+    $hasReports = in_array('reports', $tabs);
+    $reportCount = collect($reportData['sections'])->sum(fn ($section) => count($section['reports']));
+    // "Send to" choices in the two report builders
+    $recipients = collect($reportData['sections'])->pluck('reports')->flatten(1)->pluck('recipient')->unique()->values();
+    $tabList = [
+        'overview' => ['Overview', 'bi-bar-chart'],
+        'insights' => ['AI Insights', 'bi-stars'],
+        'reports' => ['Reports', 'bi-file-earmark-text'],
+    ];
+@endphp
 
 @section('content')
+    @if ($hasAnalytics)
     {{-- Filters: one row above everything they scope --}}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
@@ -39,6 +54,40 @@
             <div class="small text-body-secondary mt-3"><i class="bi bi-info-circle me-1"></i> Stat cards and charts below are computed from imported admission data. The filters above are not wired to re-query yet.</div>
         </div>
     </div>
+    @endif
+
+    {{-- Tabs, with what the filters are showing and "Generate from this view" on the right --}}
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <ul class="nav nav-pills gap-1" role="tablist">
+            @foreach ($tabs as $key)
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link fw-semibold {{ $key === $tab ? 'active' : '' }}" id="tab-{{ $key }}" data-bs-toggle="pill" data-bs-target="#pane-{{ $key }}" data-tab="{{ $key }}" role="tab" aria-controls="pane-{{ $key }}" aria-selected="{{ $key === $tab ? 'true' : 'false' }}">
+                        <i class="bi {{ $tabList[$key][1] }} me-1"></i> {{ $tabList[$key][0] }}
+                        @if ($key === 'reports')
+                            <span class="badge rounded-pill bg-body-tertiary text-body-secondary border ms-1">{{ $reportCount }}</span>
+                        @endif
+                    </button>
+                </li>
+            @endforeach
+        </ul>
+        @if ($hasAnalytics)
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="badge rounded-pill bg-body-tertiary text-body-secondary border fw-semibold px-3 py-2 text-wrap text-start">
+                    <i class="bi bi-funnel me-1"></i> Showing: <span class="text-body" id="scopeText">—</span>
+                </span>
+                @if ($hasReports)
+                    <button type="button" class="btn btn-primary fw-semibold text-nowrap" data-bs-toggle="modal" data-bs-target="#viewReportModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Generate from this view
+                    </button>
+                @endif
+            </div>
+        @endif
+    </div>
+
+    <div class="tab-content">
+    @if ($hasAnalytics)
+    {{-- ===== Overview tab ===== --}}
+    <div class="tab-pane fade {{ $tab === 'overview' ? 'show active' : '' }}" id="pane-overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
 
     {{-- Stat tiles --}}
     <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
@@ -116,7 +165,10 @@
                         <div class="fw-bold" id="comparisonTitle"></div>
                         <div class="small text-body-secondary" id="comparisonSubtitle"></div>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        @if ($hasReports)
+                            <button type="button" class="btn btn-sm btn-light border" data-add-report="School year comparison" aria-pressed="false"><i class="bi bi-plus-lg me-1"></i> Add to report</button>
+                        @endif
                         <button type="button" class="btn btn-sm btn-light border" data-table-toggle="comparison" aria-pressed="false"><i class="bi bi-table me-1"></i> Table</button>
                         <button type="button" class="btn btn-sm btn-light border" data-export="comparison"><i class="bi bi-download me-1"></i> CSV</button>
                     </div>
@@ -128,6 +180,11 @@
             </div>
         </div>
     </div>
+
+    </div>{{-- /Overview tab --}}
+
+    {{-- ===== AI Insights tab ===== --}}
+    <div class="tab-pane fade {{ $tab === 'insights' ? 'show active' : '' }}" id="pane-insights" role="tabpanel" aria-labelledby="tab-insights" tabindex="0">
 
     {{-- AI insights --}}
     <div class="card border-0 rounded-4 bg-iaris text-white mb-3">
@@ -215,9 +272,33 @@
             <strong class="text-body">All decisions remain with the IATO Admin and institutional leadership.</strong> This tool assists, and does not replace, human judgment.
         </div>
     </div>
+    </div>{{-- /AI Insights tab --}}
+    @endif
+
+    @if ($hasReports)
+    {{-- ===== Reports tab ===== --}}
+    <div class="tab-pane fade {{ $tab === 'reports' ? 'show active' : '' }}" id="pane-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0">
+        @include('analytics.partials.reports-tab', $reportData)
+    </div>
+    @endif
+    </div>{{-- /tab-content --}}
+
+    @if ($hasAnalytics && $hasReports)
+        @include('analytics.partials.report-builders')
+    @endif
 @endsection
 
 @section('scripts')
+    <script>
+        // ---- Tabs: keep the open tab in the address (?tab=...) so reloading or sharing the link opens it ----
+        document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('shown.bs.tab', () => {
+            const url = new URL(location.href);
+            url.searchParams.set('tab', btn.dataset.tab);
+            history.replaceState(null, '', url);
+        }));
+    </script>
+
+    @if ($hasAnalytics)
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script>
         const CHARTS = @json($charts);
@@ -464,5 +545,25 @@
         drawPrograms();
         drawLocations('donut');
         renderYearChips();
+
+        // ---- "Showing: ..." — what the filters at the top are set to ----
+        function currentView() {
+            return {
+                range: document.querySelector('input[name="range"]:checked').value,
+                department: document.getElementById('filterDepartment').value,
+                year: document.getElementById('filterYear').value,
+            };
+        }
+        function updateScope() {
+            const v = currentView();
+            document.getElementById('scopeText').textContent = `${v.range} · ${v.department} · ${v.year}`;
+        }
+        document.querySelectorAll('input[name="range"], #filterDepartment, #filterYear').forEach(el => el.addEventListener('change', updateScope));
+        updateScope();
     </script>
+    @endif
+
+    @if ($hasReports)
+        @include('analytics.partials.reports-script')
+    @endif
 @endsection

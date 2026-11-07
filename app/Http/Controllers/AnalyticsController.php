@@ -9,8 +9,18 @@ use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
-    public function index()
+    // Analytics & Reports page. Overview and AI Insights need the 'analytics' permission, the Reports tab needs 'reports'.
+    public function index(Request $request)
     {
+        $user = $request->user();
+        $tabs = array_keys(array_filter([
+            'overview' => $user->canAccess('analytics'),
+            'insights' => $user->canAccess('analytics'),
+            'reports' => $user->canAccess('reports'),
+        ]));
+        abort_if(empty($tabs), 403, 'Your role does not have access to this module.');
+        $tab = in_array($request->query('tab'), $tabs) ? $request->query('tab') : $tabs[0];
+
         $summary = $this->computeSummary();
         $rows = $summary['rows'];
 
@@ -103,6 +113,9 @@ class AnalyticsController extends Controller
         ]];
 
         return view('analytics.index', [
+            'tabs' => $tabs,
+            'tab' => $tab,
+            'reportData' => (new ReportController)->data(),
             'filters' => [
                 'ranges' => ['This Week', 'This Month', 'This Semester', 'This AY'],
                 'departments' => $rows->pluck('level_program')->unique()->values()->all(),
@@ -163,7 +176,7 @@ class AnalyticsController extends Controller
             ['payload' => $parsed, 'generated_at' => now()]
         );
 
-        return redirect('/analytics');
+        return redirect('/analytics?tab=insights');
     }
 
     protected function computeSummary(): array

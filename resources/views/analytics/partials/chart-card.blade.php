@@ -11,6 +11,12 @@
                 <p class="small text-body-secondary mb-0">{{ $subtitle }}</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
+                {{-- Collects this chart in the report tray (only when the user can also open Reports) --}}
+                @if ($hasReports ?? false)
+                    <button type="button" class="btn btn-sm btn-light border" data-add-report="{{ $title }}" aria-pressed="false">
+                        <i class="bi bi-plus-lg me-1"></i> Add to report
+                    </button>
+                @endif
                 @isset($types)
                     <select class="form-select form-select-sm w-auto" data-chart-type="{{ $id }}" aria-label="Chart type for {{ $title }}">
                         @foreach ($types as $value => $label)

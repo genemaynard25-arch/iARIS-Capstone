@@ -6,7 +6,14 @@ use App\Models\AdmissionStat;
 
 class ReportController extends Controller
 {
+    // Reports is now a tab of the Analytics & Reports page. Old links to /reports land on that tab.
     public function index()
+    {
+        return redirect('/analytics?tab=reports');
+    }
+
+    // The report templates, history and periods. AnalyticsController passes these to the Reports tab.
+    public function data(): array
     {
         $rows = AdmissionStat::all();
         $passed = ['Passed', 'primary'];
@@ -26,6 +33,47 @@ class ReportController extends Controller
                         'rows' => [
                             [1, 'Lim, Ethan G.', 'APP-IS-2026-0101', 'Grade 11', 'STEM', '92.5', $passed],
                             [2, 'Soriano, Andrea P.', 'APP-IS-2026-0102', 'Grade 11', 'ABM', '88.0', $passed],
+                        ],
+                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                    ],
+                    [
+                        'key' => 'college-exam', 'title' => 'College — Exam Passers', 'icon' => 'bi-mortarboard', 'tone' => 'primary',
+                        'description' => 'List of college applicants who passed the DLSL entrance exam, organized by college and program.',
+                        'recipient' => 'College Registrar',
+                        'columns' => ['#', 'Name', 'App No.', 'College', 'Program', 'Score', 'Result'],
+                        'rows' => [
+                            [1, 'Reyes, Mika D.', 'APP-2026-0381', 'CITE', 'BS Computer Science', '94.0', $passed],
+                            [2, 'Garcia, Paolo S.', 'APP-2026-0384', 'CIHTM', 'BS Tourism Management', '90.5', $passed],
+                        ],
+                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                    ],
+                    [
+                        'key' => 'grad-exam', 'title' => 'Graduate Programs — Exam Passers', 'icon' => 'bi-journal-bookmark', 'tone' => 'info',
+                        'description' => "Applicants who passed for Graduate Programs (Master's / Doctoral), with program and specialization.",
+                        'recipient' => 'Graduate School Head',
+                        'columns' => ['#', 'Name', 'App No.', 'Program', 'Level', 'Score', 'Result'],
+                        'rows' => [
+                            [1, 'Dizon, Carla M.', 'APP-GRAD-2026-001', 'Master of Business Administration', "Master's", '91.0', $passed],
+                        ],
+                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                    ],
+                    [
+                        'key' => 'law-exam', 'title' => 'College of Law — Exam Passers', 'icon' => 'bi-bank2', 'tone' => 'warning',
+                        'description' => 'Applicants who passed the Law Aptitude Examination, with rankings and qualifying scores.',
+                        'recipient' => 'College of Law Head',
+                        'columns' => ['#', 'Name', 'App No.', 'Score', 'Rank', 'Result'],
+                        'rows' => [
+                            [1, 'Ramos, Bea L.', 'APP-LAW-2026-001', '95.0', '1st', $passed],
+                        ],
+                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                    ],
+                    [
+                        'key' => 'ipace-exam', 'title' => 'iPACE — Exam Passers', 'icon' => 'bi-laptop', 'tone' => 'info',
+                        'description' => 'Applicants accepted into the iPACE (online / asynchronous) program, with course and schedule track.',
+                        'recipient' => 'iPACE Head',
+                        'columns' => ['#', 'Name', 'App No.', 'Course', 'Schedule Track', 'Result'],
+                        'rows' => [
+                            [1, 'Aquino, Leo T.', 'APP-IPACE-2026-001', 'BS Information Technology', 'Asynchronous', $passed],
                         ],
                         'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
                     ],
@@ -90,10 +138,10 @@ class ReportController extends Controller
             ['report' => 'trends', 'name' => 'Enrollment Trends Report', 'meta' => 'All levels/programs', 'recipient' => 'President / Chancellor', 'period' => 'Current SY', 'format' => 'PDF', 'by' => '—', 'at' => 'Not yet generated'],
         ];
 
-        return view('reports.index', [
+        return [
             'sections' => $sections,
             'history' => $history,
             'periods' => ['Current School Year', 'Previous School Year'],
-        ]);
+        ];
     }
 }

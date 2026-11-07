@@ -49,8 +49,9 @@ Route::get('/loading', function () {
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
-Route::get('/reports', [ReportController::class, 'index'])->middleware(['auth', 'module:reports'])->name('reports');
-Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware(['auth', 'module:analytics'])->name('analytics');
+Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports'); // now redirects to the Reports tab of /analytics
+// Analytics & Reports: one page with tabs. The controller checks the 'analytics' / 'reports' permissions per tab.
+Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
 Route::post('/analytics/reanalyze', [AnalyticsController::class, 'reanalyze'])->middleware('auth');
 Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::post('/access-control/temp-admin', [AccessControlController::class, 'assignTempAdmin'])->middleware(['auth', 'admin']);

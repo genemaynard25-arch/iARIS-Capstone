@@ -10,8 +10,8 @@
         'MAIN' => [
             $link('Dashboard', 'bi-grid-1x2', '/home', 'home', $user->canAccess('dashboard')),
             $link('Applicants', 'bi-people', '/applicants', 'applicants*', $user->canAccess('applicants')),
-            $link('Analytics', 'bi-bar-chart-line', '/analytics', 'analytics*', $user->canAccess('analytics')),
-            $link('Reports', 'bi-file-earmark-text', '/reports', 'reports*', $user->canAccess('reports')),
+            // One page with Overview / AI Insights / Reports tabs (Reports-only roles land on the Reports tab)
+            $link('Analytics & Reports', 'bi-bar-chart-line', '/analytics', 'analytics*', $user->canAccess('analytics') || $user->canAccess('reports')),
         ],
         'RECORDS' => [
             ['group' => 'Academic Divisions', 'icon' => 'bi-bank', 'items' => [
