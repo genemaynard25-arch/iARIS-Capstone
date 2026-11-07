@@ -46,6 +46,13 @@
                 </div>
 
                 {{-- Steps: the script moves the highlight along --}}
+                {{-- IATO Staff: in the finished system their imports wait in the Review Queue --}}
+                @if (auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
+                    <div class="alert alert-light border small d-flex gap-2 rounded-3 mb-4">
+                        <i class="bi bi-clipboard-check text-primary"></i>
+                        <div>Staff imports are meant to wait in the Review Queue until the Super Admin approves them. The Review Queue isn't connected yet, so for now your import is saved right away.</div>
+                    </div>
+                @endif
                 <ol class="list-unstyled d-flex align-items-center gap-2 mb-4" id="importSteps" aria-label="Import steps">
                     @foreach ($steps as $i => $label)
                         <li class="d-flex align-items-center gap-2 {{ $loop->last ? '' : 'flex-fill' }}" data-step="{{ $i + 1 }}">

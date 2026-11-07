@@ -2,6 +2,8 @@
     Add / Edit / Remove an applicant on the Records pages (only for roles with the 'edit' permission).
     FRONT END ONLY for now: the form checks the fields and the toast says nothing was saved.
     Remove hides the row on this page until the next reload.
+    IATO Staff (not a Temporary Admin): changes go to the Review Queue instead. The row stays and gets a
+    "waiting for review" tag with a made-up RQ number.
     TODO (backend): POST / PUT / DELETE routes for the applicants table, then send these forms there.
     The page tells the form where its things are with window.RECORD_FORM (set in the page's script):
       items (the people), rows (table rows), tbody (its id), render(), drawer, current() (the person in the drawer),
@@ -10,6 +12,7 @@
 --}}
 
 {{-- Add / Edit form --}}
+@php($staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
 <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <form class="modal-content border-0 rounded-4 overflow-hidden" id="recordForm" novalidate>
@@ -106,7 +109,11 @@
                 </div>
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex flex-wrap align-items-center gap-2">
-                <span class="small text-body-secondary me-auto"><i class="bi bi-info-circle me-1"></i> Front end only for now: nothing is saved until the backend is connected.</span>
+                @if ($staffReview)
+                    <span class="small text-body-secondary me-auto"><i class="bi bi-clipboard-check me-1"></i> Your changes go to the Review Queue. Other users see them only after the Super Admin approves.</span>
+                @else
+                    <span class="small text-body-secondary me-auto"><i class="bi bi-info-circle me-1"></i> Front end only for now: nothing is saved until the backend is connected.</span>
+                @endif
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-check-lg me-1"></i> <span id="recordSave">Add applicant</span></button>
             </div>
@@ -122,8 +129,13 @@
                 <div class="d-flex gap-3 mb-3">
                     <span class="icon-circle rounded-circle bg-danger-subtle text-danger-emphasis fs-5 d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi bi-trash"></i></span>
                     <div>
-                        <h3 class="fs-5 fw-bold mb-1" id="removeTitle">Remove this applicant?</h3>
-                        <p class="small text-body-secondary mb-0">The record leaves this list, the Applicants pipeline, and reports.</p>
+                        @if ($staffReview)
+                            <h3 class="fs-5 fw-bold mb-1" id="removeTitle">Request removal?</h3>
+                            <p class="small text-body-secondary mb-0">The Super Admin reviews it first. The record stays until they approve.</p>
+                        @else
+                            <h3 class="fs-5 fw-bold mb-1" id="removeTitle">Remove this applicant?</h3>
+                            <p class="small text-body-secondary mb-0">The record leaves this list, the Applicants pipeline, and reports.</p>
+                        @endif
                     </div>
                 </div>
                 <div class="rounded-3 bg-body-tertiary p-3 small d-flex flex-wrap gap-3 mb-3">
@@ -146,7 +158,7 @@
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0">
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-danger fw-semibold"><i class="bi bi-trash me-1"></i> Remove</button>
+                <button type="submit" class="btn btn-danger fw-semibold"><i class="bi bi-trash me-1"></i> {{ $staffReview ? 'Request removal' : 'Remove' }}</button>
             </div>
         </form>
     </div>
@@ -180,6 +192,25 @@
         const unique = values => [...new Set(values)].filter(v => v && v !== '—').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         let editing = null;
 
+        // IATO Staff: changes wait in the Review Queue. Made-up RQ numbers (RQ-0413, RQ-0414, …).
+        const STAFF_REVIEW = @json($staffReview);
+        let nextReviewNumber = 413;
+        const nextRq = () => 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
+        // Put a "waiting for review" tag under the person's name in their table row
+        function tagRow(a, kind, rq) {
+            const row = R.rows.find(r => Number(r.dataset.index) === R.items.indexOf(a));
+            const cell = row && [...row.cells].find(td => td.textContent.includes(a.name));
+            if (!cell) return;
+            cell.querySelector('[data-review-tag]')?.remove();
+            const tag = document.createElement('div');
+            tag.dataset.reviewTag = '';
+            tag.className = `badge rounded-pill mt-1 ${kind === 'remove' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-warning-subtle text-warning-emphasis'}`;
+            tag.title = `Sent to the Review Queue as ${rq}`;
+            tag.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>';
+            tag.append(`${kind === 'remove' ? 'Removal' : 'Edit'} waiting for review · ${rq}`);
+            cell.appendChild(tag);
+        }
+
         // Fill the selects from what's on this page (colleges / sub-levels / programs, and this page's statuses)
         function fillChoices() {
             const labels = R.labels();
@@ -199,7 +230,7 @@
             $('recordForm').classList.remove('was-validated');
             $('recordTitle').textContent = editing ? 'Edit applicant' : 'Add applicant';
             $('recordSubtitle').textContent = editing ? `${editing.name} · ${editing.id}` : `New ${R.noun} for AY {{ $academicYear }}`;
-            $('recordSave').textContent = editing ? 'Save changes' : 'Add applicant';
+            $('recordSave').textContent = STAFF_REVIEW ? 'Submit for review' : (editing ? 'Save changes' : 'Add applicant');
             if (editing) {
                 const set = (id, value) => { if (value && value !== '—') $(id).value = value; };
                 set('recLast', f.last); set('recFirst', f.first); set('recMi', f.mi);
@@ -223,6 +254,11 @@
             if (!form.checkValidity()) return form.querySelector(':invalid')?.focus();
             const name = `${$('recLast').value.trim()}, ${$('recFirst').value.trim()}`;
             recordModal.hide();
+            if (STAFF_REVIEW) {
+                const rq = nextRq();
+                if (editing) tagRow(editing, 'edit', rq);
+                return toast(`Sent to the Review Queue as ${rq}. Others see it after the Super Admin approves. (Demo only — not saved yet.)`);
+            }
             // TODO (backend): send the form, then reload the list
             toast(editing
                 ? `Changes to ${name} were checked but not saved: saving records comes with the backend.`
@@ -258,6 +294,12 @@
             e.preventDefault();
             e.target.classList.add('was-validated');
             if (!e.target.checkValidity()) return;
+            if (STAFF_REVIEW) {
+                const rq = nextRq();
+                tagRow(R.current(), 'remove', rq);
+                removeModal.hide();
+                return toast(`Removal sent to the Review Queue as ${rq}. The record stays until the Super Admin approves. (Demo only — not saved yet.)`);
+            }
             // Hide the row on this page only (it comes back on reload until the backend can delete it)
             const index = R.items.indexOf(R.current());
             const row = R.rows.find(r => Number(r.dataset.index) === index);
