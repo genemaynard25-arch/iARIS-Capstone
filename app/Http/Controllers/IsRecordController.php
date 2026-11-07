@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApplicantRecords;
+
 class IsRecordController extends Controller
 {
     /**
@@ -12,17 +14,17 @@ class IsRecordController extends Controller
      * application form: Preschool, Grade School, Junior High, Senior High.
      * Only Senior High has strands, so everyone else shows "—" there.
      *
-     * The sample data has no sub-level yet, so it's worked out from the grade.
-     * Later it comes from the applicants table's sub_level column.
+     * The students come from the applicants table; its sub_level column gives the sub-level
+     * (subLevelFor() is kept for rows that only have a grade, like the placeholder people).
      */
     public function index()
     {
         $subLevels = ['Preschool', 'Grade School', 'Junior High', 'Senior High'];
 
-        $students = collect(ApplicantController::sample())
-            ->where('unit', 'is')
+        // Integrated School applicants from the database (Import Data); see ApplicantRecords
+        $students = collect(ApplicantRecords::forLevel('is'))
             ->map(function ($a) {
-                $subLevel = self::subLevelFor($a['level']);
+                $subLevel = $a['sub_level'] ?? self::subLevelFor($a['level']);
 
                 return array_merge($a, [
                     'sub_level' => $subLevel,
@@ -36,8 +38,8 @@ class IsRecordController extends Controller
 
         return view('applicants.index', [
             'scope' => 'is',
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
+            'academicYear' => ApplicantRecords::academicYear(),
+            'periodLabel' => now()->format('F Y'),
             'applicants' => $students,
             'groupOrder' => $subLevels,
         ]);

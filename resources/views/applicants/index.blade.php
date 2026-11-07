@@ -21,6 +21,14 @@
       examStep / finalStep   other titles for the exam and last timeline steps
 --}}
 @php
+    // College, IS and Graduate Records read the database (see App\Support\ApplicantRecords), which knows these statuses.
+    // ("Enrolled" isn't in the database yet.)
+    $databaseStatuses = ['Pending', 'For Exam', 'Passed', 'Not Qualified', 'Paid'];
+    // Pages that read the database: they get an "imported" empty message
+    $fromDatabase = in_array($scope, ['college', 'is', 'graduate']);
+    // Add / Edit / Remove: only roles with the 'edit' permission (Access Control). Front end only for now.
+    $canEdit = auth()->user()->canAccess('edit');
+
     $defaults = [
         'extras' => [], 'labels' => null, 'groupBadge' => false, 'programBadges' => [],
         'extraStep' => null, 'examStep' => null, 'finalStep' => null,
@@ -37,12 +45,14 @@
             'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'student',
             'extras' => [['key' => 'year', 'label' => 'Year Level', 'first' => false]],
             'labels' => ['group' => 'College', 'groupAll' => 'All Colleges', 'program' => 'Program', 'programAll' => 'All Programs'],
+            'statuses' => $databaseStatuses,
         ],
         'is' => [
             'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
             'extras' => [['key' => 'level', 'label' => 'Grade / Level', 'first' => true]],
             'labels' => ['group' => 'Sub-Level', 'groupAll' => 'All Sub-Levels', 'program' => 'Strand / Track', 'programAll' => 'All Strands / Tracks'],
+            'statuses' => $databaseStatuses,
         ],
         // Law: the first column is the program (JD / LLM / JSD), the second is the undergraduate degree
         'law' => [
@@ -90,7 +100,7 @@
             'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Level', 'programAll' => 'All Levels'],
             'groupBadge' => true,
             'programBadges' => ["Master's" => ['primary', 'bi-mortarboard'], 'Doctoral' => ['info', 'bi-journal-bookmark']],
-            'statuses' => ['Pending', 'For Exam', 'Paid'],
+            'statuses' => $databaseStatuses,
             'statusLabels' => ['For Exam' => 'For Exam / Interview'],
             'programField' => 'Program', 'examField' => 'Exam / Interview Schedule',
             'drawerExtras' => [['key' => 'program', 'label' => 'Level']],
@@ -109,18 +119,19 @@
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
-    $statusTones = ['Pending' => 'danger', 'For Exam' => 'warning', 'Paid' => 'info', 'Enrolled' => 'primary'];
+    $statusTones = ['Pending' => 'danger', 'For Exam' => 'warning', 'Passed' => 'primary', 'Not Qualified' => 'secondary', 'Paid' => 'info', 'Enrolled' => 'primary'];
 
     // Add display-ready fields to each placeholder applicant
     $rows = collect($applicants)->map(fn ($a) => $a + [
-        'name' => "{$a['last']}, {$a['first']} {$a['mi']}.",
+        // Database rows have no middle initial
+        'name' => "{$a['last']}, {$a['first']}" . ($a['mi'] ? " {$a['mi']}." : ''),
         // A controller can send its own 'group' / 'unit_label' (Law does); ?? skips the rest then.
         // IS Records groups by sub-level (Preschool, Grade School, ...); the Applicants IS tab by grade
         'group' => $a['group'] ?? ($a['unit'] === 'college' ? $a['college'] : ($a['sub_level'] ?? $a['level'])),
         'unit_label' => $a['unit_label'] ?? ($a['unit'] === 'college' ? $a['college'] : implode(' · ', array_filter(['Integrated School', $a['sub_level'] ?? null, $a['level']]))),
         'applied_label' => \Illuminate\Support\Carbon::parse($a['applied'])->format('M j, Y'),
         'updated_label' => \Illuminate\Support\Carbon::parse($a['updated'])->format('M j, g:i A'),
-        'dob_label' => \Illuminate\Support\Carbon::parse($a['dob'])->format('F j, Y'),
+        'dob_label' => $a['dob'] ? \Illuminate\Support\Carbon::parse($a['dob'])->format('F j, Y') : null,
         'paid_label' => $a['paid'] ? \Illuminate\Support\Carbon::parse($a['paid'])->format('M j, Y') : null,
         'amount_label' => $a['amount'] ? '₱' . number_format($a['amount'], 2) : null,
         'tone' => $statusTones[$a['status']],
@@ -132,7 +143,8 @@
         ['label' => $page['total'], 'value' => $rows->count(), 'sub' => $page['totalSub'], 'tone' => 'primary'],
     ];
     // Then one card per status this page uses
-    $statusSubs = ['Pending' => 'Awaiting action', 'For Exam' => 'Scheduled / waiting', 'Paid' => 'Reservation confirmed', 'Enrolled' => 'Active enrollees'];
+    $statusSubs = ['Pending' => 'Awaiting action', 'For Exam' => 'Scheduled / waiting', 'Passed' => 'Passed the entrance test',
+        'Not Qualified' => 'Did not pass the test', 'Paid' => 'Reservation confirmed', 'Enrolled' => 'Active enrollees'];
     foreach ($page['statuses'] as $status) {
         $stats[] = [
             'label' => $page['statusLabels'][$status] ?? $status,
@@ -193,10 +205,11 @@
             <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
                 <i class="bi bi-download me-1"></i> Export
             </button>
-            {{-- TODO: needs an "add applicant" form + backend. Disabled for now. --}}
-            <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" disabled title="Coming soon">
-                <i class="bi bi-plus-lg me-1"></i> Add Applicant
-            </button>
+            @if ($canEdit)
+                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add">
+                    <i class="bi bi-plus-lg me-1"></i> Add Applicant
+                </button>
+            @endif
         </div>
 
         {{-- Status pills --}}
@@ -263,9 +276,32 @@
                             <td><span class="badge rounded-pill text-wrap bg-{{ $a['tone'] }}-subtle text-{{ $a['tone'] }}-emphasis">{{ $a['status_label'] }}</span></td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['applied_label'] }}</td>
                             <td class="small text-body-secondary text-nowrap">{{ $a['updated_label'] }}</td>
-                            <td class="pe-4 text-end"><span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></span></td>
+                            <td class="pe-4 text-end text-nowrap">
+                                @if ($canEdit)
+                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="view" title="View details" aria-label="View {{ $a['name'] }}"><i class="bi bi-eye"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit applicant" aria-label="Edit {{ $a['name'] }}"><i class="bi bi-pencil"></i></button>
+                                @else
+                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
+                    @if ($rows->isEmpty())
+                        {{-- Nothing in the database yet --}}
+                        <tr>
+                            <td colspan="{{ 8 + count($page['extras']) }}" class="text-center text-body-secondary py-5">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                @if ($fromDatabase)
+                                    No applicants imported yet for AY {{ $academicYear }}.
+                                    @if (auth()->user()->canAccess('import'))
+                                        <a href="{{ url('/import') }}" class="d-block mt-1 fw-semibold text-decoration-none">Import applicants from Excel</a>
+                                    @endif
+                                @else
+                                    No applicants yet.
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
                     <tr id="noResults" class="d-none">
                         <td colspan="{{ 8 + count($page['extras']) }}" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
@@ -335,6 +371,8 @@
                     @foreach ($page['drawerExtras'] as $field)
                         <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">{{ $field['label'] }}</div><div class="fw-semibold" data-field="{{ $field['key'] }}"></div></div>
                     @endforeach
+                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Entrance Test</div><div class="fw-semibold" data-field="test"></div></div>
+                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Previous School</div><div class="fw-semibold" data-field="feeder_school"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date Applied</div><div class="fw-semibold" data-field="applied_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">{{ $page['examField'] }}</div><div class="fw-semibold" data-field="exam"></div></div>
                 </div>
@@ -353,19 +391,27 @@
             </div>
         </div>
 
-        <div class="d-flex gap-2 border-top p-3 no-print">
-            <button type="button" class="btn btn-light border flex-fill" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
-            {{-- TODO: needs an edit form + backend. Disabled for now. --}}
-            <button type="button" class="btn btn-primary fw-semibold flex-fill" disabled title="Coming soon"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+        {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
+        <div class="d-flex flex-wrap gap-2 border-top p-3 no-print">
+            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+            @if ($canEdit)
+                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1"></i> Remove</button>
+                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+            @endif
         </div>
     </div>
+
+    @if ($canEdit)
+        @include('applicants.partials.record-modals')
+    @endif
 @endsection
 
 @section('scripts')
     <script>
         const APPLICANTS = @json($rows->values());
         const PAGE_SIZE = 10;
-        const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
+        // How far along each status is (for the timeline). Not Qualified stops at the test result.
+        const STATUS_ORDER = ['Pending', 'For Exam', 'Passed', 'Paid', 'Enrolled'];
 
         const SCOPE = @json($scope);
         const PAGE = @json($page);
@@ -527,7 +573,10 @@
         const drawerEl = document.getElementById('applicantDrawer');
         const drawer = bootstrap.Offcanvas.getOrCreateInstance(drawerEl);
 
+        let drawerApplicant = null;   // the applicant shown in the drawer (Edit / Remove use it)
+
         function openDrawer(a) {
+            drawerApplicant = a;
             document.getElementById('drawerInitials').textContent = (a.first[0] + a.last[0]).toUpperCase();
             document.getElementById('drawerName').textContent = a.name;
             document.getElementById('drawerSub').textContent = `${a.id} · ${a.program_label}`;
@@ -549,16 +598,18 @@
 
         // Steps up to the applicant's current status are "done"; later ones are greyed out
         function renderTimeline(a) {
-            const reached = STATUS_ORDER.indexOf(a.status);
+            const failed = a.status === 'Not Qualified';
+            const reached = failed ? 2 : STATUS_ORDER.indexOf(a.status);
             const steps = [
                 { title: 'Application Submitted', date: a.applied_label, icon: 'bi-file-earmark-plus', tone: 'secondary', done: true },
                 { title: 'Entrance Exam Scheduled', date: a.exam ?? 'Not yet scheduled', icon: 'bi-calendar-check', tone: 'warning', done: reached >= 1, note: a.exam ? 'Venue: DLSL Main Campus — Testing Center' : null },
-                { title: 'Reservation Payment', date: a.paid ? `${a.paid_label} · ${a.amount_label}` : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 2 },
-                { title: 'Enrolled', date: reached >= 3 ? a.updated_label : 'Not yet enrolled', icon: 'bi-check-circle', tone: 'primary', done: reached >= 3 },
+                { title: 'Exam Result', date: reached >= 2 ? (a.test && a.test !== '—' ? a.test : 'Passed') : 'Waiting for the exam', icon: failed ? 'bi-x-circle' : 'bi-patch-check', tone: failed ? 'secondary' : 'primary', done: reached >= 2 },
+                { title: 'Reservation Payment', date: a.paid ? `${a.paid_label} · ${a.amount_label}` : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 3 },
+                { title: 'Enrolled', date: reached >= 4 ? a.updated_label : 'Not yet enrolled', icon: 'bi-check-circle', tone: 'primary', done: reached >= 4 },
             ];
             // Page-specific changes (Law and iPACE): other titles and one more step
             if (PAGE.examStep) steps[1].title = PAGE.examStep;
-            if (PAGE.finalStep) steps[3] = { ...steps[3], title: PAGE.finalStep, date: reached >= 3 ? a.updated_label : 'Pending' };
+            if (PAGE.finalStep) steps[4] = { ...steps[4], title: PAGE.finalStep, date: reached >= 4 ? a.updated_label : 'Pending' };
             if (PAGE.extraStep) {
                 const s = PAGE.extraStep;
                 steps.splice(1, 0, { title: s.title, icon: s.icon, tone: s.tone, done: reached >= 1,
@@ -591,7 +642,12 @@
 
         rows.forEach(row => {
             const open = () => openDrawer(APPLICANTS[row.dataset.index]);
-            row.addEventListener('click', e => { if (!e.target.closest('.row-check')) open(); });
+            row.addEventListener('click', e => {
+                if (e.target.closest('.row-check')) return;
+                // The pencil opens the edit form instead of the drawer
+                if (e.target.closest('[data-row-action="edit"]')) return window.openRecordForm?.('edit', APPLICANTS[row.dataset.index]);
+                open();
+            });
             row.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
         });
 

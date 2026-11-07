@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApplicantRecords;
+
 class ApplicantController extends Controller
 {
     /**
      * Applicants: the master pipeline of every division (Integrated School, College, Graduate Programs,
-     * College of Law, iPACE, ETEEAP), built from each Records page's placeholder people.
+     * College of Law, iPACE, ETEEAP).
      *
-     * When the backend is ready, replace pipeline() with a query that returns the same keys,
-     * so the Blade view (applicants/pipeline.blade.php) doesn't need to change.
+     * IS, College, Graduate Programs and ETEEAP come from the database (Import Data, via ApplicantRecords).
+     * The applicants table has no Law or iPACE level yet, so those two still use their Records pages'
+     * placeholder people.
      */
     public function index()
     {
         return view('applicants.pipeline', [
-            'academicYear' => '2025–2026',
+            'academicYear' => ApplicantRecords::academicYear(),
             'divisions' => self::DIVISIONS,
             'applicants' => self::pipeline(),
         ]);
@@ -32,7 +35,7 @@ class ApplicantController extends Controller
         'Graduate Programs' => ['group' => 'ad', 'icon' => 'bi-journal-bookmark', 'dept' => 'Program', 'colors' => ['#7C3AED', '#F3EAFF'], 'records' => '/records/graduate'],
         'College of Law' => ['group' => 'ad', 'icon' => 'bi-bank2', 'dept' => 'Program', 'colors' => ['#8A1538', '#FBE9EF'], 'records' => '/records/law'],
         'iPACE' => ['group' => 'al', 'icon' => 'bi-laptop', 'dept' => 'Program', 'colors' => ['#B96000', '#FFF3E6'], 'records' => '/records/ipace'],
-        'ETEEAP' => ['group' => 'al', 'icon' => 'bi-briefcase', 'dept' => 'Program', 'colors' => ['#0E7490', '#E3F5F9'], 'records' => null],
+        'ETEEAP' => ['group' => 'al', 'icon' => 'bi-briefcase', 'dept' => 'Program', 'colors' => ['#0E7490', '#E3F5F9'], 'records' => null], // no Records page yet
     ];
 
     /**
@@ -42,19 +45,15 @@ class ApplicantController extends Controller
      */
     public static function pipeline(): array
     {
-        // Scholarship type per applicant number (Scholars page), leaving out cancelled ones
-        $scholarships = ScholarController::sample()
-            ->where('scholarship_status', '!=', 'Cancelled')
-            ->pluck('type', 'id');
-
         $row = fn (array $a, string $division, string $dept, string $deptLabel, string $program) => [
             'id' => $a['id'],
-            'name' => "{$a['last']}, {$a['first']} {$a['mi']}.",
+            'name' => trim("{$a['last']}, {$a['first']} " . ($a['mi'] ? "{$a['mi']}." : '')),
             'division' => $division,
             'dept' => $dept,
             'dept_label' => $deptLabel,
             'program' => $program,
-            'scholarship' => $scholarships[$a['id']] ?? '',
+            // The database only says regular or scholar; the placeholder people have no scholarship
+            'scholarship' => ! empty($a['scholar']) ? 'Scholar' : '',
             'status' => $a['status'],
             'applied' => $a['applied'],
             'dob' => $a['dob'],
@@ -69,45 +68,30 @@ class ApplicantController extends Controller
 
         $isNames = ['Preschool' => 'Preschool', 'Grade School' => 'GS', 'Junior High' => 'JHS', 'Senior High' => 'SHS'];
         $all = [];
-        foreach (self::sample() as $a) {
-            if ($a['unit'] === 'is') {
-                $subLevel = IsRecordController::subLevelFor($a['level']);
-                $program = $subLevel === 'Senior High' ? "{$a['level']} · {$a['program']}" : $a['level'];
-                $all[] = $row($a, 'Integrated School', $isNames[$subLevel], $subLevel, $program);
-            } elseif ($a['college'] !== 'College of Law') { // the Law sample below has the law applicants
-                $all[] = $row($a, 'College', $a['college'], $a['college'], $a['program']);
-            }
+
+        // From the database
+        foreach (ApplicantRecords::forLevel('is') as $a) {
+            $all[] = $row($a, 'Integrated School', $isNames[$a['sub_level']], $a['sub_level'], $a['program']);
         }
-        foreach (GraduateRecordController::sample() as $a) {
+        foreach (ApplicantRecords::forLevel('college') as $a) {
+            $all[] = $row($a, 'College', $a['college'], $a['college'], $a['program']);
+        }
+        foreach (ApplicantRecords::forLevel('graduate_school') as $a) {
             $all[] = $row($a, 'Graduate Programs', $a['group'], $a['program_label'], $a['program_label']);
         }
+        foreach (ApplicantRecords::forLevel('eteeap') as $a) {
+            $all[] = $row($a, 'ETEEAP', $a['group'], $a['program_label'], $a['program_label']);
+        }
+
+        // Placeholder people (no Law or iPACE level in the database yet)
         foreach (LawRecordController::sample() as $a) {
             $all[] = $row($a, 'College of Law', $a['group'], $a['program_label'], $a['program_label']);
         }
         foreach (IpaceRecordController::sample() as $a) {
             $all[] = $row($a, 'iPACE', $a['group'], $a['program_label'], "{$a['program_label']} · {$a['program']}");
         }
-        foreach (self::eteeap() as $a) {
-            $all[] = $row($a, 'ETEEAP', $a['group'], $a['program_label'], $a['program_label']);
-        }
 
         return $all;
-    }
-
-    /**
-     * ETEEAP (Expanded Tertiary Education Equivalency and Accreditation Program) has no Records page yet,
-     * so its placeholder people live here. Made up. 'For Exam' means waiting for the portfolio assessment.
-     */
-    private static function eteeap(): array
-    {
-        $bsba = ['group' => 'BSBA', 'program_label' => 'BS Business Administration (BSBA)'];
-        $bsit = ['group' => 'BSIT', 'program_label' => 'BS Information Technology (BSIT)'];
-
-        return [
-            $bsba + ['id' => 'APP-2026-E001', 'last' => 'Umali', 'first' => 'Rogelio', 'mi' => 'T', 'status' => 'Paid', 'applied' => '2026-05-04', 'dob' => '1984-02-11', 'gender' => 'Male', 'email' => 'r.umali@example.com', 'contact' => '0917 000 3001', 'address' => 'Lipa City, Batangas', 'exam' => 'Portfolio reviewed May 28, 2026', 'paid' => '2026-06-02', 'amount' => 2500],
-            $bsit + ['id' => 'APP-2026-E002', 'last' => 'Katigbak', 'first' => 'Marites', 'mi' => 'L', 'status' => 'For Exam', 'applied' => '2026-05-11', 'dob' => '1987-09-30', 'gender' => 'Female', 'email' => 'm.katigbak@example.com', 'contact' => '0917 000 3002', 'address' => 'Batangas City, Batangas', 'exam' => 'Portfolio due Jun 20, 2026', 'paid' => null, 'amount' => null],
-            $bsba + ['id' => 'APP-2026-E003', 'last' => 'Recto', 'first' => 'Arnel', 'mi' => 'D', 'status' => 'Pending', 'applied' => '2026-05-21', 'dob' => '1979-12-05', 'gender' => 'Male', 'email' => 'a.recto@example.com', 'contact' => '0917 000 3003', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null, 'amount' => null],
-        ];
     }
 
     /**

@@ -8,7 +8,7 @@
     Filters (they combine):
       Academic Division / Alternative Learning  pick a group of divisions or one division (one or the other)
       Scholarships                              scholars only, non-scholars, or one scholarship type
-      Status pills                              Pending / For Exam / Paid / Enrolled
+      Status pills                              Pending / For Exam / Passed / Not Qualified / Paid
       Department pills                          only when one division is picked (e.g. CITE, CBEAM for College)
 --}}
 
@@ -20,12 +20,14 @@
     $user = auth()->user();
     $scholarshipTypes = collect($applicants)->pluck('scholarship')->filter()->unique()->sort()->values();
 
-    // The four statuses: Bootstrap colour, stat card text
+    // The statuses (see App\Support\ApplicantRecords::status()): Bootstrap colour, stat card text.
+    // "Enrolled" isn't in the database yet.
     $statuses = [
         'Pending' => ['tone' => 'danger', 'label' => 'Pending', 'sub' => 'Awaiting action'],
         'For Exam' => ['tone' => 'warning', 'label' => 'For Exam / Assessment', 'sub' => 'Scheduled / waiting'],
+        'Passed' => ['tone' => 'primary', 'label' => 'Passed', 'sub' => 'Passed the entrance test'],
+        'Not Qualified' => ['tone' => 'secondary', 'label' => 'Not Qualified', 'sub' => 'Did not pass the test'],
         'Paid' => ['tone' => 'info', 'label' => 'Paid', 'sub' => 'Reservation confirmed'],
-        'Enrolled' => ['tone' => 'primary', 'label' => 'Enrolled', 'sub' => 'Active enrollees'],
     ];
 
     // Records pages for "Add Applicant". Some need a permission from Access Control.
@@ -38,7 +40,7 @@
 
 @section('content')
     {{-- Stat cards: the numbers follow the filters (the script fills them in) --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
         <div class="col">
             <div class="card border-0 border-top border-3 border-dark shadow-sm rounded-4 h-100">
                 <div class="card-body">
@@ -303,7 +305,7 @@
         }
 
         function visibleRows() {
-            const order = { Pending: 0, 'For Exam': 1, Paid: 2, Enrolled: 3 }, sort = $('sort').value;
+            const order = { Pending: 0, 'For Exam': 1, Passed: 2, 'Not Qualified': 3, Paid: 4 }, sort = $('sort').value;
             return baseRows()
                 .filter(a => state.status === 'All' || a.status === state.status)
                 .sort((x, y) => sort === 'az' ? x.name.localeCompare(y.name)
@@ -464,13 +466,15 @@
             set('paid', formatDate(a.paid));
             set('payStatus', a.paid ? 'Confirmed' : 'Pending');
 
-            // Timeline: four steps, filled in as far as the applicant has got
-            const examDone = a.status !== 'Pending', paid = ['Paid', 'Enrolled'].includes(a.status);
+            // Timeline: five steps, filled in as far as the applicant has got
+            const examDone = a.status !== 'Pending', paid = a.status === 'Paid', failed = a.status === 'Not Qualified';
+            const resultIn = failed || paid || a.status === 'Passed';
             const steps = [
                 ['bi-file-earmark-plus', 'Application Submitted', formatDate(a.applied), true, 'secondary'],
                 ['bi-calendar-check', examLabel(a), a.exam || 'Not yet scheduled', examDone, 'warning'],
+                [failed ? 'bi-x-circle' : 'bi-patch-check', 'Result', failed ? 'Not qualified' : resultIn ? 'Passed' : 'Waiting for the result', resultIn, failed ? 'secondary' : 'primary'],
                 ['bi-cash-coin', 'Reservation Payment', paid ? `${formatDate(a.paid)} · ${money(a.amount)}` : 'Not yet paid', paid, 'info'],
-                ['bi-check-circle', a.status === 'Enrolled' ? 'Officially Enrolled' : 'Reservation Confirmed', paid ? formatDate(a.paid) : 'Waiting for payment', paid, 'primary'],
+                ['bi-check-circle', 'Reservation Confirmed', paid ? formatDate(a.paid) : 'Waiting for payment', paid, 'primary'],
             ];
             $('timeline').innerHTML = steps.map(([icon, title, date, done, color]) => `<li class="d-flex gap-3 pb-3">
                 <span class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${done ? `bg-${color} text-white` : 'bg-body-secondary text-body-secondary'}" style="width:32px;height:32px"><i class="bi ${icon}"></i></span>
