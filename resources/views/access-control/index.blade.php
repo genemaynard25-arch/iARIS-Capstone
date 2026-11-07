@@ -12,11 +12,11 @@
                         <i class="bi bi-star-fill"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Permanent Administrator</h2>
-                        <p class="small text-white-50 mb-0">Full system access · Cannot be restricted · Access Control is managed only by this account</p>
+                        <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Super Admin</h2>
+                        <p class="small text-white-50 mb-0">The only Super Admin account · Full system access · Cannot be restricted · Access Control is managed only by this account</p>
                     </div>
                     <span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2">
-                        <i class="bi bi-lock-fill text-iaris-pale me-1"></i> Full Access · Permanent
+                        <i class="bi bi-lock-fill text-iaris-pale me-1"></i> Full Access · Sole Super Admin
                     </span>
                 </div>
             @elseif ($myActiveTempGrant)
@@ -31,13 +31,20 @@
                 </div>
             @endif
 
-            @if ($permanentAdmin['isRealAdmin'])
-                <div class="d-flex justify-content-end mb-2">
+    {{-- Temporary admin access --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="fs-6 fw-bold mb-1">Temporary Admin Access</h2>
+                    <p class="small text-body-secondary mb-0">Grant another staff member admin-level access for a limited time. Access goes back to normal when the period ends.</p>
+                </div>
+                @if ($permanentAdmin['isRealAdmin'])
                     <button type="button" class="btn btn-primary btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#tempModal">
                         <i class="bi bi-person-plus-fill me-1"></i> Assign Temporary Admin
                     </button>
-                </div>
-            @endif
+                @endif
+            </div>
 
             {{-- The active temporary admin. Always in the page so the script can fill it in; hidden when there is none. --}}
             <div class="d-flex flex-wrap align-items-center gap-3 p-3 rounded-3 bg-warning-subtle border border-warning-subtle {{ $tempAdmin ? '' : 'd-none' }}" id="tempRow">
@@ -53,14 +60,20 @@
                 <span class="badge rounded-pill bg-white text-warning-emphasis border border-warning-subtle px-3 py-2">
                     <i class="bi bi-clock me-1"></i> Expires <span data-temp="expires">{{ $tempAdmin['expires'] ?? '' }}</span>
                 </span>
+                {{-- TODO (backend): a route that moves expires_at later. Until then Extend is shown but disabled. --}}
+                <span class="d-inline-block" tabindex="0" title="Extend is coming soon">
+                    <button type="button" class="btn btn-sm btn-light border fw-semibold" disabled><i class="bi bi-calendar-plus me-1"></i> Extend</button>
+                </span>
                 <button type="button" class="btn btn-sm btn-outline-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#revokeModal">
                     <i class="bi bi-slash-circle me-1"></i> Revoke
                 </button>
             </div>
 
             <div class="small text-body-secondary p-3 rounded-3 bg-body-tertiary border {{ $tempAdmin ? 'd-none' : '' }}" id="tempEmpty">
-                <i class="bi bi-info-circle me-1"></i> No temporary admin is active right now.
+                <i class="bi bi-info-circle me-1"></i> No temporary admin is active. Use <strong>Assign Temporary Admin</strong> to cover an absence.
             </div>
+        </div>
+    </div>
 
 
     {{-- Permission matrix --}}
@@ -68,8 +81,8 @@
         <div class="card-body p-4">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                 <div>
-                    <h2 class="fs-6 fw-bold mb-1">Role Permission Matrix</h2>
-                    <p class="small text-body-secondary mb-0">Turn access on or off per role and module. Changes take effect when you save.</p>
+                    <h2 class="fs-6 fw-bold mb-1">Role Permissions</h2>
+                    <p class="small text-body-secondary mb-0">Pick a role to see and change what it can open, or compare all roles. Changes take effect when you save.</p>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2 d-none" id="unsavedBadge"></span>
@@ -80,7 +93,56 @@
                 </div>
             </div>
 
-            <div class="table-responsive">
+            {{-- Two views of the same switches: one role at a time, or every role side by side --}}
+            <div class="btn-group mb-3" role="group" aria-label="Permission view">
+                <input type="radio" class="btn-check" name="permView" id="viewByRole" value="role" checked>
+                <label class="btn btn-sm btn-outline-primary fw-semibold" for="viewByRole"><i class="bi bi-person me-1"></i> By role</label>
+                <input type="radio" class="btn-check" name="permView" id="viewCompare" value="compare">
+                <label class="btn btn-sm btn-outline-primary fw-semibold" for="viewCompare"><i class="bi bi-grid-3x3 me-1"></i> Compare all roles</label>
+            </div>
+
+            {{-- By role: its switches only pass clicks on to the matrix below, so Save / Discard work the same --}}
+            <div id="byRoleView">
+                <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Choose a role">
+                    @foreach ($roles as $role)
+                        <button type="button" class="btn btn-sm rounded-pill fw-semibold {{ $loop->index === 1 ? 'btn-primary' : 'btn-light border' }}" data-pick-role="{{ $role['key'] }}" aria-pressed="{{ $loop->index === 1 ? 'true' : 'false' }}">
+                            <i class="bi {{ $role['icon'] }} me-1"></i> {{ $role['name'] }}
+                        </button>
+                    @endforeach
+                </div>
+                @foreach ($roles as $role)
+                    <div class="{{ $loop->index === 1 ? '' : 'd-none' }}" data-role-panel="{{ $role['key'] }}">
+                        @foreach ($modules as $section => $sectionModules)
+                            <div class="small fw-bold tracking-wide text-primary text-uppercase mt-3 mb-2">{{ $section }}</div>
+                            <div class="list-group">
+                                @foreach ($sectionModules as $module)
+                                    @php
+                                        $isAdmin = $role['key'] === 'admin';
+                                        $locked = $isAdmin || ! empty($module['adminOnly']);
+                                        $on = $isAdmin || in_array($role['key'], $module['on']);
+                                    @endphp
+                                    <label class="list-group-item d-flex align-items-center gap-3 {{ $locked ? 'bg-body-tertiary' : '' }}">
+                                        <span class="flex-grow-1">
+                                            <span class="d-block fw-semibold">{{ $module['name'] }}</span>
+                                            <span class="d-block small text-body-secondary">{{ $module['description'] }}</span>
+                                        </span>
+                                        @if ($locked)
+                                            <i class="bi bi-lock-fill small text-body-secondary" title="{{ $isAdmin ? 'IATO Admin always has access' : 'Only the IATO Admin can have this' }}"></i>
+                                        @endif
+                                        <span class="form-switch m-0 p-0">
+                                            <input class="form-check-input m-0" type="checkbox" role="switch" {{ $on ? 'checked' : '' }} {{ $locked ? 'disabled' : '' }}
+                                                aria-label="{{ $role['name'] }}: {{ $module['name'] }}"
+                                                @unless ($locked) data-proxy-role="{{ $role['key'] }}" data-proxy-module="{{ $module['key'] }}" @endunless>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="table-responsive d-none" id="compareView">
                 <table class="table align-middle mb-0 matrix-table">
                     <thead>
                         <tr>
@@ -142,7 +204,7 @@
                 </table>
             </div>
             <p class="small text-body-secondary mt-3 mb-0">
-                <i class="bi bi-lock-fill me-1"></i> Locked: IATO Admin always has every module, and Access Control and User Accounts are for the IATO Admin only.
+                <i class="bi bi-lock-fill me-1"></i> Locked: the Super Admin always has every module, and Access Control and User Accounts are for the IATO Admin only.
             </p>
         </div>
     </div>
@@ -348,6 +410,7 @@
         const changed = () => switches.filter(input => input.checked !== input.defaultChecked);
 
         function updateChanges() {
+            syncByRole();
             const count = changed().length;
             switches.forEach(input => input.closest('td').classList.toggle('bg-warning-subtle', input.checked !== input.defaultChecked));
             const badge = document.getElementById('unsavedBadge');
@@ -357,6 +420,37 @@
             document.getElementById('discardButton').disabled = count === 0;
         }
         switches.forEach(input => input.addEventListener('change', updateChanges));
+
+        // ---- "By role" view: its switches mirror the matrix switches ----
+        const matrixSwitch = (role, module) => switches.find(i => i.dataset.role === role && i.dataset.module === module);
+        const proxies = [...document.querySelectorAll('[data-proxy-role]')];
+        function syncByRole() {
+            proxies.forEach(p => {
+                const real = matrixSwitch(p.dataset.proxyRole, p.dataset.proxyModule);
+                if (!real) return;
+                p.checked = real.checked;
+                p.closest('.list-group-item').classList.toggle('bg-warning-subtle', real.checked !== real.defaultChecked);
+            });
+        }
+        proxies.forEach(p => p.addEventListener('change', () => {
+            const real = matrixSwitch(p.dataset.proxyRole, p.dataset.proxyModule);
+            real.checked = p.checked;
+            real.dispatchEvent(new Event('change'));
+        }));
+        document.querySelectorAll('[data-pick-role]').forEach(btn => btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-pick-role]').forEach(b => {
+                const on = b === btn;
+                b.classList.toggle('btn-primary', on);
+                b.classList.toggle('btn-light', !on);
+                b.classList.toggle('border', !on);
+                b.setAttribute('aria-pressed', on);
+            });
+            document.querySelectorAll('[data-role-panel]').forEach(p => p.classList.toggle('d-none', p.dataset.rolePanel !== btn.dataset.pickRole));
+        }));
+        document.querySelectorAll('[name="permView"]').forEach(r => r.addEventListener('change', () => {
+            document.getElementById('byRoleView').classList.toggle('d-none', r.value !== 'role' || !r.checked);
+            document.getElementById('compareView').classList.toggle('d-none', r.value !== 'compare' || !r.checked);
+        }));
 
         document.getElementById('discardButton').addEventListener('click', () => {
             switches.forEach(input => input.checked = input.defaultChecked);
