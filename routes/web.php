@@ -19,6 +19,9 @@ use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
+use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\ChancellorController;
+use App\Http\Controllers\SettingsController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -50,6 +53,7 @@ Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('aut
 Route::post('/analytics/reanalyze', [AnalyticsController::class, 'reanalyze'])->middleware('auth');
 Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::get('/accounts', [AccountController::class, 'index'])->middleware('auth')->name('accounts');
+Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('auth', 'admin')->name('audit-logs');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
@@ -81,4 +85,11 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
 
+// President / Chancellor dashboard (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to the Chancellor's office, plus IATO admins
+Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
+Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
+Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
 
+// Settings, for every role (sections depend on the role: see SettingsController)
+Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');

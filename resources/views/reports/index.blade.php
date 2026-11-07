@@ -16,7 +16,8 @@
             <p class="small text-body-secondary mb-0">{{ $section['description'] }}</p>
         </div>
 
-        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
+        {{-- As many columns as there are cards (max 3), so fewer cards stretch to fill the row --}}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-{{ min(count($section['reports']), 3) }} g-3 mb-4">
             @foreach ($section['reports'] as $report)
                 <div class="col">
                     <div class="card border-0 border-top border-3 border-{{ $report['tone'] }} shadow-sm rounded-4 h-100">

@@ -67,5 +67,28 @@ class DatabaseSeeder extends Seeder
             'assigned_sub_level' => 'shs',
         ]
         );
+
+    // President / Chancellor office: read-only dashboard at /chancellor.
+    // Named after the Chancellor in the Executive Office card, so the "You" tag shows.
+    \App\Models\User::firstOrCreate(
+        ['email' => 'chancellor@gmail.com'],
+        [
+            'name' => 'Merlin Teodosia C. Suarez',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'chancellor',
+            'access_type' => 'viewer',
+        ]
+    );
+
+    // LAMP Office: scholar cross-check pages at /lamp
+    \App\Models\User::firstOrCreate(
+        ['email' => 'lamp@gmail.com'],
+        [
+            'name' => 'Test LAMP Office',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'lamp',
+            'access_type' => 'viewer',
+        ]
+    );
     }
 }

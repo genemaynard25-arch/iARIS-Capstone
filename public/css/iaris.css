@@ -155,3 +155,24 @@ body { background-color: #F3F6F5; }
 
 /* 7. LAMP Scholars: a red left edge on rows that need review */
 .row-flag > td:first-child { border-left: 4px solid var(--bs-danger); }
+
+/* 8. Two-factor setup: make Fortify's QR code (a fixed 192px SVG) fill its box */
+.qr-box svg { width: 100%; height: 100%; display: block; }
+
+/* 9. Chancellor dashboard "Export PDF": print the whole dashboard, without the sidebar and buttons.
+      (Section 4 hides everything else when printing, so this shows the dashboard again.) */
+@media print {
+    body:has(#chancellorReport) * { visibility: visible; }
+    body:has(#chancellorReport) .sidebar,
+    body:has(#chancellorReport) #aiWidget,
+    body:has(#chancellorReport) .no-print { display: none !important; }
+}
+
+/* 10. Password boxes: hide Microsoft Edge's built-in "show password" eye,
+       since our own eye button already does this (otherwise Edge shows two) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear { display: none; }
+
+/* 11. Bootstrap's pill tabs (e.g. President / Chancellor Reports): green when active, not Bootstrap blue.
+       The sidebar's own rules (section 3) still style its links. */
+.nav-pills { --bs-nav-pills-link-active-bg: var(--iaris-green); }
