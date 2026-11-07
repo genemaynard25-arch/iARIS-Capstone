@@ -1,12 +1,21 @@
+{{-- Reports page shared by the President / Chancellor (ChancellorController) and the College offices
+     (CollegeController): reports received from the IATO, and reports you generate yourself.
+     Each controller passes its own data, plus $labels for the words that differ:
+       office      page title, e.g. "College"                  subtitle  the text under the page title
+       unit / all  "Unit" / "All Units", or "Program" / "All CITE programs"
+       total       the name of the total row ("All units")     wide      "institution-wide" / "across CITE"
+       role        your title in the reply thread              scope     [value, note] for the Insights report
+       sharedTitle heading above $people in the report drawer (null = don't show them)
+       locked      a program chair's program: the only scope they can pick (null = any) --}}
 @extends('layouts.app')
 
-@section('title', 'iARIS — President / Chancellor Reports')
+@section('title', 'iARIS — ' . $labels['office'] . ' Reports')
 @section('page-title', 'Reports')
-@section('page-subtitle', 'Reports from IATO, and reports you can generate yourself from the data in iARIS')
+@section('page-subtitle', $labels['subtitle'])
 
 @php
-    // "Send a copy to": the IATO plus the other Executive Office members (not you)
-    $recipients = collect($executives)
+    // "Send a copy to": the IATO plus the other people in $people (not you)
+    $recipients = collect($people)
         ->reject(fn ($person) => str_contains($person['name'], auth()->user()->name))
         ->map(fn ($person) => ['initials' => $person['initials'], 'name' => $person['name'], 'tone' => $person['tone']])
         ->prepend(['initials' => $sender['initials'], 'name' => "IATO · {$sender['name']}", 'tone' => 'primary'])
@@ -175,15 +184,17 @@
         <div class="offcanvas-body tab-content p-4">
             <div class="tab-pane fade show active" id="previewPane" role="tabpanel">
                 <div id="drawerBody"></div>
-                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">Shared with the Executive Office</div>
+                @if ($labels['sharedTitle'])
+                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $labels['sharedTitle'] }}</div>
                 <div class="d-flex flex-wrap gap-1 mb-3">
-                    @foreach ($executives as $person)
+                    @foreach ($people as $person)
                         <span class="badge rounded-pill bg-body-tertiary text-body border d-inline-flex align-items-center gap-1 fw-semibold py-1 ps-1 pe-2">
                             <span class="rounded-circle bg-{{ $person['tone'] }}-subtle text-{{ $person['tone'] }}-emphasis d-inline-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">{{ $person['initials'] }}</span>
                             {{ $person['name'] }}
                         </span>
                     @endforeach
                 </div>
+                @endif
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-light border" data-download="pdf"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> Download PDF</button>
                     <button type="button" class="btn btn-sm btn-light border" data-download="excel"><i class="bi bi-file-earmark-excel text-primary me-1"></i> Download Excel</button>
@@ -230,12 +241,15 @@
                     <div class="mb-3">
                         <label for="genUnit" class="form-label small fw-bold text-uppercase">Scope</label>
                         <select class="form-select" id="genUnit">
-                            <option value="">All Units</option>
+                            {{-- A program chair can only pick their own program --}}
+                            @unless ($labels['locked'])
+                                <option value="">{{ $labels['all'] }}</option>
+                            @endunless
                             @foreach ($units as $name => $unit)
                                 <option>{{ $name }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text d-none" id="genUnitHint">This report always covers all units.</div>
+                        <div class="form-text d-none" id="genUnitHint">This report always covers {{ lcfirst($labels['total']) }}.</div>
                     </div>
                     <div class="form-check mb-2" id="genCompareRow">
                         <input class="form-check-input" type="checkbox" id="genCompare" checked>
@@ -315,6 +329,9 @@
         const RECIPIENTS = @json($recipients);
         const SENDER = @json($sender);
         const ME = @json(auth()->user()->name);
+        const LABELS = @json($labels);
+        // The scope a report starts with: '' (everything) or a program chair's own program
+        const DEFAULT_UNIT = LABELS.locked || '';
         const NAMES = Object.keys(UNITS);
         const LAST = YEARS.length - 1;
         const TYPE_STYLE = { trends: ['bi-graph-up-arrow', 'primary'], units: ['bi-layers', 'info'], conv: ['bi-funnel', 'warning'], summary: ['bi-clipboard-data', 'secondary'] };
@@ -356,8 +373,8 @@
             part('head').replaceChildren(headRow);
             part('rows').replaceChildren(...report.rows.map((cells, i) => {
                 const tr = document.createElement('tr');
-                // The "All units" total row is bold
-                if (/^All units$/i.test(cells[0])) tr.className = 'fw-bold table-light';
+                // The total row ("All units") is bold
+                if (cells[0] === LABELS.total) tr.className = 'fw-bold table-light';
                 cells.forEach(text => { const td = document.createElement('td'); td.textContent = text; tr.appendChild(td); });
                 return tr;
             }));
@@ -466,7 +483,7 @@
                 bubble.className = `rounded-4 p-3 small ${mine ? 'bg-primary text-white align-self-end ms-5' : 'bg-body-tertiary border align-self-start me-5'}`;
                 bubble.innerHTML = '<div class="fw-bold mb-1"></div><div style="white-space: pre-wrap;"></div><div class="mt-1 opacity-75"></div>';
                 const [who, text, at] = bubble.children;
-                who.textContent = mine ? `${ME} · President / Chancellor` : `${SENDER.name} · ${SENDER.role}`;
+                who.textContent = mine ? `${ME} · ${LABELS.role}` : `${SENDER.name} · ${SENDER.role}`;
                 text.textContent = message.text;
                 at.textContent = message.at;
                 return bubble;
@@ -534,7 +551,7 @@
             const hasPrevious = year > 0;
             const r = { highlights: [], head: [], rows: [], note: '', ai: '' };
             const vsLast = (key) => hasPrevious && compare ? change(pct(series(unit, key, year - 1), series(unit, key, year))) + ' vs last AY' : YEARS[year];
-            const scopeName = unit || 'All units';
+            const scopeName = unit || LABELS.total;
 
             if (o.template === 'trends') {
                 r.head = compare ? ['Academic Year', 'Applicants', 'YoY', 'Enrolled', 'YoY', 'Conversion'] : ['Academic Year', 'Applicants', 'Enrolled', 'Conversion'];
@@ -558,7 +575,7 @@
 
             if (o.template === 'units') {
                 const total = series('', 'applicants', year), previousTotal = hasPrevious ? series('', 'applicants', year - 1) : 0;
-                r.head = hasPrevious ? ['Unit', YEARS[year - 1], YEARS[year], 'Change', 'Share'] : ['Unit', YEARS[year], 'Share'];
+                r.head = hasPrevious ? [LABELS.unit, YEARS[year - 1], YEARS[year], 'Change', 'Share'] : [LABELS.unit, YEARS[year], 'Share'];
                 let fastest = null;
                 NAMES.forEach(n => {
                     const current = UNITS[n].applicants[year], share = (current / total * 100).toFixed(1) + '%';
@@ -570,16 +587,16 @@
                         r.rows.push([n, fmt(current), share]);
                     }
                 });
-                r.rows.push(hasPrevious ? ['All units', fmt(previousTotal), fmt(total), change(pct(previousTotal, total)), '100%'] : ['All units', fmt(total), '100%']);
+                r.rows.push(hasPrevious ? [LABELS.total, fmt(previousTotal), fmt(total), change(pct(previousTotal, total)), '100%'] : [LABELS.total, fmt(total), '100%']);
                 const largest = [...NAMES].sort((x, y) => UNITS[y].applicants[year] - UNITS[x].applicants[year])[0];
                 const largestShare = (UNITS[largest].applicants[year] / total * 100).toFixed(1) + '%';
                 r.highlights = [
                     ['Applicants', fmt(total), hasPrevious ? change(pct(previousTotal, total)) + ' vs last AY' : YEARS[year]],
                     ['Fastest growth', hasPrevious ? fastest[0] : '—', hasPrevious ? change(fastest[1]) : 'No prior year'],
-                    ['Largest unit', largest, largestShare + ' of applicants'],
+                    ['Largest ' + LABELS.unit.toLowerCase(), largest, largestShare + ' of applicants'],
                 ];
                 r.note = hasPrevious ? 'Change is calculated against the previous academic year.' : `${YEARS[0]} is the first year on record, so there is no prior year to compare.`;
-                if (hasPrevious) r.ai = `${fastest[0]} grew fastest (${change(fastest[1])}), and ${largest} remains the largest unit with ${largestShare} of all applicants.`;
+                if (hasPrevious) r.ai = `${fastest[0]} grew fastest (${change(fastest[1])}), and ${largest} remains the largest ${LABELS.unit.toLowerCase()} with ${largestShare} of all applicants.`;
             }
 
             if (o.template === 'funnel') {
@@ -603,7 +620,7 @@
             }
 
             if (o.template === 'summary') {
-                r.head = compare ? ['Unit', 'Applicants', 'vs last AY', 'Enrolled', 'Conversion'] : ['Unit', 'Applicants', 'Enrolled', 'Conversion'];
+                r.head = compare ? [LABELS.unit, 'Applicants', 'vs last AY', 'Enrolled', 'Conversion'] : [LABELS.unit, 'Applicants', 'Enrolled', 'Conversion'];
                 const row = (name, u) => {
                     const cells = [name, fmt(series(u, 'applicants', year))];
                     if (compare) cells.push(hasPrevious ? change(pct(series(u, 'applicants', year - 1), series(u, 'applicants', year))) : '—');
@@ -612,7 +629,7 @@
                 };
                 const shown = unit ? [unit] : NAMES;
                 shown.forEach(n => r.rows.push(row(n, n)));
-                if (!unit) r.rows.push(row('All units', ''));
+                if (!unit) r.rows.push(row(LABELS.total, ''));
                 r.highlights = [
                     ['Applicants', fmt(series(unit, 'applicants', year)), vsLast('applicants')],
                     ['Enrolled', fmt(series(unit, 'enrolled', year)), vsLast('enrolled')],
@@ -620,17 +637,17 @@
                 ];
                 r.note = 'Conversion is enrolled students divided by applicants for the same academic year.';
                 if (unit) {
-                    r.ai = `${unit} had ${fmt(series(unit, 'applicants', year))} applicants${hasPrevious ? ` (${change(pct(series(unit, 'applicants', year - 1), series(unit, 'applicants', year)))} vs last AY)` : ''} and converted ${conversion(unit, year).toFixed(1)}% to enrollment, compared with ${conversion('', year).toFixed(1)}% institution-wide.`;
+                    r.ai = `${unit} had ${fmt(series(unit, 'applicants', year))} applicants${hasPrevious ? ` (${change(pct(series(unit, 'applicants', year - 1), series(unit, 'applicants', year)))} vs last AY)` : ''} and converted ${conversion(unit, year).toFixed(1)}% to enrollment, compared with ${conversion('', year).toFixed(1)}% ${LABELS.wide}.`;
                 } else {
                     const best = [...NAMES].sort((x, y) => conversion(y, year) - conversion(x, year))[0];
-                    r.ai = `${best} has the highest applied-to-enrolled conversion at ${conversion(best, year).toFixed(1)}%. Institution-wide conversion is ${conversion('', year).toFixed(1)}%.`;
+                    r.ai = `${best} has the highest applied-to-enrolled conversion at ${conversion(best, year).toFixed(1)}%. Conversion ${LABELS.wide} is ${conversion('', year).toFixed(1)}%.`;
                 }
             }
 
             if (o.template === 'insights') {
                 r.head = ['Insight', 'What the data shows'];
                 r.rows = INSIGHTS.map(i => [i.title, i.body]);
-                r.highlights = [['Period', `${YEARS.length} years`, `${YEARS[0]} to ${YEARS[LAST]}`], ['Units', `All ${NAMES.length}`, 'Institution-wide'], ['Type', 'Descriptive', 'No forecasts']];
+                r.highlights = [['Period', `${YEARS.length} years`, `${YEARS[0]} to ${YEARS[LAST]}`], ['Scope', ...LABELS.scope], ['Type', 'Descriptive', 'No forecasts']];
                 r.note = 'Generated automatically from historical iARIS data. Decisions remain with university leadership.';
                 return r;
             }
@@ -644,7 +661,8 @@
             const t = TEMPLATES[o.template];
             return `${t.name} — ${YEARS[t.currentYearOnly ? LAST : o.year]}${o.unit && !t.allUnits ? ' · ' + o.unit : ''}`;
         };
-        const metaOf = o => `${YEARS[TEMPLATES[o.template].currentYearOnly ? LAST : o.year]} · ${TEMPLATES[o.template].allUnits ? 'All Units' : (o.unit || 'All Units')} · Generated by ${ME}`;
+        const scopeOf = o => TEMPLATES[o.template].allUnits ? LABELS.all : (o.unit || LABELS.all);
+        const metaOf = o => `${YEARS[TEMPLATES[o.template].currentYearOnly ? LAST : o.year]} · ${scopeOf(o)} · Generated by ${ME}`;
 
         let previewing = null;
         function showPreview(o) {
@@ -664,7 +682,7 @@
 
         // Template cards
         document.querySelectorAll('[data-quick-preview]').forEach(b => b.addEventListener('click', () =>
-            showPreview({ template: b.dataset.quickPreview, year: LAST, unit: '', compare: true, ai: true, format: 'PDF' })));
+            showPreview({ template: b.dataset.quickPreview, year: LAST, unit: DEFAULT_UNIT, compare: true, ai: true, format: 'PDF' })));
 
         let generating = null;
         document.querySelectorAll('[data-generate]').forEach(b => b.addEventListener('click', () => {
@@ -675,8 +693,8 @@
             $('genYear').value = LAST;
             $('genYear').disabled = !!t.currentYearOnly;
             $('genYearHint').classList.toggle('d-none', !t.currentYearOnly);
-            $('genUnit').value = '';
-            $('genUnit').disabled = !!t.allUnits;
+            $('genUnit').value = DEFAULT_UNIT;
+            $('genUnit').disabled = !!t.allUnits || !!LABELS.locked;
             $('genUnitHint').classList.toggle('d-none', !t.allUnits);
             $('genCompareRow').classList.toggle('d-none', !t.compare);
             // Starting values from Settings → Report Preferences
@@ -730,7 +748,7 @@
                     </td>`;
                 const cells = tr.children;
                 cells[0].textContent = titleOf(h);
-                cells[1].textContent = TEMPLATES[h.template].allUnits ? 'All Units' : (h.unit || 'All Units');
+                cells[1].textContent = scopeOf(h);
                 cells[3].textContent = h.at;
                 if (h.to.length) {
                     h.to.forEach(initials => {
@@ -749,6 +767,9 @@
                 return tr;
             }));
         }
+
+        // Received reports with 'build' (the College ones) are made from the same numbers as the Generate tab
+        RECEIVED.filter(r => r.build).forEach(r => Object.assign(r, build(r.build), r.note ? { note: r.note } : {}));
 
         renderStats();
         renderList();

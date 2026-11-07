@@ -98,3 +98,4 @@ Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth'
 Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('auth')->name('college.dashboard');
 Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');
 Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');
+Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware('auth')->name('college.reports');

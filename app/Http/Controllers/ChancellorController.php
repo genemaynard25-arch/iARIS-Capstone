@@ -108,12 +108,21 @@ class ChancellorController extends Controller
      */
     public function reports()
     {
-        return view('chancellor.reports', [
+        // The Reports page is shared with the College offices (resources/views/reports/inbox.blade.php)
+        return view('reports.inbox', [
+            'labels' => [
+                'office' => 'President / Chancellor',
+                'subtitle' => 'Reports from IATO, and reports you can generate yourself from the data in iARIS',
+                'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
+                'role' => 'President / Chancellor', 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
+                'sharedTitle' => 'Shared with the Executive Office', 'locked' => null,
+            ],
             'received' => self::received(),
             'years' => self::YEARS,
             'units' => self::units(),
             'insights' => self::insights(),
-            'executives' => self::executives(),
+            // The Executive Office: who the reports are shared with, and who you can send a copy to
+            'people' => self::executives(),
 
             // Who sent the reports
             'sender' => ['name' => 'Renegado, Randolph', 'role' => 'Super Admin', 'initials' => 'RR'],

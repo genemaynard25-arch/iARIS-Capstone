@@ -83,12 +83,8 @@ class CollegeController extends Controller
             // The 6 newest applications in scope (all of them are on the Applicants page)
             'recent' => array_slice(self::applicantsIn($scope), 0, 6),
 
-            // Reports the IATO sent to this office
-            'reports' => [
-                ['title' => ($isChair ? 'BS Computer Science' : 'CITE') . ' Applicants Summary — AY 2025–26', 'sent' => 'Jun 12, 2026', 'new' => true],
-                ['title' => 'Enrolled per Program — AY 2024–25', 'sent' => 'Jun 14, 2025', 'new' => false],
-                ['title' => ($isChair ? 'BS Computer Science' : 'CITE') . ' Admissions Summary — AY 2023–24', 'sent' => 'Jun 10, 2024', 'new' => false],
-            ],
+            // The 3 newest reports the IATO sent (all of them are on the Reports page)
+            'reports' => array_slice(self::received($isChair), 0, 3),
         ]);
     }
 
@@ -140,6 +136,115 @@ class CollegeController extends Controller
             'insights' => $this->insights($scope, $applicants, $enrolled, $funnel),
             'estimates' => $this->estimates($scope),
         ]);
+    }
+
+    // College Reports: reports the IATO sent, and reports this office can generate (same page as the Chancellor's)
+    public function reports(Request $request)
+    {
+        [$isChair, , $scope, $scopeName] = $this->scope($request);
+        $sum = fn (string $field) => array_map(fn ($i) => array_sum(array_map(fn ($p) => $p[$field][$i], $scope)), array_keys(reset($scope)[$field]));
+        $funnel = array_combine(['Applied', 'Took exam', 'Passed', 'Paid', 'Enrolled'], $sum('funnel'));
+        $chair = $isChair ? $scopeName : null;
+
+        // The programs in the same shape as the Chancellor's units, keyed by full name
+        $units = [];
+        foreach ($scope as $code => $p) {
+            $units[$p['name']] = ['short' => $code, 'applicants' => $p['applicants'], 'enrolled' => $p['enrolled'],
+                'took' => $p['funnel'][1], 'passed' => $p['funnel'][2], 'paid' => $p['funnel'][3], 'paidPrevious' => $p['paidLastYear']];
+        }
+
+        $templates = [
+            'trends' => ['name' => 'Enrollment Trends (YoY)', 'icon' => 'bi-graph-up-arrow', 'tone' => 'primary',
+                'description' => 'Applicants, enrolled, and conversion by academic year, with year-over-year change.',
+                'tags' => ['Year-over-year'], 'compare' => true, 'ai' => true],
+            'units' => ['name' => 'Applicants by Program', 'icon' => 'bi-layers', 'tone' => 'info',
+                'description' => 'Applicants for every CITE program against the previous year, with each program\'s share.',
+                'tags' => ['All programs', 'Dean only'], 'allUnits' => true, 'alwaysCompare' => true, 'ai' => true],
+            'funnel' => ['name' => 'Conversion Funnel', 'icon' => 'bi-funnel', 'tone' => 'warning',
+                'description' => 'Applied, took exam, passed, paid, and enrolled, with the drop at each step.',
+                'tags' => ['Current AY only'], 'currentYearOnly' => true, 'ai' => true],
+            'summary' => ['name' => 'Admissions Summary', 'icon' => 'bi-clipboard-data', 'tone' => 'secondary',
+                'description' => 'Applicants, enrolled, and conversion in a chosen academic year.',
+                'tags' => ['Any AY'], 'compare' => true, 'ai' => true],
+            'insights' => ['name' => 'Insights Summary', 'icon' => 'bi-stars', 'tone' => 'primary',
+                'description' => 'The AI-written findings from Analytics for your scope, as a short report.',
+                'tags' => ['AI-generated', 'Descriptive only'], 'currentYearOnly' => true, 'allUnits' => true],
+        ];
+        // "Applicants by Program" compares every program, so it is for deans only
+        if ($isChair) {
+            unset($templates['units']);
+        }
+
+        return view('reports.inbox', [
+            'labels' => [
+                'office' => 'College',
+                'subtitle' => 'Reports from IATO about ' . ($isChair ? $scopeName : 'CITE') . ', and reports you can generate from iARIS data',
+                'unit' => 'Program', 'all' => $chair ?? 'All CITE programs', 'total' => 'All CITE programs', 'wide' => 'across CITE',
+                'role' => $isChair ? 'Program Chair' : 'Dean', 'scope' => $isChair ? [array_key_first($scope), $scopeName] : ['CITE', 'All programs'],
+                'sharedTitle' => null, 'locked' => $chair,
+            ],
+            'received' => self::received($isChair),
+            'years' => ChancellorController::YEARS,
+            'units' => $units,
+            'insights' => $this->insights($scope, $sum('applicants'), $sum('enrolled'), $funnel),
+            // Who you can send a copy to (besides the IATO)
+            'people' => $isChair
+                ? [['name' => 'Villafuerte, Cherrie · Dean', 'initials' => 'CV', 'tone' => 'warning'], ['name' => 'Dr. Tessie Palma · VC for Academics', 'initials' => 'TP', 'tone' => 'info']]
+                : [['name' => 'Dr. Merlin Teodosia C. Suarez · Chancellor', 'initials' => 'MS', 'tone' => 'primary'], ['name' => 'Dr. Tessie Palma · VC for Academics', 'initials' => 'TP', 'tone' => 'info']],
+            'sender' => ['name' => 'Renegado, Randolph', 'role' => 'Super Admin', 'initials' => 'RR'],
+            'templates' => $templates,
+            // Reports generated before. 'year' is an index into YEARS; 'to' lists initials.
+            'history' => array_values(array_filter([
+                ['template' => 'trends', 'year' => 2, 'unit' => $chair ?? '', 'compare' => true, 'ai' => true, 'format' => 'PDF', 'to' => ['RR'], 'at' => 'Jun 14, 2025 · 4:10 PM'],
+                $isChair ? null : ['template' => 'units', 'year' => 2, 'unit' => '', 'compare' => true, 'ai' => false, 'format' => 'Excel', 'to' => [], 'at' => 'Jun 3, 2025 · 10:25 AM'],
+            ])),
+        ]);
+    }
+
+    /**
+     * Reports the IATO sent to this office, newest first. Instead of fixed tables, each has 'build':
+     * the page makes its figures from the same numbers as the Generate tab ('year' is an index into YEARS).
+     * The "Applicants by Program" report is for deans only.
+     */
+    public static function received(bool $isChair): array
+    {
+        $name = $isChair ? 'BS Computer Science' : 'CITE';
+        $unit = $isChair ? 'BS Computer Science' : '';
+
+        $reports = [
+            ['id' => 'c1', 'type' => 'summary', 'typeLabel' => 'Applicants Summary', 'ay' => 'AY 2025–26', 'sent' => '2026-06-12 08:00', 'status' => 'new',
+                'title' => "{$name} Applicants Summary — AY 2025–26",
+                'build' => ['template' => 'summary', 'year' => 3, 'unit' => $unit, 'compare' => true, 'ai' => false],
+                'thread' => [['from' => 'iato', 'text' => "Good morning. Attached is the {$name} applicants summary for AY 2025–26.", 'at' => 'Jun 12, 2026 · 8:00 AM']]],
+            ['id' => 'c2', 'type' => 'units', 'typeLabel' => 'Applicants by Program', 'ay' => 'AY 2025–26', 'sent' => '2026-05-30 10:00', 'status' => 'read',
+                'title' => 'CITE Applicants by Program — AY 2025–26', 'deanOnly' => true,
+                'build' => ['template' => 'units', 'year' => 3, 'unit' => '', 'compare' => true, 'ai' => false],
+                'thread' => [['from' => 'iato', 'text' => 'Applicants per program, for your reference ahead of the June report.', 'at' => 'May 30, 2026 · 10:00 AM']]],
+            ['id' => 'c3', 'type' => 'conv', 'typeLabel' => 'Conversion', 'ay' => 'AY 2025–26', 'sent' => '2026-05-15 09:00', 'status' => 'replied',
+                'title' => "{$name} Conversion Funnel — AY 2025–26",
+                'build' => ['template' => 'funnel', 'year' => 3, 'unit' => $unit, 'compare' => true, 'ai' => false],
+                'thread' => [
+                    ['from' => 'iato', 'text' => "Here is the conversion funnel summary for {$name}.", 'at' => 'May 15, 2026 · 9:00 AM'],
+                    ['from' => 'me', 'text' => $isChair ? 'Thank you. Could you also show how this compares with the CITE average?' : 'Thank you. Could you also show where applicants drop off in each program?', 'at' => 'May 15, 2026 · 2:40 PM'],
+                    ['from' => 'iato', 'text' => 'Noted. We will include it in the June report.', 'at' => 'May 16, 2026 · 8:15 AM'],
+                ]],
+            ['id' => 'c4', 'type' => 'summary', 'typeLabel' => 'Enrollment per Program', 'ay' => 'AY 2024–25', 'sent' => '2025-06-14 08:30', 'status' => 'replied',
+                'title' => $isChair ? 'BS Computer Science Enrollment — AY 2024–25' : 'Enrolled per Program — AY 2024–25',
+                'build' => ['template' => 'summary', 'year' => 2, 'unit' => $unit, 'compare' => true, 'ai' => false],
+                'thread' => [
+                    ['from' => 'iato', 'text' => 'Enrollment figures for AY 2024–25 are attached.', 'at' => 'Jun 14, 2025 · 8:30 AM'],
+                    ['from' => 'me', 'text' => 'Received, thank you.', 'at' => 'Jun 14, 2025 · 4:05 PM'],
+                ]],
+            ['id' => 'c5', 'type' => 'trends', 'typeLabel' => 'Admissions Summary', 'ay' => 'AY 2023–24', 'sent' => '2024-06-10 08:00', 'status' => 'replied',
+                'title' => "{$name} Admissions Summary — AY 2023–24",
+                'build' => ['template' => 'trends', 'year' => 1, 'unit' => $unit, 'compare' => true, 'ai' => false],
+                'thread' => [
+                    ['from' => 'iato', 'text' => 'Admissions summary for AY 2023–24.', 'at' => 'Jun 10, 2024 · 8:00 AM'],
+                    ['from' => 'me', 'text' => 'Thank you, noted.', 'at' => 'Jun 10, 2024 · 1:20 PM'],
+                ]],
+        ];
+
+        return array_values(array_filter($reports, fn ($r) => ! ($isChair && ($r['deanOnly'] ?? false))));
     }
 
     /**

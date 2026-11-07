@@ -216,24 +216,31 @@
             </div>
         </div>
 
-        {{-- Reports the IATO sent to this office --}}
+        {{-- The newest reports sent by the IATO (all of them are on the Reports page) --}}
         <div class="col-12 col-xl-5">
             <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4 pb-2 flex-grow-0">
-                    <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
-                    <div class="small text-body-secondary">Sent to your office</div>
+                <div class="card-body p-4 pb-2 flex-grow-0 d-flex align-items-start justify-content-between gap-2">
+                    <div>
+                        <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
+                        <div class="small text-body-secondary">Sent to your office</div>
+                    </div>
+                    <a href="{{ route('college.reports') }}" class="btn btn-sm btn-light border fw-semibold">View all</a>
                 </div>
                 <ul class="list-group list-group-flush">
                     @foreach ($reports as $report)
-                        <li class="list-group-item d-flex align-items-center gap-3 px-4 py-3">
-                            <div class="icon-circle rounded-3 d-flex align-items-center justify-content-center {{ $report['new'] ? 'bg-danger-subtle text-danger-emphasis' : 'bg-primary-subtle text-primary-emphasis' }}">
+                        @php
+                            $isNew = $report['status'] === 'new';
+                        @endphp
+                        <li class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3 position-relative">
+                            <div class="icon-circle rounded-3 d-flex align-items-center justify-content-center {{ $isNew ? 'bg-danger-subtle text-danger-emphasis' : 'bg-primary-subtle text-primary-emphasis' }}">
                                 <i class="bi bi-file-earmark-text"></i>
                             </div>
                             <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="fw-bold small">{{ $report['title'] }}</div>
-                                <div class="small text-body-secondary">From Renegado, Randolph · {{ $report['sent'] }}</div>
+                                {{-- stretched-link: the whole row opens this report on the Reports page --}}
+                                <a href="{{ route('college.reports') }}?open={{ $report['id'] }}" class="fw-bold small text-body text-decoration-none stretched-link">{{ $report['title'] }}</a>
+                                <div class="small text-body-secondary">From Renegado, Randolph · {{ \Illuminate\Support\Carbon::parse($report['sent'])->format('M j, Y') }}</div>
                             </div>
-                            <span class="badge {{ $report['new'] ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-secondary text-body-secondary' }}">{{ $report['new'] ? 'New' : 'Read' }}</span>
+                            <span class="badge {{ $isNew ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-secondary text-body-secondary' }} text-capitalize">{{ $isNew ? 'New' : $report['status'] }}</span>
                         </li>
                     @endforeach
                 </ul>
