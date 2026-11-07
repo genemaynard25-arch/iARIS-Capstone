@@ -1,4 +1,64 @@
 {{-- On large screens this is a fixed sidebar; on small screens it slides in (Bootstrap offcanvas) --}}
+@php
+    $user = auth()->user();
+
+    // One sidebar link. $match is the URL pattern that makes it "active"; $show hides it when false.
+    $link = fn ($label, $icon, $url, $match = null, $show = true) => compact('label', 'icon', 'url', 'match', 'show');
+
+    // The menu. A 'group' is a dropdown of links.
+    $sections = [
+        'MAIN' => [
+            $link('Dashboard', 'bi-grid-1x2', '/home', 'home', $user->canAccess('dashboard')),
+            $link('Applicants', 'bi-people', '/applicants', 'applicants*', $user->canAccess('applicants')),
+            $link('Analytics', 'bi-bar-chart-line', '/analytics', 'analytics*', $user->canAccess('analytics')),
+            $link('Reports', 'bi-file-earmark-text', '/reports', 'reports*', $user->canAccess('reports')),
+        ],
+        'RECORDS' => [
+            ['group' => 'Academic Divisions', 'icon' => 'bi-bank', 'items' => [
+                $link('Integrated School', 'bi-building', '/records/is', 'records/is*', $user->canAccess('is')),
+                $link('College', 'bi-mortarboard', '/records/college', 'records/college*', $user->canAccess('college')),
+                $link('Graduate Programs', 'bi-journal-bookmark', '/records/graduate', 'records/graduate*'),
+                $link('College of Law', 'bi-bank2', '/records/law', 'records/law*'),
+            ]],
+            ['group' => 'Alternative Learning', 'icon' => 'bi-book', 'items' => [
+                $link('iPACE', 'bi-laptop', '/records/ipace', 'records/ipace*'),
+                $link('ETEEAP', 'bi-briefcase', '#'),
+            ]],
+            $link('Scholarships', 'bi-award', '/records/scholars', 'records/scholars*', $user->canAccess('scholars')),
+        ],
+        'SYSTEM' => [
+            ['group' => 'Data Management', 'icon' => 'bi-database', 'items' => [
+                $link('Import Data', 'bi-cloud-arrow-up', '/import', 'import*', $user->canAccess('import')),
+                $link('Audit Logs', 'bi-clipboard-data', '/audit-logs', 'audit-logs*', $user->canAccess('audit')),
+            ]],
+            ['group' => 'Access & Security', 'icon' => 'bi-shield-lock', 'items' => [
+                $link('Access Control', 'bi-shield-check', '/access-control', 'access-control*', $user->isAdmin()),
+                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', $user->isAdmin()),
+            ]],
+        ],
+    ];
+
+    // Drop links this user can't open. A group left with no links disappears;
+    // a group left with one link shows as that plain link (no one-item dropdowns).
+    foreach ($sections as $title => $entries) {
+        $kept = [];
+        foreach ($entries as $entry) {
+            if (isset($entry['group'])) {
+                $entry['items'] = array_values(array_filter($entry['items'], fn ($i) => $i['show']));
+                if (count($entry['items']) === 1) {
+                    $kept[] = $entry['items'][0];
+                } elseif (count($entry['items']) > 1) {
+                    $kept[] = $entry;
+                }
+            } elseif ($entry['show']) {
+                $kept[] = $entry;
+            }
+        }
+        $sections[$title] = $kept;
+    }
+
+    $isActive = fn ($item) => $item['match'] && request()->is($item['match']);
+@endphp
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
 
@@ -18,55 +78,32 @@
 
         {{-- Links (this part scrolls if the window is too short) --}}
         <div class="flex-grow-1 overflow-auto px-3 py-3">
-            @php($user = auth()->user())
-            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MAIN</div>
-            <nav class="nav nav-pills flex-column mb-3">
-                @if ($user->canAccess('dashboard'))
-                    <a href="{{ url('/home') }}" class="nav-link {{ request()->is('home') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                @endif
-                @if ($user->canAccess('applicants'))
-                    <a href="{{ url('/applicants') }}" class="nav-link {{ request()->is('applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
-                @endif
-                @if ($user->canAccess('reports'))
-                    <a href="{{ url('/reports') }}" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports</a>
-                @endif
-                @if ($user->canAccess('analytics'))
-                    <a href="{{ url('/analytics') }}" class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
-                @endif
-            </nav>
-
-            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">RECORDS</div>
-            <nav class="nav nav-pills flex-column mb-3">
-                @if ($user->canAccess('is'))
-                    <a href="{{ url('/records/is') }}" class="nav-link {{ request()->is('records/is*') ? 'active' : '' }}"><i class="bi bi-building"></i> Integrated School</a>
-                @endif
-                @if ($user->canAccess('college'))
-                    <a href="{{ url('/records/college') }}" class="nav-link {{ request()->is('records/college*') ? 'active' : '' }}"><i class="bi bi-mortarboard"></i> College</a>
-                @endif
-                @if ($user->canAccess('scholars'))
-                    <a href="{{ url('/records/scholars') }}" class="nav-link {{ request()->is('records/scholars*') ? 'active' : '' }}"><i class="bi bi-award"></i> Scholars</a>
-                @endif
-                <a href="{{ url('/records/graduate') }}" class="nav-link {{ request()->is('records/graduate*') ? 'active' : '' }}"><i class="bi bi-journal-bookmark"></i> Graduate Programs</a>
-                <a href="{{ url('/records/law') }}" class="nav-link {{ request()->is('records/law*') ? 'active' : '' }}"><i class="bi bi-bank2"></i> College of Law</a>
-                <a href="{{ url('/records/ipace') }}" class="nav-link {{ request()->is('records/ipace*') ? 'active' : '' }}"><i class="bi bi-laptop"></i> iPACE</a>
-                <a href="#" class="nav-link"><i class="bi bi-briefcase"></i> ETEEAP</a>
-                @if ($user->canAccess('import'))
-                    <a href="{{ url('/import') }}" class="nav-link {{ request()->is('import*') ? 'active' : '' }}"><i class="bi bi-cloud-arrow-up"></i> Import Data</a>
-                @endif
-            </nav>
-
-            @if ($user->isAdmin() || $user->canAccess('audit'))
-                <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">SYSTEM</div>
-                <nav class="nav nav-pills flex-column">
-                    @if ($user->isAdmin())
-                        <a href="{{ url('/access-control') }}" class="nav-link {{ request()->is('access-control*') ? 'active' : '' }}"><i class="bi bi-shield-lock"></i> Access Control</a>
-                        <a href="{{ url('/accounts') }}" class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}"><i class="bi bi-person-gear"></i> User Accounts</a>
-                    @endif
-                    @if ($user->canAccess('audit'))
-                        <a href="{{ url('/audit-logs') }}" class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}"><i class="bi bi-clipboard-data"></i> Audit Logs</a>
-                    @endif
+            @foreach ($sections as $title => $entries)
+                @continue(empty($entries))
+                <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">{{ $title }}</div>
+                <nav class="nav nav-pills flex-column mb-3">
+                    @foreach ($entries as $entry)
+                        @if (isset($entry['group']))
+                            {{-- Dropdown group: open when the current page is inside it --}}
+                            @php($open = collect($entry['items'])->contains($isActive))
+                            @php($id = 'nav-' . \Illuminate\Support\Str::slug($entry['group']))
+                            <button type="button" class="nav-link nav-group-toggle {{ $open ? 'has-active' : '' }}" data-bs-toggle="collapse" data-bs-target="#{{ $id }}" aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="{{ $id }}">
+                                <i class="bi {{ $entry['icon'] }}"></i> {{ $entry['group'] }}
+                                <i class="bi bi-chevron-down chev ms-auto"></i>
+                            </button>
+                            <div class="collapse {{ $open ? 'show' : '' }}" id="{{ $id }}">
+                                <div class="nav nav-pills flex-column nav-sub">
+                                    @foreach ($entry['items'] as $item)
+                                        <a href="{{ url($item['url']) }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}" @if ($isActive($item)) aria-current="page" @endif><i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}</a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @else
+                            <a href="{{ url($entry['url']) }}" class="nav-link {{ $isActive($entry) ? 'active' : '' }}" @if ($isActive($entry)) aria-current="page" @endif><i class="bi {{ $entry['icon'] }}"></i> {{ $entry['label'] }}</a>
+                        @endif
+                    @endforeach
                 </nav>
-            @endif
+            @endforeach
         </div>
 
         {{-- Footer (always visible) --}}
