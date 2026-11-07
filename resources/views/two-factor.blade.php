@@ -29,7 +29,7 @@
     // Fortify makes these when 2FA is confirmed. Each one can replace a code once (the login pop-up's "Use a recovery code").
     $recoveryCodes = $confirmed ? rescue(fn () => $user->recoveryCodes(), [], false) : [];
 
-    $steps = ['Start', 'Get the App', 'Scan QR Code', 'Verify Code', 'Done'];
+    $steps = ['Verified', 'Get the App', 'Scan QR Code', 'Verify Code', 'Done'];
     $initials = collect(explode(' ', $user->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('');
 @endphp
 
@@ -78,16 +78,21 @@
                         </div>
                     @endif
 
-                    {{-- STEP 1: Start --}}
+                    {{-- STEP 1: Verified --}}
                     <section data-step="1" class="d-none">
                         <div class="icon-circle rounded-4 bg-primary-subtle text-primary-emphasis fs-3 d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="bi bi-shield-lock"></i>
+                            <i class="bi bi-patch-check-fill"></i>
                         </div>
-                        <h1 class="fs-4 fw-bold mb-2">Protect your account</h1>
+                        <h1 class="fs-4 fw-bold mb-2">Your account is verified</h1>
                         <p class="text-body-secondary mb-4">
-                            Set up <strong class="text-body">two-factor authentication (MFA)</strong>. After you sign in with your password,
+                            Welcome to iARIS. Next, set up <strong class="text-body">two-factor authentication (MFA)</strong>: after your password,
                             iARIS will also ask for a 6-digit code from your phone, so a stolen password alone isn't enough.
                         </p>
+
+                        <div class="d-flex align-items-center gap-3 rounded-3 bg-primary-subtle border border-primary-subtle p-3 mb-3 small">
+                            <i class="bi bi-envelope-check fs-4 text-primary-emphasis"></i>
+                            <div>Signed in as <b>{{ $user->email }}</b>. This setup takes about two minutes.</div>
+                        </div>
 
                         <div class="d-flex align-items-center gap-3 rounded-3 bg-body-tertiary p-3 mb-4">
                             <div class="icon-circle rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">{{ strtoupper($initials) }}</div>
@@ -95,7 +100,7 @@
                                 <div class="fw-bold">{{ $user->name }}</div>
                                 <div class="small text-body-secondary text-truncate">{{ $user->email }}</div>
                             </div>
-                            <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis text-capitalize">{{ str_replace('_', ' ', $user->role ?? 'user') }}</span>
+                            <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ $user->roleInfo()[0] }}</span>
                         </div>
 
                         <button type="button" class="btn btn-primary btn-lg w-100 fw-semibold" data-go="2">
@@ -115,7 +120,7 @@
                         <div class="row g-3 mb-4">
                             @foreach ([
                                 ['Google Authenticator', 'Simple and widely used', 'bi-google', 'danger', 'https://apps.apple.com/app/google-authenticator/id388497605', 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2'],
-                                ['Microsoft Authenticator', 'Can back up to your Microsoft account', 'bi-microsoft', 'info', 'https://apps.apple.com/app/microsoft-authenticator/id983156458', 'https://play.google.com/store/apps/details?id=com.azure.authenticator'],
+                                ['Authy', 'Can back up to more than one device', 'bi-shield-lock', 'info', 'https://apps.apple.com/app/twilio-authy/id494168017', 'https://play.google.com/store/apps/details?id=com.authy.authy'],
                             ] as [$name, $desc, $icon, $tone, $ios, $android])
                                 <div class="col-sm-6">
                                     <div class="border rounded-3 p-3 h-100 text-center">
@@ -242,6 +247,7 @@
                         @endif
 
                         <ul class="list-unstyled small mb-4">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Account verified</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Authenticator app connected</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Two-factor authentication enabled</li>
                             <li><i class="bi bi-check-circle-fill text-primary me-2"></i> Recovery codes ready</li>

@@ -46,6 +46,7 @@
     </script>
     @yield('scripts')
     @include('partials.ai-widget')
+    @include('partials.mfa-reminder')
     <script>
         // "Show the AI button on every page" off
         if (IARIS_SETTINGS.ai?.button === false) document.getElementById('aiWidget')?.classList.add('d-none');

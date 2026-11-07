@@ -33,13 +33,18 @@
                     <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-3">Who uses iARIS</div>
                     <div class="d-flex flex-wrap gap-2">
                         @foreach ([
-                            ['bi-shield-lock', 'IATO Admin'],
+                            ['bi-star-fill', 'Super Admin'],
                             ['bi-person-badge', 'IATO Staff'],
-                            ['bi-award', 'LAMP Office'],
-                            ['bi-person-vcard', 'Registrar'],
-                            ['bi-bank', 'President / Chancellor'],
                             ['bi-person-video3', 'Dean / Program Chair'],
-                            ['bi-building', 'SHS Principal'],
+                            ['bi-building', 'Integrated School Principal'],
+                            ['bi-person-vcard', 'Registrar'],
+                            ['bi-award', 'LAMP Office'],
+                            ['bi-bank', 'President'],
+                            ['bi-buildings', 'Chancellor'],
+                            ['bi-person-workspace', 'Vice Chancellor'],
+                            ['bi-briefcase', 'Vice President'],
+                            ['bi-laptop', 'iPACE Director'],
+                            ['bi-shield-lock', 'Data Protection Officer'],
                         ] as [$icon, $role])
                             <span class="d-inline-flex align-items-center gap-2 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2 small fw-semibold">
                                 <i class="bi {{ $icon }} text-iaris-pale"></i> {{ $role }}
@@ -347,8 +352,8 @@
                     <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <form method="POST" action="{{ route('password.email') }}" class="modal-body p-4">
-                    @csrf
+                {{-- Front end only for now (the script shows "Request Submitted!"). TODO: save requests for the IATO Admin to approve. --}}
+                <form class="modal-body p-4 js-demo-form">
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6">
                             <label for="regLast" class="form-label small fw-bold text-uppercase">Last Name</label>
@@ -375,33 +380,37 @@
                         <label for="regRole" class="form-label small fw-bold text-uppercase">Position / Role</label>
                         <select id="regRole" class="form-select" required>
                             <option value="">Select your position</option>
-                            <option>IATO Staff</option>
-                            <option>Dean</option>
-                            <option>Program Chair</option>
-                            <option>SHS Principal</option>
-                            <option>Registrar</option>
-                            <option>LAMP Office</option>
-                            <option>President / Chancellor</option>
+                            @foreach (['IATO Staff', 'Dean', 'Program Chair', 'Integrated School Principal', 'Registrar', 'LAMP Office', 'President', 'Chancellor', 'Vice Chancellor', 'Vice President', 'iPACE Director', 'Data Protection Officer'] as $position)
+                                <option>{{ $position }}</option>
+                            @endforeach
                         </select>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="regDept" class="form-label small fw-bold text-uppercase">Department / Unit</label>
                         <select id="regDept" class="form-select" required>
                             <option value="">Select your department</option>
                             <option>Institutional Admissions &amp; Testing Office</option>
-                            <option>CBEAM</option>
-                            <option>CEAS</option>
-                            <option>CIHTM</option>
-                            <option>CITE</option>
-                            <option>College of Law</option>
-                            <option>College of Nursing</option>
-                            <option>Integrated School</option>
-                            <option>College Registrar</option>
-                            <option>IS Registrar</option>
-                            <option>Lasallian Mission Office</option>
-                            <option>Office of the President</option>
+                            @foreach ([
+                                'Colleges' => ['CBEAM', 'CEAS', 'CIHTM', 'CITE', 'College of Nursing', 'CCJE', 'Graduate Programs', 'College of Law'],
+                                'Integrated School' => ['Integrated School'],
+                                'Alternative Learning' => ['iPACE (iPACE and ETEEAP)'],
+                                'Offices' => ['College Registrar', 'IS Registrar', 'Lasallian Assistance Management Program'],
+                                'Administration' => ['Office of the President', 'Office of the Chancellor', 'VC for Academics', 'VC for Research, Innovation & Internationalization', 'VC for Mission', 'VP for Administration', 'VP for Advancement', 'VP for Finance'],
+                            ] as $group => $departments)
+                                <optgroup label="{{ $group }}">
+                                    @foreach ($departments as $department)
+                                        <option>{{ $department }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
                         </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="regReason" class="form-label small fw-bold text-uppercase">Reason for access</label>
+                        <input type="text" id="regReason" class="form-control" placeholder="e.g. Track CITE applicants for enrollment planning" required>
+                        <div class="form-text">You only see records for the department you choose. IATO Admin confirms your position before approving.</div>
                     </div>
 
                     <div class="d-flex gap-2">

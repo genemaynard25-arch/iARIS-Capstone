@@ -96,4 +96,27 @@ class User extends Authenticatable
         return $this->role === "principal" ||
             $this->assigned_sub_level === "shs";
     }
+
+    // How the role is shown to people: [label, office, Bootstrap icon].
+    // Used by the sidebar's "Signed in as" card and the two-factor setup page.
+    public function roleInfo(): array
+    {
+        if ($this->isShsPrincipal()) {
+            return ["SHS Principal", "Senior High School", "bi-building"];
+        }
+        if ($this->role !== "admin" && $this->activeTempAdminGrant()) {
+            return ["Temporary Admin", "IATO", "bi-hourglass-split"];
+        }
+
+        return match ($this->role) {
+            "admin" => ["Super Admin", "IATO", "bi-star-fill"],
+            "iato_staff" => ["IATO Staff", "IATO", "bi-person-badge"],
+            "dean" => ["Dean", "CITE", "bi-mortarboard"],
+            "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
+            "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
+            "lamp" => ["LAMP Office", "LAMP", "bi-award"],
+            "chancellor" => ["Chancellor", "Executive Office", "bi-bank"],
+            default => [ucwords(str_replace("_", " ", $this->role ?? "User")), "iARIS", "bi-person"],
+        };
+    }
 }

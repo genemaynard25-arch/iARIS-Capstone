@@ -5,27 +5,8 @@
 @php
     $me = auth()->user();
 
-    // Role key => [label, office, icon]. Same role keys as Access Control.
-    $roleInfo = [
-        'admin' => ['Super Admin', 'IATO', 'bi-star-fill'],
-        'iato_staff' => ['IATO Staff', 'IATO', 'bi-person-badge'],
-        'dean' => ['Dean', 'CITE', 'bi-mortarboard'],
-        'program_chair' => ['Program Chair', 'BSCS', 'bi-mortarboard'],
-        'principal' => ['SHS Principal', 'Senior High School', 'bi-building'],
-        'registrar' => ['Registrar', "Registrar's Office", 'bi-person-vcard'],
-        'lamp' => ['LAMP Office', 'LAMP', 'bi-award'],
-        'chancellor' => ['Chancellor', 'Executive Office', 'bi-bank'],
-    ];
-
-    if ($me->isShsPrincipal()) {
-        // The seeded SHS principal has role 'admin'; their SHS assignment decides
-        [$roleLabel, $office, $roleIcon] = $roleInfo['principal'];
-    } elseif ($me->role !== 'admin' && $me->activeTempAdminGrant()) {
-        // Given admin rights for a while on the Access Control page
-        [$roleLabel, $office, $roleIcon] = ['Temporary Admin', 'IATO', 'bi-hourglass-split'];
-    } else {
-        [$roleLabel, $office, $roleIcon] = $roleInfo[$me->role] ?? [ucwords(str_replace('_', ' ', $me->role ?? 'User')), 'iARIS', 'bi-person'];
-    }
+    // e.g. ['Super Admin', 'IATO', 'bi-star-fill'] (see User::roleInfo())
+    [$roleLabel, $office, $roleIcon] = $me->roleInfo();
 
     // "Cherrie Villafuerte" -> "Villafuerte, Cherrie" and "CV"
     $parts = preg_split('/\s+/', trim($me->name));
