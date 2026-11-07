@@ -20,15 +20,15 @@
             {{-- Who is signed in --}}
             @include('layouts.partials.signed-in')
 
-            {{-- The red numbers: records that need review, and unread reports --}}
+            {{-- The numbers: requests from IATO (amber) and unread reports (red) --}}
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
             <nav class="nav nav-pills flex-column">
                 <a href="{{ url('/lamp') }}" class="nav-link {{ request()->is('lamp') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                 <a href="{{ url('/lamp/scholars') }}" class="nav-link {{ request()->is('lamp/scholars*') ? 'active' : '' }}">
                     <i class="bi bi-award"></i> Scholars
-                    @if ($navCounts['scholars'] ?? 0)
-                        <span class="badge rounded-pill text-bg-danger ms-auto">{{ $navCounts['scholars'] }}</span>
-                    @endif
+                    {{-- Amber: requests from IATO waiting for your answer (the Scholars page updates it) --}}
+                    <span class="badge rounded-pill text-bg-warning ms-auto {{ ($navCounts['requests'] ?? 0) ? '' : 'd-none' }}" id="navRequestsBadge"
+                          title="Requests from IATO">{{ $navCounts['requests'] ?? 0 }}</span>
                 </a>
                 <a href="{{ url('/lamp/reports') }}" class="nav-link {{ request()->is('lamp/reports*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-text"></i> Reports

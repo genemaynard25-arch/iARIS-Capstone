@@ -24,7 +24,8 @@ class SettingsController extends Controller
         $user = auth()->user();
 
         // Every role gets these; the President / Chancellor office also gets report and display preferences
-        $sections = ['profile', 'security', 'notifications', 'ai'];
+        // (The LAMP Office has no AI Assistant, so no AI section either.)
+        $sections = $user->isLamp() ? ['profile', 'security', 'notifications'] : ['profile', 'security', 'notifications', 'ai'];
         if ($user->isChancellor()) {
             array_splice($sections, 3, 0, ['reports']);
             $sections[] = 'display';
@@ -44,7 +45,7 @@ class SettingsController extends Controller
             'program_chair' => ['Program Chair', 'Program Chair', 'BS Computer Science · CITE', 'Dashboard, Applicants, Analytics, Reports'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Applicants, Reports'],
-            'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Mission Office', 'Dashboard, Scholars, Reports'],
+            'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
             'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Dashboard, Analytics, Reports'],
         ];
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
@@ -73,8 +74,12 @@ class SettingsController extends Controller
             ],
             'access' => [
                 'Role' => $roleLabel,
-                'Access level' => $user->access_type === 'editor' ? 'Can view and edit' : 'Read-only',
-                'Data scope' => $scope,
+                'Access level' => match (true) {
+                    $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->access_type === 'editor' => 'Can view and edit',
+                    default => 'Read-only',
+                },
+                'Data scope' => $user->isLamp() ? 'Scholarships only' : $scope,
                 'Modules' => $modules,
                 'Account status' => 'Active',
                 'Member since' => $user->created_at?->format('M j, Y') ?? '—',
@@ -82,6 +87,7 @@ class SettingsController extends Controller
             'twoFactorOn' => $user->two_factor_confirmed_at !== null,
             'twoFactorSince' => $user->two_factor_confirmed_at ? Carbon::parse($user->two_factor_confirmed_at)->format('M j, Y') : null,
             'signIns' => $this->signIns($user->id),
+            'notificationGroups' => $this->notificationGroups($user),
 
             // For the President / Chancellor's report and display preferences
             'years' => ChancellorController::YEARS,
@@ -94,6 +100,38 @@ class SettingsController extends Controller
                 ['initials' => 'WA', 'name' => 'Mr. Wenifredo Angeles'],
             ] : [],
         ]);
+    }
+
+    /**
+     * Email notification switches: heading => [[key, label, description, on by default], …].
+     * A '' heading means no heading. "Security alerts" is added by the view (always on).
+     */
+    private function notificationGroups($user): array
+    {
+        if ($user->isLamp()) {
+            return [
+                'Requests from IATO' => [
+                    ['request', 'New request from IATO', 'IATO found a scholar whose record doesn\'t match yours and asked you to check. Recommended.', true],
+                    ['reply', 'IATO replied', 'IATO answered a request or a flag you sent.', true],
+                ],
+                'Your corrections' => [
+                    ['approved', 'Correction approved', 'The Super Admin approved a scholar correction you sent. It is now visible to everyone.', false],
+                    ['returned', 'Correction sent back', 'The Super Admin returned a correction with a reason.', true],
+                ],
+                'Reports' => [
+                    ['newReport', 'New report from IATO', 'IATO sent you a scholarship report.', true],
+                    ['weekly', 'Weekly scholar summary', 'Every Monday: new scholars, matches, and open discrepancies.', false],
+                ],
+            ];
+        }
+
+        return [
+            '' => [
+                ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to your office.', true],
+                ['reply', 'Reply from IATO', 'Get an email when IATO answers one of your messages on a report.', true],
+                ['weekly', 'Weekly enrollment summary', 'A short email every Monday with applicants, paid reservations, and enrollment compared with last year.', false],
+            ],
+        ];
     }
 
     /**

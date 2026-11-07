@@ -38,6 +38,9 @@
         </div>
     </div>
 
+    {{-- Scholars IATO asked you to check --}}
+    @include('lamp.partials.iato-requests')
+
     <div class="card border-0 shadow-sm rounded-4" id="scholarCard">
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -342,4 +345,5 @@
     </script>
     @include('lamp.partials.scholar-actions-script')
     <script>scholarsChanged();</script>
+    @include('lamp.partials.iato-requests-script')
 @endsection

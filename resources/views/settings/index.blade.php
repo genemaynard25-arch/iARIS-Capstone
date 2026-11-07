@@ -88,7 +88,7 @@
                         <div class="card border-0 shadow-sm rounded-4">
                             <div class="card-body p-4">
                                 <h2 class="fs-6 fw-bold mb-0">Your access</h2>
-                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.</p>
+                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.@if (auth()->user()->isLamp()) Your corrections to scholar records go to the IATO Review Queue before other users see them.@endif</p>
                                 <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-2">
                                     @foreach ($access as $label => $value)
                                         <div class="col">
@@ -220,14 +220,19 @@
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="notifications">
                             <div class="card-body p-4">
                                 <h2 class="fs-6 fw-bold mb-0">Email notifications</h2>
-                                <p class="small text-body-secondary">Sent to <b class="text-body">{{ $profile['email'] }}</b></p>
-                                @foreach ([
-                                    ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to your office.', true],
-                                    ['reply', 'Reply from IATO', 'Get an email when IATO answers one of your messages on a report.', true],
-                                    ['weekly', 'Weekly enrollment summary', 'A short email every Monday with applicants, paid reservations, and enrollment compared with last year.', false],
-                                ] as [$key, $label, $description, $default])
-                                    @include('settings.partials.switch', ['name' => $key, 'label' => $label, 'description' => $description, 'checked' => $default])
+                                <p class="small text-body-secondary">Sent to <b class="text-body">{{ $profile['email'] }}</b>. In-app alerts on your Dashboard are always on.</p>
+                                {{-- The switches come from SettingsController::notificationGroups() --}}
+                                @foreach ($notificationGroups as $heading => $switches)
+                                    @if ($heading)
+                                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4">{{ $heading }}</div>
+                                    @endif
+                                    @foreach ($switches as [$key, $label, $description, $default])
+                                        @include('settings.partials.switch', ['name' => $key, 'label' => $label, 'description' => $description, 'checked' => $default])
+                                    @endforeach
                                 @endforeach
+                                @if (count($notificationGroups) > 1)
+                                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4">Security</div>
+                                @endif
                                 @include('settings.partials.switch', ['name' => 'security', 'label' => 'Security alerts', 'description' => 'Sign-ins from a new device and password changes. Always on for your protection.', 'checked' => true, 'disabled' => true])
                             </div>
                             @include('settings.partials.save-footer')
