@@ -228,7 +228,7 @@
                                     <td class="ps-4 fw-bold small">{{ $applicant['name'] }}</td>
                                     <td><span class="badge bg-info-subtle text-info-emphasis" title="{{ $programs[$applicant['program']]['name'] }}">{{ $applicant['program'] }}</span></td>
                                     <td><span class="badge {{ $statusBadges[$applicant['status']] }}">{{ $applicant['status'] }}</span></td>
-                                    <td class="pe-4 small text-body-secondary text-nowrap">{{ $applicant['date'] }}</td>
+                                    <td class="pe-4 small text-body-secondary text-nowrap">{{ \Illuminate\Support\Carbon::parse($applicant['applied'])->format('M j, Y') }}</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="4" class="text-center text-body-secondary small py-5">No applicants to show.</td></tr>

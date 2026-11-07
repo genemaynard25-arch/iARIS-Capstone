@@ -96,3 +96,4 @@ Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth'
 // College dashboard for Deans and Program Chairs (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to deans and program chairs, plus IATO admins
 Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('auth')->name('college.dashboard');
+Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');

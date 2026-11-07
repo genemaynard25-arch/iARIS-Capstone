@@ -30,8 +30,8 @@
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
             <nav class="nav nav-pills flex-column">
                 <a href="{{ url('/college') }}" class="nav-link {{ request()->is('college') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                {{-- TODO: Applicants, Analytics and Reports pages scoped to the college / program --}}
-                <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-people"></i> Applicants</a>
+                <a href="{{ url('/college/applicants') }}" class="nav-link {{ request()->is('college/applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
+                {{-- TODO: Analytics and Reports pages scoped to the college / program --}}
                 <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-bar-chart-line"></i> Analytics</a>
                 <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-file-earmark-text"></i> Reports</a>
             </nav>
