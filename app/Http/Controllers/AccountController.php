@@ -190,7 +190,7 @@ class AccountController extends Controller
             "status" => $user->status,
             "mfa" => $user->two_factor_confirmed_at !== null,
             "lastLogin" => $user->last_login_at?->toIso8601String(),
-            "joined" => $user->created_at?->toDateString(),
+            "joined" => $user->created_at->toDateString(),
             "permanent" => $user->role === "admin",
         ];
     }
