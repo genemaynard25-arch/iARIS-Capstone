@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'level' => \App\Http\Middleware\EnsureUserHasAccess::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'module' => \App\Http\Middleware\EnsureCanAccessModule::class,
         ]);
     })
     
