@@ -12,6 +12,12 @@
         'reports' => ['Report Preferences', 'bi-file-earmark-text'],
         'ai' => ['AI Assistant', 'bi-stars'],
         'display' => ['Display', 'bi-sliders'],
+        // Super Admin only (see settings/partials/system.blade.php)
+        'year' => ['Academic Year', 'bi-calendar3'],
+        'fees' => ['Reservation Fees', 'bi-cash-coin'],
+        'review' => ['Review & Reports', 'bi-check2-square'],
+        'retention' => ['Data Retention', 'bi-archive'],
+        'backups' => ['Backups', 'bi-cloud-check'],
     ];
     // After changing the password (or a mistake in it), open the Security section again
     $passwordErrors = $errors->updatePassword;
@@ -26,6 +32,10 @@
                 <div class="card-body p-2">
                     <nav class="nav nav-pills flex-row flex-lg-column gap-1" role="tablist" id="sectionNav">
                         @foreach ($sections as $key)
+                            @if ($key === 'year')
+                                {{-- A label before the system sections --}}
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary px-3 pt-3 pb-1 d-none d-lg-block">System</div>
+                            @endif
                             <button class="nav-link text-start fw-semibold {{ $key === $openSection ? 'active' : '' }}" data-bs-toggle="pill" data-bs-target="#section-{{ $key }}" type="button" role="tab" data-section="{{ $key }}">
                                 <i class="bi {{ $sectionInfo[$key][1] }} me-2"></i>{{ $sectionInfo[$key][0] }}
                             </button>
@@ -311,6 +321,9 @@
                         </form>
                     </div>
                 @endif
+                @if (in_array('year', $sections))
+                    @include('settings.partials.system')
+                @endif
             </div>
         </div>
     </div>
@@ -382,6 +395,23 @@
                 dirty.classList.add('d-none');
                 if (key === 'ai') applyAi(values);
                 toast('Settings saved');
+            });
+        });
+
+        // ---- System settings (Super Admin): checked, but there's nowhere to save them yet ----
+        // TODO (backend): a settings table and a route to save these
+        document.querySelectorAll('[data-system]').forEach(form => {
+            const save = form.querySelector('[data-save]');
+            const dirty = form.querySelector('[data-dirty]');
+            form.addEventListener('input', () => { save.disabled = false; dirty.classList.remove('d-none'); });
+            form.addEventListener('change', () => { save.disabled = false; dirty.classList.remove('d-none'); });
+            form.addEventListener('submit', e => {
+                e.preventDefault();
+                form.classList.add('was-validated');
+                if (!form.checkValidity()) return form.querySelector(':invalid')?.focus();
+                save.disabled = true;
+                dirty.classList.add('d-none');
+                toast('Checked, but not saved to the server yet: system settings need the backend.');
             });
         });
 

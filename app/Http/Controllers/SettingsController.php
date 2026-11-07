@@ -30,6 +30,12 @@ class SettingsController extends Controller
             $sections[] = 'display';
         }
 
+        // The Super Admin also gets the system settings (front end only for now: nothing stores them yet)
+        $isSuperAdmin = $user->role === 'admin' && ! $user->isShsPrincipal();
+        if ($isSuperAdmin) {
+            array_push($sections, 'year', 'fees', 'review', 'retention', 'backups');
+        }
+
         // Role key => [label, title, office, modules]. Same role keys as Access Control.
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
@@ -50,8 +56,13 @@ class SettingsController extends Controller
             ? 'All units, institution-wide'
             : trim(($scopes[$user->assigned_level] ?? 'All units') . ($user->assigned_sub_level === 'shs' ? ' · Senior High' : ''));
 
+        // For the Academic Year section: the newest imported year and the one after it
+        $currentYear = \App\Support\ApplicantRecords::academicYear();
+        $startYear = (int) substr($currentYear, 0, 4);
+
         return view('settings.index', [
             'sections' => $sections,
+            'academicYears' => [$currentYear, ($startYear + 1) . '–' . ($startYear + 2)],
             'profile' => [
                 'name' => $user->name,
                 'email' => $user->email,
