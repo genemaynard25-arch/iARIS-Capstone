@@ -18,36 +18,55 @@
 
         {{-- Links (this part scrolls if the window is too short) --}}
         <div class="flex-grow-1 overflow-auto px-3 py-3">
+            @php($user = auth()->user())
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MAIN</div>
             <nav class="nav nav-pills flex-column mb-3">
-                <a href="{{ url('/home') }}" class="nav-link {{ request()->is('home') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                <a href="{{ url('/applicants') }}" class="nav-link {{ request()->is('applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
-                <a href="{{ url('/reports') }}" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports</a>
-                <a href="{{ url('/analytics') }}" class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+                @if ($user->canAccess('dashboard'))
+                    <a href="{{ url('/home') }}" class="nav-link {{ request()->is('home') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                @endif
+                @if ($user->canAccess('applicants'))
+                    <a href="{{ url('/applicants') }}" class="nav-link {{ request()->is('applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
+                @endif
+                @if ($user->canAccess('reports'))
+                    <a href="{{ url('/reports') }}" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports</a>
+                @endif
+                @if ($user->canAccess('analytics'))
+                    <a href="{{ url('/analytics') }}" class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+                @endif
             </nav>
 
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">RECORDS</div>
             <nav class="nav nav-pills flex-column mb-3">
-                <a href="{{ url('/records/is') }}" class="nav-link {{ request()->is('records/is*') ? 'active' : '' }}"><i class="bi bi-building"></i> Integrated School</a>
-                <a href="{{ url('/records/college') }}" class="nav-link {{ request()->is('records/college*') ? 'active' : '' }}"><i class="bi bi-mortarboard"></i> College</a>
-                <a href="{{ url('/records/scholars') }}" class="nav-link {{ request()->is('records/scholars*') ? 'active' : '' }}"><i class="bi bi-award"></i> Scholars</a>
+                @if ($user->canAccess('is'))
+                    <a href="{{ url('/records/is') }}" class="nav-link {{ request()->is('records/is*') ? 'active' : '' }}"><i class="bi bi-building"></i> Integrated School</a>
+                @endif
+                @if ($user->canAccess('college'))
+                    <a href="{{ url('/records/college') }}" class="nav-link {{ request()->is('records/college*') ? 'active' : '' }}"><i class="bi bi-mortarboard"></i> College</a>
+                @endif
+                @if ($user->canAccess('scholars'))
+                    <a href="{{ url('/records/scholars') }}" class="nav-link {{ request()->is('records/scholars*') ? 'active' : '' }}"><i class="bi bi-award"></i> Scholars</a>
+                @endif
                 <a href="{{ url('/records/graduate') }}" class="nav-link {{ request()->is('records/graduate*') ? 'active' : '' }}"><i class="bi bi-journal-bookmark"></i> Graduate Programs</a>
                 <a href="{{ url('/records/law') }}" class="nav-link {{ request()->is('records/law*') ? 'active' : '' }}"><i class="bi bi-bank2"></i> College of Law</a>
                 <a href="{{ url('/records/ipace') }}" class="nav-link {{ request()->is('records/ipace*') ? 'active' : '' }}"><i class="bi bi-laptop"></i> iPACE</a>
                 <a href="#" class="nav-link"><i class="bi bi-briefcase"></i> ETEEAP</a>
-                {{-- RBAC: wrap in @can('import-applicants') --}}
-                <a href="{{ url('/import') }}" class="nav-link {{ request()->is('import*') ? 'active' : '' }}"><i class="bi bi-cloud-arrow-up"></i> Import Data</a>
+                @if ($user->canAccess('import'))
+                    <a href="{{ url('/import') }}" class="nav-link {{ request()->is('import*') ? 'active' : '' }}"><i class="bi bi-cloud-arrow-up"></i> Import Data</a>
+                @endif
             </nav>
 
-            {{-- RBAC: admin only --}}
-        @if (auth()->user()->isAdmin())
-            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">SYSTEM</div>
-            <nav class="nav nav-pills flex-column">
-                <a href="{{ url('/access-control') }}" class="nav-link {{ request()->is('access-control*') ? 'active' : '' }}"><i class="bi bi-shield-lock"></i> Access Control</a>
-                <a href="{{ url('/accounts') }}" class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}"><i class="bi bi-person-gear"></i> User Accounts</a>
-                <a href="{{ url('/audit-logs') }}" class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}"><i class="bi bi-clipboard-data"></i> Audit Logs</a>
-            </nav>
-        @endif
+            @if ($user->isAdmin() || $user->canAccess('audit'))
+                <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">SYSTEM</div>
+                <nav class="nav nav-pills flex-column">
+                    @if ($user->isAdmin())
+                        <a href="{{ url('/access-control') }}" class="nav-link {{ request()->is('access-control*') ? 'active' : '' }}"><i class="bi bi-shield-lock"></i> Access Control</a>
+                        <a href="{{ url('/accounts') }}" class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}"><i class="bi bi-person-gear"></i> User Accounts</a>
+                    @endif
+                    @if ($user->canAccess('audit'))
+                        <a href="{{ url('/audit-logs') }}" class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}"><i class="bi bi-clipboard-data"></i> Audit Logs</a>
+                    @endif
+                </nav>
+            @endif
         </div>
 
         {{-- Footer (always visible) --}}

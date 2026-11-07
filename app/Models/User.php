@@ -44,7 +44,27 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
 {
-    return $this->role === 'admin';
+    if ($this->role === 'admin') {
+        return true;
+    }
+    return \App\Models\TempAdmin::active()->where('user_id', $this->id)->exists();
+}
+
+    public function canAccess(string $module): bool
+{
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return \App\Models\RolePermission::where('role', $this->role)
+            ->where('module', $module)
+            ->where('enabled', true)
+            ->exists();
+}
+    // Grants temporary admin privileges to a user. Returns the TempAdmin model if the user has an active grant, or null otherwise.
+    public function activeTempAdminGrant(): ?\App\Models\TempAdmin
+{
+    return \App\Models\TempAdmin::active()->where('user_id', $this->id)->first();
 }
 
     // President / Chancellor office: a read-only, university-wide dashboard

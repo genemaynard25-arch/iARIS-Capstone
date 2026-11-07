@@ -5,32 +5,39 @@
 @section('page-subtitle', 'Manage role permissions and temporary admin access across all iARIS modules')
 
 @section('content')
-    {{-- Permanent administrator --}}
-    <div class="bg-iaris text-white rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
-        <div class="icon-circle rounded-3 bg-white bg-opacity-10 border border-white border-opacity-25 fs-5 d-flex align-items-center justify-content-center">
-            <i class="bi bi-star-fill"></i>
-        </div>
-        <div class="flex-grow-1">
-            <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Permanent Administrator</h2>
-            <p class="small text-white-50 mb-0">Full system access · Cannot be restricted · Access Control is managed only by this account</p>
-        </div>
-        <span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2">
-            <i class="bi bi-lock-fill text-iaris-pale me-1"></i> Full Access · Permanent
-        </span>
-    </div>
-
-    {{-- Temporary admin --}}
-    <div class="card border-0 border-start border-4 border-warning shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h2 class="fs-6 fw-bold mb-1">Temporary Admin Access</h2>
-                    <p class="small text-body-secondary mb-0">Give another staff member admin-level access for a limited time. Access ends on its own when the period expires.</p>
+            {{-- Permanent administrator / Temporary Admin --}}
+            @if ($permanentAdmin['isRealAdmin'])
+                <div class="bg-iaris text-white rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
+                    <div class="icon-circle rounded-3 bg-white bg-opacity-10 border border-white border-opacity-25 fs-5 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Permanent Administrator</h2>
+                        <p class="small text-white-50 mb-0">Full system access · Cannot be restricted · Access Control is managed only by this account</p>
+                    </div>
+                    <span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2">
+                        <i class="bi bi-lock-fill text-iaris-pale me-1"></i> Full Access · Permanent
+                    </span>
                 </div>
-                <button type="button" class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#tempModal">
-                    <i class="bi bi-person-fill-lock me-1"></i> Assign Temporary Admin
-                </button>
-            </div>
+            @elseif ($myActiveTempGrant)
+                <div class="bg-warning-subtle border border-warning rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
+                    <div class="icon-circle rounded-3 bg-warning text-dark fs-5 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Temporary Admin Access</h2>
+                        <p class="small text-body-secondary mb-0">Your admin access expires {{ $myActiveTempGrant->expires_at->format('M j, Y \a\t g:i A') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            @if ($permanentAdmin['isRealAdmin'])
+                <div class="d-flex justify-content-end mb-2">
+                    <button type="button" class="btn btn-primary btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#tempModal">
+                        <i class="bi bi-person-plus-fill me-1"></i> Assign Temporary Admin
+                    </button>
+                </div>
+            @endif
 
             {{-- The active temporary admin. Always in the page so the script can fill it in; hidden when there is none. --}}
             <div class="d-flex flex-wrap align-items-center gap-3 p-3 rounded-3 bg-warning-subtle border border-warning-subtle {{ $tempAdmin ? '' : 'd-none' }}" id="tempRow">
@@ -116,7 +123,11 @@
                                                     @if ($locked)
                                                         disabled title="{{ $isAdmin ? 'IATO Admin always has access' : 'Only the IATO Admin can have this' }}"
                                                     @else
-                                                        data-perm data-role-name="{{ $role['name'] }}" data-module-name="{{ $module['name'] }}"
+                                                        data-perm
+                                                        data-role="{{ $role['key'] }}"
+                                                        data-module="{{ $module['key'] }}"
+                                                        data-role-name="{{ $role['name'] }}"
+                                                        data-module-name="{{ $module['name'] }}"
                                                     @endif
                                                 >
                                             </div>
@@ -212,7 +223,7 @@
                         <select class="form-select" id="tempStaff" required>
                             <option value="">Choose a staff member…</option>
                             @foreach ($staffOptions as $staff)
-                                <option value="{{ $loop->index }}">{{ $staff['name'] }} — {{ $staff['role'] }}</option>
+                                <option value="{{ $staff['id'] }}">{{ $staff['name'] }} — {{ $staff['role'] }}</option>
                             @endforeach
                         </select>
                         <div class="invalid-feedback">Choose who gets temporary access.</div>
@@ -353,13 +364,37 @@
             updateChanges();
         });
 
-        document.getElementById('saveButton').addEventListener('click', () => {
+        document.getElementById('saveButton').addEventListener('click', async () => {
             const list = changed();
+            if (!list.length) return;
+
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const payload = list.map(input => ({
+                role: input.dataset.role,
+                module: input.dataset.module,
+                enabled: input.checked,
+            }));
+
+            const res = await fetch('{{ url('/access-control/permissions') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ changes: payload }),
+            });
+
+            if (!res.ok) {
+                toast('Something went wrong saving permissions.');
+                return;
+            }
+
             list.forEach(input => {
                 const granted = input.checked;
                 addLog({
                     action: `${input.dataset.moduleName} access ${granted ? 'granted' : 'revoked'}`,
-                    meta: 'Sample only — not saved',
+                    meta: `${input.dataset.roleName} role can ${granted ? 'now' : 'no longer'} access ${input.dataset.moduleName}`,
                     affected: input.dataset.roleName,
                     module: input.dataset.moduleName,
                     type: granted ? 'Granted' : 'Revoked',
@@ -367,9 +402,9 @@
                 input.defaultChecked = input.checked;
             });
             updateChanges();
-            toast(`${list.length} change${list.length === 1 ? '' : 's'} added to the log as samples. Permissions will really save once the backend is connected.`);
+            toast(`${list.length} change${list.length === 1 ? '' : 's'} saved.`);
         });
-
+        
         // Warn before leaving the page with unsaved switches
         window.addEventListener('beforeunload', e => {
             if (changed().length) e.preventDefault();
@@ -407,57 +442,49 @@
         start.addEventListener('change', checkDates);
         end.addEventListener('change', checkDates);
 
-        tempForm.addEventListener('submit', e => {
+       tempForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             checkDates();
             tempForm.classList.add('was-validated');
             if (!tempForm.checkValidity()) return;
 
-            const staff = STAFF[document.getElementById('tempStaff').value];
-            const replaced = hasTempAdmin() ? tempName() : null;
-            // "Cruz, Jasmine" -> "JC"
-            const [last, first = ''] = staff.name.split(',').map(part => part.trim());
-            const initials = (first.charAt(0) + last.charAt(0)).toUpperCase();
-
-            tempRow.querySelector('[data-temp="initials"]').textContent = initials;
-            tempRow.querySelector('[data-temp="name"]').textContent = staff.name;
-            tempRow.querySelector('[data-temp="role"]').textContent = staff.role;
-            tempRow.querySelector('[data-temp="meta"]').textContent =
-                `${staff.email} · Granted by ${CURRENT_USER} on ${formatDate(new Date())} · Starts ${formatDate(start.value)}`;
-            tempRow.querySelector('[data-temp="expires"]').textContent = `${formatDate(end.value)} · 11:59 PM`;
-            showTempAdmin(true);
-
-            addLog({
-                action: 'Temporary admin access assigned',
-                meta: `${staff.name} until ${formatDate(end.value)}` + (replaced && replaced !== staff.name ? ` (replaces ${replaced})` : '') +
-                    ` · ${document.getElementById('tempReason').value} · Sample only — not saved`,
-                affected: staff.role,
-                module: 'All Modules',
-                type: 'Temporary',
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const body = new URLSearchParams({
+                user_id: document.getElementById('tempStaff').value,
+                starts_at: start.value,
+                expires_at: end.value + 'T23:59',
+                reason: document.getElementById('tempReason').value,
             });
 
-            bootstrap.Modal.getInstance(document.getElementById('tempModal')).hide();
-            tempForm.reset();
-            tempForm.classList.remove('was-validated');
-            toast(`${staff.name} shown as temporary admin (sample only). Real access will change once the backend is connected.`);
+            const res = await fetch('{{ url('/access-control/temp-admin') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrf },
+                body,
+            });
+
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                toast('Something went wrong assigning temporary admin access.');
+            }
         });
 
         document.getElementById('revokeModal').addEventListener('show.bs.modal', () => {
             document.getElementById('revokeName').textContent = tempName();
         });
 
-        document.getElementById('revokeButton').addEventListener('click', () => {
-            const name = tempName();
-            addLog({
-                action: 'Temporary admin access revoked',
-                meta: `${name}'s admin access ended early · Sample only — not saved`,
-                affected: tempRow.querySelector('[data-temp="role"]').textContent,
-                module: 'All Modules',
-                type: 'Revoked',
+        document.getElementById('revokeButton').addEventListener('click', async () => {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const res = await fetch('{{ url('/access-control/temp-admin/revoke') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf },
             });
-            showTempAdmin(false);
-            bootstrap.Modal.getInstance(document.getElementById('revokeModal')).hide();
-            toast(`${name}'s temporary access removed (sample only).`);
+
+            if (res.ok) {
+                window.location.href = '{{ route('home') }}';
+            } else {
+                toast('Something went wrong revoking access.');
+            }
         });
     </script>
 @endsection
