@@ -31,6 +31,22 @@
         @endforeach
     </div>
 
+    {{-- Two tabs: the accounts, and access requests from the login page --}}
+    @php($waitingRequests = collect($accessRequests)->where('status', 'waiting')->count())
+    <ul class="nav nav-pills gap-1 mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#paneAccounts" role="tab" aria-controls="paneAccounts" aria-selected="true"><i class="bi bi-people me-1"></i> Accounts</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#paneRequests" role="tab" aria-controls="paneRequests" aria-selected="false" id="requestsTab">
+                <i class="bi bi-person-plus me-1"></i> Access Requests
+                <span class="badge rounded-pill bg-warning text-dark ms-1 {{ $waitingRequests ? '' : 'd-none' }}" id="requestsCount">{{ $waitingRequests }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+    <div class="tab-pane fade show active" id="paneAccounts" role="tabpanel" tabindex="0">
     <div class="card border-0 shadow-sm rounded-4">
         {{-- Search and filters --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -103,6 +119,13 @@
             <nav aria-label="Accounts pages"><ul class="pagination pagination-sm mb-0" id="pagination"></ul></nav>
         </div>
     </div>
+    </div>{{-- /Accounts tab --}}
+
+    {{-- Access Requests tab (front end only, see App\Support\AccessRequests) --}}
+    <div class="tab-pane fade" id="paneRequests" role="tabpanel" tabindex="0">
+        @include('accounts.partials.access-requests')
+    </div>
+    </div>{{-- /tab-content --}}
 
     {{-- One table row, copied by the script for every account --}}
     <template id="userRowTemplate">

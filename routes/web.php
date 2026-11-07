@@ -15,6 +15,8 @@ use App\Http\Controllers\IsRecordController;
 use App\Http\Controllers\LawRecordController;
 use App\Http\Controllers\IpaceRecordController;
 use App\Http\Controllers\EteeapRecordController;
+use App\Http\Controllers\ReviewQueueController;
+use App\Http\Controllers\SuccessionController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
@@ -65,6 +67,9 @@ Route::post('/accounts/{user}/reset-password', [AccountController::class, 'reset
 Route::post('/accounts/{user}/status', [AccountController::class, 'setStatus'])->middleware(['auth', 'admin']);
 Route::delete('/accounts/{user}', [AccountController::class, 'destroy'])->middleware(['auth', 'admin']);
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['auth', 'module:audit'])->name('audit-logs');
+// Review Queue (front end only for now) and Super User Succession
+Route::get('/review-queue', [ReviewQueueController::class, 'index'])->middleware(['auth', 'admin'])->name('review-queue');
+Route::get('/succession', [SuccessionController::class, 'index'])->middleware(['auth', 'admin'])->name('succession');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(['auth', 'module:import']);
 

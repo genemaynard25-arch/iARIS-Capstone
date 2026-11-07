@@ -2,8 +2,12 @@
 @php
     $user = auth()->user();
 
-    // One sidebar link. $match is the URL pattern that makes it "active"; $show hides it when false.
-    $link = fn ($label, $icon, $url, $match = null, $show = true) => compact('label', 'icon', 'url', 'match', 'show');
+    // One sidebar link. $match is the URL pattern that makes it "active"; $show hides it when false;
+    // $badge is a count shown on the right (0 = none).
+    $link = fn ($label, $icon, $url, $match = null, $show = true, $badge = 0) => compact('label', 'icon', 'url', 'match', 'show', 'badge');
+
+    // Only the real Super Admin (not a Temporary Admin) can hand over the role
+    $isSuperAdmin = $user->role === 'admin' && ! $user->isShsPrincipal();
 
     // The menu. A 'group' is a dropdown of links.
     $sections = [
@@ -29,11 +33,13 @@
         'SYSTEM' => [
             ['group' => 'Data Management', 'icon' => 'bi-database', 'items' => [
                 $link('Import Data', 'bi-cloud-arrow-up', '/import', 'import*', $user->canAccess('import')),
+                $link('Review Queue', 'bi-list-check', '/review-queue', 'review-queue*', $user->isAdmin(), $user->isAdmin() ? \App\Http\Controllers\ReviewQueueController::waitingCount() : 0),
                 $link('Audit Logs', 'bi-clipboard-data', '/audit-logs', 'audit-logs*', $user->canAccess('audit')),
             ]],
             ['group' => 'Access & Security', 'icon' => 'bi-shield-lock', 'items' => [
                 $link('Access Control', 'bi-shield-check', '/access-control', 'access-control*', $user->isAdmin()),
-                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', $user->isAdmin()),
+                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', $user->isAdmin(), $user->isAdmin() ? \App\Support\AccessRequests::waitingCount() : 0),
+                $link('Super User Succession', 'bi-people', '/succession', 'succession*', $isSuperAdmin),
             ]],
         ],
     ];
@@ -92,17 +98,21 @@
                             @php($id = 'nav-' . \Illuminate\Support\Str::slug($entry['group']))
                             <button type="button" class="nav-link nav-group-toggle {{ $open ? 'has-active' : '' }}" data-bs-toggle="collapse" data-bs-target="#{{ $id }}" aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="{{ $id }}">
                                 <i class="bi {{ $entry['icon'] }}"></i> {{ $entry['group'] }}
+                                {{-- A dot while closed if something inside is waiting --}}
+                                @if (collect($entry['items'])->sum('badge'))
+                                    <span class="nav-dot rounded-circle" title="Items waiting"></span>
+                                @endif
                                 <i class="bi bi-chevron-down chev ms-auto"></i>
                             </button>
                             <div class="collapse {{ $open ? 'show' : '' }}" id="{{ $id }}">
                                 <div class="nav nav-pills flex-column nav-sub">
                                     @foreach ($entry['items'] as $item)
-                                        <a href="{{ url($item['url']) }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}" @if ($isActive($item)) aria-current="page" @endif><i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}</a>
+                                        <a href="{{ url($item['url']) }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}" @if ($isActive($item)) aria-current="page" @endif><i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}@if ($item['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting">{{ $item['badge'] }}</span>@endif</a>
                                     @endforeach
                                 </div>
                             </div>
                         @else
-                            <a href="{{ url($entry['url']) }}" class="nav-link {{ $isActive($entry) ? 'active' : '' }}" @if ($isActive($entry)) aria-current="page" @endif><i class="bi {{ $entry['icon'] }}"></i> {{ $entry['label'] }}</a>
+                            <a href="{{ url($entry['url']) }}" class="nav-link {{ $isActive($entry) ? 'active' : '' }}" @if ($isActive($entry)) aria-current="page" @endif><i class="bi {{ $entry['icon'] }}"></i> {{ $entry['label'] }}@if ($entry['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting">{{ $entry['badge'] }}</span>@endif</a>
                         @endif
                     @endforeach
                 </nav>

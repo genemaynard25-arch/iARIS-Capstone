@@ -56,6 +56,8 @@ class AccountController extends Controller
             ->all();
 
         return view("accounts.index", [
+            // Requests from the login page's Request Access form (placeholder data for now)
+            "accessRequests" => \App\Support\AccessRequests::sample(),
             "roles" => $this->roles,
             "statuses" => $this->statuses,
             "departments" => $this->departments,
