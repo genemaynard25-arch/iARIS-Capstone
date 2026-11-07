@@ -299,6 +299,7 @@
         const state = { search: '', role: '', status: '', mfa: '', department: '', page: 1 };
         const selected = new Set();   // ids of ticked rows
         const tbody = document.getElementById('userRows');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         // ---- Small helpers ----
         const fullName = u => `${u.last}, ${u.first}`;
@@ -489,33 +490,33 @@
                 tone: 'primary', icon: 'bi-send', button: 'Resend Invitation',
                 done: n => `Sample only: no invitation was sent to ${n}.`,
             },
-            suspend: {
-                title: 'Suspend Account', subtitle: 'Temporarily block access to iARIS',
-                note: 'Suspended users are blocked from logging in right away. Their data and settings are kept, and you can reactivate them at any time.',
-                tone: 'warning', icon: 'bi-slash-circle', button: 'Suspend', reason: true,
-                apply: u => u.status = 'Suspended',
-                done: n => `${n} suspended (sample only).`,
+                suspend: {
+            title: 'Suspend Account', subtitle: 'Temporarily block access to iARIS',
+            note: 'Suspended users are blocked from logging in right away. Their data and settings are kept, and you can reactivate them at any time.',
+            tone: 'warning', icon: 'bi-slash-circle', button: 'Suspend', reason: true,
+            status: 'Suspended',
+                    done: n => `${n} suspended.`,
             },
             deactivate: {
                 title: 'Deactivate Account', subtitle: 'Turn off accounts that are no longer needed',
                 note: "Deactivated users can't log in. Use this for people who have left the office. You can reactivate them later.",
                 tone: 'secondary', icon: 'bi-toggle-off', button: 'Deactivate',
-                apply: u => u.status = 'Inactive',
-                done: n => `${n} deactivated (sample only).`,
+                status: 'Inactive',
+                done: n => `${n} deactivated.`,
             },
             reactivate: {
                 title: 'Reactivate Account', subtitle: 'Give access back',
                 note: 'The user can log in again with their current password and MFA.',
                 tone: 'primary', icon: 'bi-arrow-counterclockwise', button: 'Reactivate',
-                apply: u => u.status = 'Active',
-                done: n => `${n} reactivated (sample only).`,
+                status: 'Active',
+                done: n => `${n} reactivated.`,
             },
             delete: {
                 title: 'Delete Account', subtitle: 'This is permanent and cannot be undone',
                 note: 'Deleting removes the user and all their access from iARIS. Reports and logs they made are kept.',
                 tone: 'danger', icon: 'bi-exclamation-triangle-fill', button: 'Delete', typeToConfirm: true,
                 remove: true,
-                done: n => `${n} deleted (sample only — reload to bring back).`,
+                done: n => `${n} deleted.`,
             },
         };
 
@@ -568,24 +569,71 @@
             document.getElementById('confirmButton').disabled = typeInput.value !== 'DELETE';
         });
 
-        confirmForm.addEventListener('submit', e => {
-            e.preventDefault();
-            confirmForm.classList.add('was-validated');
-            if (!confirmForm.checkValidity()) return;
+        confirmForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        confirmForm.classList.add('was-validated');
+        if (!confirmForm.checkValidity()) return;
 
-            const action = ACTIONS[pending.key];
-            const users = pending.ids.map(byId);
-            const names = users.length === 1 ? fullName(users[0]) : `${users.length} users`;
-            users.forEach(u => {
-                if (action.apply) action.apply(u);
-                if (action.remove) USERS.splice(USERS.indexOf(u), 1);
-            });
+        const action = ACTIONS[pending.key];
+        const users = pending.ids.map(byId);
+        const names = users.length === 1 ? fullName(users[0]) : `${users.length} users`;
 
-            selected.clear();
+
+                if (pending.key === 'reset') {
+            try {
+                const results = await Promise.all(pending.ids.map(id =>
+                    fetch(`/accounts/${id}/reset-password`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    }).then(res => { if (!res.ok) throw new Error(); return res.json(); })
+                ));
+                confirmModal.hide();
+                toast(results.length === 1
+                    ? `New temporary password for ${names}: ${results[0].tempPassword} — share this with them directly.`
+                    : `Passwords reset for ${results.length} users.`);
+            } catch (err) {
+                toast('Something went wrong resetting the password. Please try again.');
+            }
+            return;
+        }
+
+   
+        if (!action.status && !action.remove) {
+            // reset / resend: no real backend yet
             confirmModal.hide();
-            render();
             toast(action.done(names));
+            return;
+        }
+
+        try {
+            await Promise.all(pending.ids.map(id => {
+                if (action.remove) {
+                    return fetch(`/accounts/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    }).then(res => { if (!res.ok) throw new Error(); });
+                }
+                return fetch(`/accounts/${id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ status: action.status }),
+                }).then(res => { if (!res.ok) throw new Error(); });
+            }));
+        } catch (err) {
+            toast('Something went wrong. Please try again.');
+            return;
+        }
+
+        users.forEach(u => {
+            if (action.status) u.status = action.status;
+            if (action.remove) USERS.splice(USERS.indexOf(u), 1);
         });
+
+        selected.clear();
+        confirmModal.hide();
+        render();
+        toast(action.done(names));
+    });
 
         // Row buttons (edit has its own pop-up; the rest use the confirm pop-up)
         tbody.addEventListener('click', e => {
@@ -646,33 +694,48 @@
             field('userEmailError').textContent = message;
         }
 
-        userForm.addEventListener('submit', e => {
+        userForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!editing) checkEmail();
             userForm.classList.add('was-validated');
             if (!userForm.checkValidity()) return;
 
-            const values = {
-                last: field('userLast').value.trim(),
+            const payload = {
                 first: field('userFirst').value.trim(),
+                last: field('userLast').value.trim(),
                 role: field('userRole').value,
                 department: field('userDepartment').value,
             };
 
-            if (editing) {
-                Object.assign(editing, values, { status: field('userStatus').value });
-                toast(`${fullName(editing)} updated (sample only).`);
-            } else {
-                const user = {
-                    ...values,
-                    id: Math.max(...USERS.map(u => u.id)) + 1,
-                    email: field('userEmail').value.trim().toLowerCase(),
-                    status: 'Pending', mfa: false, lastLogin: null,
-                    joined: new Date().toLocaleDateString('en-CA'),   // yyyy-mm-dd in local time
-                };
-                USERS.push(user);
-                toast(`${fullName(user)} added as Pending (sample only — no invitation email sent).`);
+            try {
+                if (editing) {
+                    payload.status = field('userStatus').value;
+                    const res = await fetch(`/accounts/${editing.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    Object.assign(editing, data.user);
+                    toast(`${fullName(editing)} updated.`);
+                } else {
+                    payload.email = field('userEmail').value.trim().toLowerCase();
+                    const res = await fetch('/accounts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    USERS.push(data.user);
+                    toast(`${fullName(data.user)} added as Pending. Temporary password: ${data.tempPassword} — share this with them directly.`);
+                }
+            } catch (err) {
+                toast('Something went wrong saving this account. Please try again.');
+                return;
             }
+
             userModal.hide();
             render();
         });
