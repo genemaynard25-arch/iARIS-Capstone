@@ -128,6 +128,13 @@ body { background-color: #F3F6F5; }
 
 .sidebar .nav-link:hover:not(.active) { background: rgba(255, 255, 255, 0.08); }
 
+/* "Signed in as" card at the top of every sidebar (layouts/partials/signed-in.blade.php) */
+.signed-in { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); transition: background 0.15s; }
+.signed-in:hover, .signed-in:focus-visible { background: rgba(255, 255, 255, 0.14); }
+.signed-in-avatar { width: 38px; height: 38px; background: var(--iaris-green-pale); color: #003D2E; font-size: 0.8rem; }
+.signed-in-label { font-size: 0.65rem; }
+.signed-in-role { color: #F5D58A; }
+
 /* Dropdown groups (Academic Divisions, Data Management, ...) */
 .sidebar .nav-group-toggle { text-align: start; white-space: nowrap; }
 .sidebar .nav-group-toggle.has-active { color: #fff; }

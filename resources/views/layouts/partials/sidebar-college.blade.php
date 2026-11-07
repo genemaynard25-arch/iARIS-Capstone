@@ -21,11 +21,7 @@
 
         <div class="flex-grow-1 overflow-auto px-3 py-3">
             {{-- Who is signed in --}}
-            <div class="rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 p-3 mb-3">
-                <div class="small fw-bold tracking-wide text-iaris-pale text-uppercase mb-1">Signed in as</div>
-                <div class="fw-bold">{{ auth()->user()->name }}</div>
-                <div class="small text-white-50">{{ $isChair ? 'Program Chair · BS Computer Science' : 'Dean · CITE' }}</div>
-            </div>
+            @include('layouts.partials.signed-in')
 
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
             <nav class="nav nav-pills flex-column">

@@ -78,6 +78,9 @@
 
         {{-- Links (this part scrolls if the window is too short) --}}
         <div class="flex-grow-1 overflow-auto px-3 py-3">
+            {{-- Who is signed in --}}
+            @include('layouts.partials.signed-in')
+
             @foreach ($sections as $title => $entries)
                 @continue(empty($entries))
                 <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">{{ $title }}</div>

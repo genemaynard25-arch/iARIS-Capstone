@@ -18,15 +18,7 @@
 
         <div class="flex-grow-1 overflow-auto px-3 py-3">
             {{-- Who is signed in --}}
-            <div class="d-flex align-items-center gap-2 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-10 p-2 mb-3">
-                <div class="icon-circle rounded-circle bg-white text-primary fw-bold d-flex align-items-center justify-content-center">
-                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                </div>
-                <div class="small lh-sm">
-                    <div class="fw-bold">{{ auth()->user()->name }}</div>
-                    <div class="text-white-50">LAMP Office Staff</div>
-                </div>
-            </div>
+            @include('layouts.partials.signed-in')
 
             {{-- The red numbers: records that need review, and unread reports --}}
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
