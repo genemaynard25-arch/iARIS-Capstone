@@ -112,6 +112,150 @@ class CollegeController extends Controller
         ]);
     }
 
+    // College Analytics: charts, a year comparison, AI insights and a next-AY estimate for the programs in scope
+    public function analytics(Request $request)
+    {
+        [$isChair, $selected, $scope, $scopeName] = $this->scope($request);
+        $sum = fn (string $field) => array_map(fn ($i) => array_sum(array_map(fn ($p) => $p[$field][$i], $scope)), array_keys(reset($scope)[$field]));
+
+        $applicants = $sum('applicants');
+        $enrolled = $sum('enrolled');
+        $funnel = array_combine(['Applied', 'Took exam', 'Passed', 'Paid', 'Enrolled'], $sum('funnel'));
+
+        return view('college.analytics', [
+            'isChair' => $isChair,
+            'description' => 'Admissions and enrollment analysis for ' . ($isChair ? 'BS Computer Science' : 'CITE') . ', with AI-generated insights',
+            'programs' => self::PROGRAMS,
+            'selected' => $selected,
+            'scopeName' => $scopeName,
+            // The programs shown in the per-program charts: all of them for a dean, one for a program chair
+            'chartPrograms' => $isChair ? $scope : self::PROGRAMS,
+
+            'years' => ChancellorController::YEARS,
+            'applicants' => $applicants,
+            'enrolled' => $enrolled,
+            'paid' => ['previous' => array_sum(array_column($scope, 'paidLastYear')), 'current' => $funnel['Paid']],
+            'funnel' => $funnel,
+            'status' => array_combine(['Pending', 'For Exam', 'Paid'], $sum('status')),
+            'insights' => $this->insights($scope, $applicants, $enrolled, $funnel),
+            'estimates' => $this->estimates($scope),
+        ]);
+    }
+
+    /**
+     * "AI Insights": six cards worked out from the numbers (descriptive, not forecasts).
+     * tone is a Bootstrap colour name: primary = growth/positive, danger = alert, warning, secondary = neutral.
+     */
+    private function insights(array $scope, array $applicants, array $enrolled, array $funnel): array
+    {
+        $pct = fn ($old, $new) => ($new - $old) / $old * 100;
+        $signed = fn ($n) => ($n >= 0 ? '+' : '−') . number_format(abs($n), 1) . '%';
+        $single = count($scope) === 1;
+        $name = $single ? reset($scope)['name'] : 'CITE';
+        $tag = $single ? array_key_first($scope) : 'CITE';
+        $all = self::PROGRAMS;
+        $citeTotal = fn (string $field, int $i) => array_sum(array_map(fn ($p) => $p[$field][$i], $all));
+        $cards = [];
+
+        // 1. Four-year trend
+        $g4 = $pct($applicants[0], $applicants[3]);
+        $cards[] = ['type' => $g4 >= 0 ? 'Growth' : 'Alert', 'tone' => $g4 >= 0 ? 'primary' : 'danger', 'icon' => $g4 >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow',
+            'title' => "{$name} applicants " . ($g4 >= 0 ? 'rose' : 'fell') . ' over four years', 'stat' => $signed($g4),
+            'statLabel' => 'since AY 2022–23 (' . number_format($applicants[0]) . ' to ' . number_format($applicants[3]) . ')',
+            'body' => 'Year by year: ' . implode(' → ', array_map('number_format', $applicants)) . '.', 'tags' => [$tag, '4-year trend']];
+
+        // 2. Fastest-growing program (dean) or share of CITE applicants (program chair)
+        if (! $single) {
+            $growth = array_map(fn ($p) => $pct($p['applicants'][2], $p['applicants'][3]), $all);
+            arsort($growth);
+            $best = array_key_first($growth);
+            $worst = array_key_last($growth);
+            $cards[] = ['type' => 'Growth', 'tone' => 'primary', 'icon' => 'bi-graph-up-arrow', 'title' => $all[$best]['name'] . ' is growing fastest',
+                'stat' => $signed($growth[$best]), 'statLabel' => 'applicants vs last AY',
+                'body' => $all[$best]['name'] . ' added ' . number_format($all[$best]['applicants'][3] - $all[$best]['applicants'][2]) . ' applicants. ' . $all[$worst]['name'] . ' is the weakest at ' . $signed($growth[$worst]) . '.',
+                'tags' => [$best, 'vs last AY']];
+        } else {
+            $share = $applicants[3] / $citeTotal('applicants', 3) * 100;
+            $shareBefore = $applicants[0] / $citeTotal('applicants', 0) * 100;
+            $cards[] = ['type' => 'Neutral', 'tone' => 'secondary', 'icon' => 'bi-pie-chart', 'title' => "{$name} is " . ($share >= $shareBefore ? 'gaining' : 'losing') . ' share of CITE applicants',
+                'stat' => number_format($share, 1) . '%', 'statLabel' => 'of CITE applicants, from ' . number_format($shareBefore, 1) . '% in AY 2022–23',
+                'body' => "{$name} has " . number_format($applicants[3]) . ' of ' . number_format($citeTotal('applicants', 3)) . ' CITE applicants this year.', 'tags' => [$tag, 'Share of CITE']];
+        }
+
+        // 3. Conversion, this AY vs last AY
+        $conversion = array_map(fn ($e, $a) => $e / $a * 100, $enrolled, $applicants);
+        $improved = round($conversion[3], 1) >= round($conversion[2], 1);
+        $cards[] = ['type' => $improved ? 'Positive' : 'Alert', 'tone' => $improved ? 'primary' : 'danger', 'icon' => $improved ? 'bi-check-circle' : 'bi-exclamation-triangle',
+            'title' => 'Conversion ' . ($improved ? 'improved' : 'slipped') . ' this year', 'stat' => number_format($conversion[3], 1) . '%',
+            'statLabel' => 'applied-to-enrolled, ' . ($improved ? 'up' : 'down') . ' from ' . number_format($conversion[2], 1) . '%',
+            'body' => 'Over four years: ' . implode(' → ', array_map(fn ($c) => number_format($c, 1) . '%', $conversion)) . '.', 'tags' => ['Conversion', $tag]];
+
+        // 4. The funnel step where the most applicants stop
+        $stages = array_keys($funnel);
+        $counts = array_values($funnel);
+        $worstStep = 1;
+        for ($i = 2; $i < count($counts); $i++) {
+            if ($counts[$i] / $counts[$i - 1] < $counts[$worstStep] / $counts[$worstStep - 1]) {
+                $worstStep = $i;
+            }
+        }
+        $cards[] = ['type' => 'Warning', 'tone' => 'warning', 'icon' => 'bi-funnel', 'title' => 'The biggest drop is ' . $stages[$worstStep - 1] . ' to ' . $stages[$worstStep],
+            'stat' => number_format(100 - $counts[$worstStep] / $counts[$worstStep - 1] * 100, 1) . '%', 'statLabel' => 'of applicants do not continue',
+            'body' => number_format($counts[$worstStep - 1] - $counts[$worstStep]) . ' of ' . number_format($counts[$worstStep - 1]) . ' applicants stop at this step.', 'tags' => ['Funnel', $tag]];
+
+        // 5. Slowest program (dean) or exam pass rate (program chair)
+        if (! $single) {
+            $growth = array_map(fn ($p) => $pct($p['applicants'][2], $p['applicants'][3]), $all);
+            asort($growth);
+            $slow = array_key_first($growth);
+            $falling = $growth[$slow] < 0;
+            $cards[] = ['type' => $falling ? 'Alert' : 'Neutral', 'tone' => $falling ? 'danger' : 'secondary', 'icon' => $falling ? 'bi-graph-down-arrow' : 'bi-dash-circle',
+                'title' => $all[$slow]['name'] . ($falling ? ' applicants are declining' : ' has the slowest growth'), 'stat' => $signed($growth[$slow]),
+                'statLabel' => 'applicants vs last AY', 'body' => 'Over four years: ' . implode(' → ', array_map('number_format', $all[$slow]['applicants'])) . '.', 'tags' => [$slow, 'vs last AY']];
+        } else {
+            $passRate = $funnel['Passed'] / $funnel['Took exam'] * 100;
+            $citePass = $citeTotal('funnel', 2) / $citeTotal('funnel', 1) * 100;
+            $cards[] = ['type' => $passRate >= $citePass ? 'Positive' : 'Neutral', 'tone' => $passRate >= $citePass ? 'primary' : 'secondary', 'icon' => 'bi-clipboard-check',
+                'title' => 'Exam pass rate', 'stat' => number_format($passRate, 1) . '%', 'statLabel' => 'of exam takers passed (CITE: ' . number_format($citePass, 1) . '%)',
+                'body' => number_format($funnel['Passed']) . ' of ' . number_format($funnel['Took exam']) . ' applicants who took the exam passed.', 'tags' => [$tag, 'Exam']];
+        }
+
+        // 6. Applied to paid reservation: best program (dean) or this program vs CITE (program chair)
+        $citePaid = $citeTotal('funnel', 3) / $citeTotal('funnel', 0) * 100;
+        if (! $single) {
+            $paidRate = array_map(fn ($p) => $p['funnel'][3] / $p['funnel'][0] * 100, $all);
+            arsort($paidRate);
+            $top = array_key_first($paidRate);
+            $cards[] = ['type' => 'Positive', 'tone' => 'primary', 'icon' => 'bi-check-circle', 'title' => $all[$top]['name'] . ' converts best to paid reservations',
+                'stat' => number_format($paidRate[$top], 1) . '%', 'statLabel' => 'applied-to-paid, vs ' . number_format($citePaid, 1) . '% across CITE',
+                'body' => number_format($all[$top]['funnel'][3]) . ' of ' . number_format($all[$top]['funnel'][0]) . ' applicants paid a reservation.', 'tags' => [$top, 'Paid']];
+        } else {
+            $mine = $funnel['Paid'] / $funnel['Applied'] * 100;
+            $cards[] = ['type' => $mine >= $citePaid ? 'Positive' : 'Warning', 'tone' => $mine >= $citePaid ? 'primary' : 'warning', 'icon' => $mine >= $citePaid ? 'bi-check-circle' : 'bi-exclamation-circle',
+                'title' => 'Applied to paid reservation', 'stat' => number_format($mine, 1) . '%', 'statLabel' => 'vs ' . number_format($citePaid, 1) . '% across CITE',
+                'body' => number_format($funnel['Paid']) . ' of ' . number_format($funnel['Applied']) . ' applicants paid a reservation.', 'tags' => [$tag, 'Paid']];
+        }
+
+        return $cards;
+    }
+
+    /**
+     * Next AY estimate per program: the average growth of the last two years, made 20% smaller.
+     * Confidence: High when those two years grew about the same, Low when they were very different.
+     */
+    private function estimates(array $scope): array
+    {
+        return array_values(array_map(function ($p) {
+            [, $a, $b, $c] = $p['applicants'];
+            $g1 = $b / $a - 1;
+            $g2 = $c / $b - 1;
+            $spread = abs($g1 - $g2);
+
+            return ['name' => $p['name'], 'current' => $c, 'estimate' => (int) round($c * (1 + ($g1 + $g2) / 2 * 0.8)),
+                'confidence' => $spread < 0.03 ? 'High' : ($spread < 0.07 ? 'Medium' : 'Low')];
+        }, $scope));
+    }
+
     /**
      * Applicants in the given programs, newest first. Placeholder records; later a query on the
      * applicants table (e.g. Applicant::where('college', 'CITE')->whereIn('program', ...)).

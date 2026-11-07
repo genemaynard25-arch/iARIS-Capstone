@@ -159,13 +159,13 @@ body { background-color: #F3F6F5; }
 /* 8. Two-factor setup: make Fortify's QR code (a fixed 192px SVG) fill its box */
 .qr-box svg { width: 100%; height: 100%; display: block; }
 
-/* 9. Chancellor dashboard "Export PDF": print the whole dashboard, without the sidebar and buttons.
-      (Section 4 hides everything else when printing, so this shows the dashboard again.) */
+/* 9. "Export PDF" on the Chancellor pages and College Analytics: print the whole page, without the sidebar and buttons.
+      (Section 4 hides everything else when printing, so this shows the page again.) */
 @media print {
-    body:has(#chancellorReport) * { visibility: visible; }
-    body:has(#chancellorReport) .sidebar,
-    body:has(#chancellorReport) #aiWidget,
-    body:has(#chancellorReport) .no-print { display: none !important; }
+    body:has(#chancellorReport, #collegeReport) * { visibility: visible; }
+    body:has(#chancellorReport, #collegeReport) .sidebar,
+    body:has(#chancellorReport, #collegeReport) #aiWidget,
+    body:has(#chancellorReport, #collegeReport) .no-print { display: none !important; }
 }
 
 /* 10. Password boxes: hide Microsoft Edge's built-in "show password" eye,

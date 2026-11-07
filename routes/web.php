@@ -97,3 +97,4 @@ Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth'
 // TODO (RBAC): limit to deans and program chairs, plus IATO admins
 Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('auth')->name('college.dashboard');
 Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');
+Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');

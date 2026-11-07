@@ -31,8 +31,8 @@
             <nav class="nav nav-pills flex-column">
                 <a href="{{ url('/college') }}" class="nav-link {{ request()->is('college') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                 <a href="{{ url('/college/applicants') }}" class="nav-link {{ request()->is('college/applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
-                {{-- TODO: Analytics and Reports pages scoped to the college / program --}}
-                <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+                <a href="{{ url('/college/analytics') }}" class="nav-link {{ request()->is('college/analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+                {{-- TODO: a Reports page scoped to the college / program --}}
                 <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-file-earmark-text"></i> Reports</a>
             </nav>
         </div>
