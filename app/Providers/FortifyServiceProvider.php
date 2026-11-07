@@ -25,39 +25,97 @@ class FortifyServiceProvider extends ServiceProvider
     public function register(): void
     {
         // After signing in (with or without 2FA), show the splash screen before the dashboard
-        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
-        $this->app->singleton(TwoFactorLoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(
+            LoginResponseContract::class,
+            LoginResponse::class,
+        );
+        $this->app->singleton(
+            TwoFactorLoginResponseContract::class,
+            LoginResponse::class,
+        );
     }
 
     /**
      * Bootstrap any application services.
      */
     public function boot(): void
-{
-    Fortify::createUsersUsing(CreateNewUser::class);
-    Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
-    Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
-    Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
-    Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
-    Fortify::loginView(fn () => view('auth.login'));
-    Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
-    Fortify::resetPasswordView(fn ($request) => view('auth.reset-password', ['request' => $request]));
-    
-    // The 2FA code step reuses the login page, with the code pop-up opened on top.
-    Fortify::twoFactorChallengeView(fn () => view('auth.login', ['twoFactor' => true]));
+    {
+        Fortify::createUsersUsing(CreateNewUser::class);
+        Fortify::updateUserProfileInformationUsing(
+            UpdateUserProfileInformation::class,
+        );
+        Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
+        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::redirectUserForTwoFactorAuthenticationUsing(
+            RedirectIfTwoFactorAuthenticatable::class,
+        );
+        Fortify::loginView(fn() => view("auth.login"));
+        Fortify::requestPasswordResetLinkView(
+            fn() => view("auth.forgot-password"),
+        );
+        Fortify::resetPasswordView(
+            fn($request) => view("auth.reset-password", [
+                "request" => $request,
+            ]),
+        );
 
-    RateLimiter::for('login', function (Request $request) {
-        $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
-        return Limit::perMinute(5)->by($throttleKey);
-    });
+        // The 2FA code step reuses the login page, with the code pop-up opened on top.
+        Fortify::twoFactorChallengeView(
+            fn() => view("auth.login", ["twoFactor" => true]),
+        );
 
-    RateLimiter::for('two-factor', function (Request $request) {
-        return Limit::perMinute(5)->by($request->session()->get('login.id'));
-    });
+        RateLimiter::for("login", function (Request $request) {
+            $throttleKey = Str::transliterate(
+                Str::lower($request->input(Fortify::username())) .
+                    "|" .
+                    $request->ip(),
+            );
+            return Limit::perMinute(5)->by($throttleKey);
+        });
 
-    RateLimiter::for('passkeys', function (Request $request) {
-        $credentialId = $request->input('credential.id');
-        return Limit::perMinute(10)->by(($credentialId ?: $request->session()->getId()).'|'.$request->ip());
-    });
-}
+        RateLimiter::for("two-factor", function (Request $request) {
+            return Limit::perMinute(5)->by(
+                $request->session()->get("login.id"),
+            );
+        });
+
+        RateLimiter::for("passkeys", function (Request $request) {
+            $credentialId = $request->input("credential.id");
+            return Limit::perMinute(10)->by(
+                ($credentialId ?: $request->session()->getId()) .
+                    "|" .
+                    $request->ip(),
+            );
+        });
+
+        // Make sure users with Suspended or Inactive status cannot log in, and update last_login_at on successful login
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = \App\Models\User::where("email", $request->email)->first();
+
+            if (
+                !$user ||
+                !\Illuminate\Support\Facades\Hash::check(
+                    $request->password,
+                    $user->password,
+                )
+            ) {
+                return null;
+            }
+
+            if (in_array($user->status, ["Suspended", "Inactive"])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => "This account has been suspended or deactivated. Contact your administrator.",
+                ]);
+            }
+
+            return $user;
+        });
+
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Login::class,
+            function ($event) {
+                $event->user->forceFill(["last_login_at" => now()])->save();
+            },
+        );
+    }
 }

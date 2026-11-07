@@ -57,6 +57,11 @@ Route::post('/access-control/temp-admin', [AccessControlController::class, 'assi
 Route::post('/access-control/temp-admin/revoke', [AccessControlController::class, 'revokeTempAdmin'])->middleware(['auth', 'admin']);
 Route::post('/access-control/permissions', [AccessControlController::class, 'savePermissions'])->middleware(['auth', 'admin']);
 Route::get('/accounts', [AccountController::class, 'index'])->middleware(['auth', 'admin'])->name('accounts');
+Route::post('/accounts', [AccountController::class, 'store'])->middleware(['auth', 'admin']);
+Route::put('/accounts/{user}', [AccountController::class, 'update'])->middleware(['auth', 'admin']);
+Route::post('/accounts/{user}/reset-password', [AccountController::class, 'resetPassword'])->middleware(['auth', 'admin']);
+Route::post('/accounts/{user}/status', [AccountController::class, 'setStatus'])->middleware(['auth', 'admin']);
+Route::delete('/accounts/{user}', [AccountController::class, 'destroy'])->middleware(['auth', 'admin']);
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['auth', 'module:audit'])->name('audit-logs');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(['auth', 'module:import']);
