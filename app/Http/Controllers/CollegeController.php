@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class DeanController extends Controller
+class CollegeController extends Controller
 {
     /**
      * The college's programs. Placeholder data, same idea as the Chancellor dashboard.
@@ -27,7 +27,7 @@ class DeanController extends Controller
     ];
 
     /**
-     * Dean / Program Chair dashboard: read-only, scoped to the user's college or program.
+     * College dashboard for Deans and Program Chairs: read-only, scoped to the user's college or program.
      *
      * A dean sees every program in their college and can narrow it to one (?program=BSCS).
      * A program chair is locked to their own program; ?program= is ignored for them.
@@ -59,7 +59,7 @@ class DeanController extends Controller
         $funnel = array_combine(['Applied', 'Took exam', 'Passed', 'Paid', 'Enrolled'], $sum('funnel'));
         $status = array_combine(['Pending', 'For Exam', 'Paid'], $sum('status'));
 
-        return view('dean.dashboard', [
+        return view('college.dashboard', [
             'isChair' => $isChair,
             'heading' => $isChair ? 'BS Computer Science' : 'CITE Dashboard',
             'description' => $isChair

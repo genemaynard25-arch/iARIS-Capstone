@@ -28,8 +28,8 @@ class HomeController extends Controller
         if (auth()->user()->isChancellor()) {
             return redirect()->route('chancellor.dashboard');
         }
-        if (auth()->user()->isDean()) {
-            return redirect()->route('dean.dashboard');
+        if (auth()->user()->isDeanOrChair()) {
+            return redirect()->route('college.dashboard');
         }
 
         return view('home', [

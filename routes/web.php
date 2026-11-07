@@ -22,7 +22,7 @@ use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ChancellorController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\DeanController;
+use App\Http\Controllers\CollegeController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -93,6 +93,6 @@ Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->mid
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');
 
-// Dean / Program Chair dashboard (their own sidebar: see layouts/app.blade.php)
+// College dashboard for Deans and Program Chairs (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to deans and program chairs, plus IATO admins
-Route::get('/dean', [DeanController::class, 'dashboard'])->middleware('auth')->name('dean.dashboard');
+Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('auth')->name('college.dashboard');

@@ -80,7 +80,7 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
-    // Program Chair: the Dean dashboard at /dean, locked to one program (BS Computer Science for now)
+    // Program Chair: the College dashboard at /college, locked to one program (BS Computer Science for now)
     \App\Models\User::firstOrCreate(
         ['email' => 'chair@gmail.com'],
         [

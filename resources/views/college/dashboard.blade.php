@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — Dean Dashboard')
+@section('title', 'iARIS — College Dashboard')
 @section('page-title', $heading)
 @section('page-subtitle', $description)
 
@@ -41,9 +41,9 @@
                 <span class="small fw-bold text-uppercase tracking-wide text-body-secondary me-1">Program</span>
                 {{-- Each pill reloads the page for that program (?program=BSCS) --}}
                 <nav class="nav nav-pills gap-2" aria-label="Program">
-                    <a href="{{ route('dean.dashboard') }}" class="nav-link rounded-pill border px-3 py-1 small fw-semibold {{ $selected ? '' : 'active' }}">All Programs</a>
+                    <a href="{{ route('college.dashboard') }}" class="nav-link rounded-pill border px-3 py-1 small fw-semibold {{ $selected ? '' : 'active' }}">All Programs</a>
                     @foreach ($programs as $code => $program)
-                        <a href="{{ route('dean.dashboard', ['program' => $code]) }}" title="{{ $program['name'] }}"
+                        <a href="{{ route('college.dashboard', ['program' => $code]) }}" title="{{ $program['name'] }}"
                            class="nav-link rounded-pill border px-3 py-1 small fw-semibold {{ $selected === $code ? 'active' : '' }}">{{ $code }}</a>
                     @endforeach
                 </nav>
