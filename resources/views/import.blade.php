@@ -2,7 +2,21 @@
 
 @section('title', 'iARIS — Import Data')
 @section('page-title', 'Import Data')
-@section('page-subtitle', 'Upload applicant records from Google Sheets / Excel exports')
+@section('page-subtitle', 'Upload Excel or CSV files to batch-import applicant records into iARIS')
+
+@php
+    // Import Target choices: the levels the applicants table accepts ('' = the file has several levels)
+    $targets = ['' => 'Mixed: each row\'s level column decides', 'is' => 'Integrated School Applicants', 'college' => 'College Applicants',
+        'graduate_school' => 'Graduate Programs Applicants', 'eteeap' => 'ETEEAP Applicants'];
+    // Templates to download: level => [name, description, icon]
+    $templates = [
+        'college' => ['College Applicants', 'Standard college applicant template', 'bi-mortarboard'],
+        'is' => ['Integrated School', 'K–12 applicants, with sub-level and strand', 'bi-building'],
+        'graduate_school' => ['Graduate Programs', "Master's and doctoral applicants", 'bi-journal-bookmark'],
+        'eteeap' => ['ETEEAP', 'Working adults applying through ETEEAP', 'bi-briefcase'],
+    ];
+    $steps = ['Upload File', 'Check Columns', 'Preview & Validate', 'Import'];
+@endphp
 
 @section('content')
     @if ($errors->any())
@@ -16,6 +30,8 @@
         </div>
     @endif
 
+    <div class="row g-4">
+    <div class="col-12 col-xl-8">
     <form method="POST" action="{{ url('/import') }}" enctype="multipart/form-data" id="importForm">
         @csrf
 
@@ -27,10 +43,18 @@
                         <h2 class="fs-6 fw-bold mb-1">Upload Excel File</h2>
                         <p class="small text-body-secondary mb-0">Drag and drop your applicant data file, or browse to select one</p>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="downloadTemplate">
-                        <i class="bi bi-download me-1"></i> Download CSV template
-                    </button>
                 </div>
+
+                {{-- Steps: the script moves the highlight along --}}
+                <ol class="list-unstyled d-flex align-items-center gap-2 mb-4" id="importSteps" aria-label="Import steps">
+                    @foreach ($steps as $i => $label)
+                        <li class="d-flex align-items-center gap-2 {{ $loop->last ? '' : 'flex-fill' }}" data-step="{{ $i + 1 }}">
+                            <span class="rounded-circle border border-2 fw-bold small d-flex align-items-center justify-content-center flex-shrink-0" style="width: 30px; height: 30px;" data-dot>{{ $i + 1 }}</span>
+                            <span class="small fw-bold text-nowrap d-none d-md-inline" data-label>{{ $label }}</span>
+                            @unless ($loop->last)<span class="flex-fill border-top border-2 mx-1" data-line></span>@endunless
+                        </li>
+                    @endforeach
+                </ol>
 
                 {{-- The whole box is a <label>, so clicking anywhere opens the file picker --}}
                 <label for="file" id="dropzone" class="d-block text-center rounded-4 border border-2 border-primary-subtle p-5" style="--bs-border-style: dashed; cursor: pointer;">
@@ -57,18 +81,36 @@
                 </div>
 
                 <div class="alert alert-danger small mt-3 mb-0 d-none" id="readError" role="alert"></div>
+
+                {{-- Which records the file is for. Rows of another level get a warning. --}}
+                <div class="mt-4">
+                    <label for="importTarget" class="form-label small fw-bold text-uppercase text-body-secondary">Import Target — which records is this file for?</label>
+                    <select class="form-select" id="importTarget">
+                        @foreach ($targets as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">College of Law, iPACE and Scholars can't be imported yet: the applicants table has no level for them.</div>
+                </div>
             </div>
         </div>
 
         {{-- 2. Preview --}}
         <div class="card border-0 shadow-sm rounded-4 mb-4 d-none" id="previewCard">
             <div class="card-body p-4">
-                <h2 class="fs-6 fw-bold mb-1">Data Preview</h2>
-                <p class="small text-body-secondary mb-3">The first rows from your file, exactly as they will be read</p>
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                    <div>
+                        <h2 class="fs-6 fw-bold mb-1">Data Preview</h2>
+                        <p class="small text-body-secondary mb-0">The first rows from your file, exactly as they will be read, with a check of each row</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2" id="rowCounts"></div>
+                </div>
                 <div class="table-responsive border rounded-3">
                     <table class="table table-sm table-hover align-middle mb-0 small text-nowrap" id="previewTable"></table>
                 </div>
                 <div class="small text-body-secondary mt-2" id="previewNote"></div>
+                {{-- The first few row problems, so they can be fixed in the file --}}
+                <ul class="small text-danger mt-2 mb-0 ps-3 d-none" id="rowProblems"></ul>
             </div>
         </div>
 
@@ -93,6 +135,57 @@
             </div>
         </div>
     </form>
+    </div>
+
+    <div class="col-12 col-xl-4 d-flex flex-column gap-4">
+        {{-- Templates: a CSV with the right headers and example rows for each level --}}
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <h2 class="fs-6 fw-bold mb-1">Download Templates</h2>
+                <p class="small text-body-secondary mb-3">Start from these so the columns match</p>
+                <div class="list-group list-group-flush">
+                    @foreach ($templates as $level => [$name, $description, $icon])
+                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-0" data-template="{{ $level }}">
+                            <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}"></i></span>
+                            <span class="flex-grow-1 text-start">
+                                <span class="d-block small fw-bold">{{ $name }}</span>
+                                <span class="d-block small text-body-secondary">{{ $description }}</span>
+                            </span>
+                            <i class="bi bi-download text-body-secondary"></i>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        {{-- Import History: real uploads (import_batches) --}}
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <h2 class="fs-6 fw-bold mb-1">Import History</h2>
+                <p class="small text-body-secondary mb-3">Recent file imports</p>
+                @forelse ($history as $batch)
+                    @php
+                        [$tone, $icon, $label] = match ($batch->status) {
+                            'failed' => ['danger', 'bi-x-circle', 'Failed'],
+                            'processing' => ['warning', 'bi-hourglass-split', 'Processing'],
+                            default => ['primary', 'bi-check-circle', number_format($batch->saved_count) . ' imported'],
+                        };
+                    @endphp
+                    <a href="{{ url('/import/' . $batch->id) }}" class="d-flex gap-3 py-3 text-decoration-none text-body {{ $loop->first ? '' : 'border-top' }}">
+                        <span class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}"></i></span>
+                        <span class="overflow-hidden">
+                            <span class="d-block small fw-bold text-truncate">{{ $batch->original_filename }}</span>
+                            <span class="d-block small text-body-secondary">By {{ $batch->uploader ?? 'Unknown user' }} · {{ \Illuminate\Support\Carbon::parse($batch->created_at)->format('M j, Y · g:i A') }}</span>
+                            <span class="badge rounded-pill bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis mt-1">{{ $label }}</span>
+                        </span>
+                    </a>
+                @empty
+                    <p class="small text-body-secondary mb-0">No files imported yet.</p>
+                @endforelse
+            </div>
+        </div>
+    </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -115,6 +208,30 @@
             { key: 'application_status', label: 'Application Status', required: false, example: 'pooling' },
         ];
         const PREVIEW_ROWS = 5;
+
+        // The only values the applicants table accepts (database enum columns). Anything else makes the import fail.
+        const ALLOWED = {
+            level: ['is', 'college', 'graduate_school', 'eteeap'],
+            sub_level: ['', 'kindergarten', 'jhs', 'shs'],
+            gender: ['male', 'female'],
+            applicant_type: ['', 'regular', 'scholar'],
+            admission_test_status: ['', 'not_taken', 'took_test', 'passed', 'failed', 'qualified_other_degree', 'reconsidered'],
+            application_status: ['', 'pooling', 'submitted', 'completed', 'not_submitted'],
+        };
+
+        // Example rows for each template: [sub_level, first, last, gender, feeder school, program / track]
+        const TEMPLATE_EXAMPLES = {
+            college: [['', 'Maria', 'Santos', 'female', 'Lipa City National High School', 'BS Computer Science'],
+                      ['', 'Juan', 'Dela Cruz', 'male', 'Batangas National High School', 'BS Accountancy']],
+            is: [['shs', 'Ana', 'Reyes', 'female', 'Lipa City National High School', 'STEM'],
+                 ['jhs', 'Paolo', 'Garcia', 'male', 'Marawoy Elementary School', 'Junior High School']],
+            graduate_school: [['', 'Ramon', 'Silang', 'male', 'De La Salle Lipa', 'Master of Business Administration'],
+                              ['', 'Luisa', 'Fernandez', 'female', 'Batangas State University', 'Doctor of Philosophy in Education']],
+            eteeap: [['', 'Rogelio', 'Marasigan', 'male', '', 'BS Business Administration'],
+                     ['', 'Josephine', 'Valdez', 'female', '', 'BS Hospitality Management']],
+        };
+
+        let lastFile = null, lastRows = null;   // kept so changing the Import Target re-checks the same file
 
         const form = document.getElementById('importForm');
         const input = document.getElementById('file');
@@ -149,10 +266,42 @@
         document.getElementById('cancelImport').addEventListener('click', reset);
 
         function reset() {
+            const target = document.getElementById('importTarget').value;
             form.reset();
+            document.getElementById('importTarget').value = target;   // keep the chosen target
             [fileRow, readError, previewCard, checkCard].forEach(hide);
             show(dropzone);
             importButton.disabled = true;
+            lastFile = lastRows = null;
+            setStep(1);
+        }
+
+        // Step indicator: steps before n are done (check mark), n is current
+        function setStep(n) {
+            document.querySelectorAll('#importSteps [data-step]').forEach(li => {
+                const i = Number(li.dataset.step), dot = li.querySelector('[data-dot]');
+                dot.className = 'rounded-circle border border-2 fw-bold small d-flex align-items-center justify-content-center flex-shrink-0 '
+                    + (i <= n ? 'bg-primary border-primary text-white' : 'text-body-secondary');
+                dot.innerHTML = i < n ? '<i class="bi bi-check-lg"></i>' : i;
+                li.querySelector('[data-label]').className = 'small fw-bold text-nowrap d-none d-md-inline ' + (i <= n ? 'text-primary' : 'text-body-secondary');
+                li.querySelector('[data-line]')?.classList.toggle('border-primary', i < n);
+                if (i === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+            });
+        }
+        setStep(1);
+
+        // One row's check: errors stop the import, warnings don't. Returns { status, problems }.
+        function checkRow(row, keys) {
+            const value = key => { const i = keys.indexOf(key); return i === -1 ? '' : String(row[i] ?? '').trim(); };
+            const target = document.getElementById('importTarget').value;
+            const errors = [], warnings = [];
+            COLUMNS.filter(c => c.required).forEach(c => { if (!value(c.key)) errors.push(`${c.label} is empty`); });
+            Object.entries(ALLOWED).forEach(([key, allowed]) => {
+                const v = value(key);
+                if (v && !allowed.includes(v)) errors.push(`${key} "${v}" must be one of: ${allowed.filter(Boolean).join(', ')}`);
+            });
+            if (target && value('level') && value('level') !== target) warnings.push(`level is "${value('level')}", not "${target}"`);
+            return { status: errors.length ? 'Error' : warnings.length ? 'Warning' : 'Valid', problems: [...errors, ...warnings] };
         }
 
         function handleFile(file) {
@@ -187,6 +336,8 @@
         }
 
         function render(file, rows) {
+            lastFile = file;
+            lastRows = rows;
             const headers = (rows[0] || []).map(h => String(h).trim());
             const dataRows = rows.slice(1).filter(r => r.some(cell => String(cell).trim() !== ''));
             if (!headers.length || !dataRows.length) {
@@ -196,12 +347,13 @@
             document.getElementById('fileMeta').textContent =
                 `${formatSize(file.size)} · ${plural(dataRows.length, 'row')} · ${plural(headers.length, 'column')}`;
 
-            renderPreview(headers, dataRows);
-            renderCheck(headers, dataRows);
+            const checks = dataRows.map(r => checkRow(r, headers.map(toKey)));
+            renderPreview(headers, dataRows, checks);
+            renderCheck(headers, dataRows, checks);
         }
 
         // Built with textContent (not innerHTML) so nothing in the file can inject HTML into the page
-        function renderPreview(headers, dataRows) {
+        function renderPreview(headers, dataRows, checks) {
             const table = document.getElementById('previewTable');
             table.replaceChildren();
 
@@ -212,19 +364,59 @@
                 th.textContent = h || '—';
                 headRow.appendChild(th);
             });
+            const checkTh = document.createElement('th');
+            checkTh.className = 'text-body-secondary text-uppercase fw-bold bg-body-tertiary';
+            checkTh.textContent = 'Check';
+            headRow.prepend(checkTh);
+            const rowTh = document.createElement('th');
+            rowTh.className = 'text-body-secondary text-uppercase fw-bold bg-body-tertiary';
+            rowTh.textContent = 'Row';
+            headRow.prepend(rowTh);
+
+            const tones = { Valid: 'primary', Warning: 'warning', Error: 'danger' };
 
             const body = table.createTBody();
-            dataRows.slice(0, PREVIEW_ROWS).forEach(r => {
+            // Rows with problems first, so they show up in the preview
+            const order = dataRows.map((r, i) => i).sort((a, b) => (checks[a].status === 'Valid') - (checks[b].status === 'Valid'));
+            order.slice(0, PREVIEW_ROWS).forEach(index => {
                 const tr = body.insertRow();
-                headers.forEach((_, i) => { tr.insertCell().textContent = r[i] ?? ''; });
+                const check = checks[index];
+                if (check.status === 'Error') tr.className = 'table-danger';
+                else if (check.status === 'Warning') tr.className = 'table-warning';
+                tr.insertCell().textContent = index + 2;   // the row number in the spreadsheet (row 1 is the headers)
+                const badge = document.createElement('span');
+                badge.className = `badge rounded-pill bg-${tones[check.status]}-subtle text-${tones[check.status]}-emphasis`;
+                badge.textContent = check.status;
+                badge.title = check.problems.join('; ');
+                tr.insertCell().appendChild(badge);
+                headers.forEach((_, i) => { tr.insertCell().textContent = dataRows[index][i] ?? ''; });
             });
+
+            // "38 Valid · 2 Warnings · 1 Error"
+            const count = s => checks.filter(c => c.status === s).length;
+            const counts = document.getElementById('rowCounts');
+            counts.replaceChildren(...['Valid', 'Warning', 'Error'].filter(s => s === 'Valid' || count(s)).map(s => {
+                const b = document.createElement('span');
+                b.className = `badge rounded-pill bg-${tones[s]}-subtle text-${tones[s]}-emphasis px-3 py-2`;
+                b.textContent = `${count(s)} ${s === 'Valid' ? 'Valid' : s + (count(s) === 1 ? '' : 's')}`;
+                return b;
+            }));
+
+            // The first few problems, with their spreadsheet row numbers
+            const list = document.getElementById('rowProblems');
+            const problems = checks.flatMap((c, i) => c.status === 'Valid' ? [] : c.problems.map(p => `Row ${i + 2}: ${p}`));
+            list.replaceChildren(...problems.slice(0, 5).map(text => { const li = document.createElement('li'); li.textContent = text; return li; }));
+            if (problems.length > 5) list.append(Object.assign(document.createElement('li'), { textContent: `…and ${problems.length - 5} more` }));
+            list.classList.toggle('d-none', !problems.length);
 
             document.getElementById('previewNote').textContent =
                 `Showing ${Math.min(PREVIEW_ROWS, dataRows.length)} of ${plural(dataRows.length, 'row')}`;
             show(previewCard);
         }
 
-        function renderCheck(headers, dataRows) {
+        function renderCheck(headers, dataRows, checks) {
+            const rowErrors = checks.filter(c => c.status === 'Error').length;
+            const rowWarnings = checks.filter(c => c.status === 'Warning').length;
             const keys = headers.map(toKey);
             const list = document.getElementById('columnList');
             list.replaceChildren();
@@ -274,9 +466,14 @@
                 summary.classList.add('alert-danger');
                 summary.textContent = `Can't import yet: add the missing required column(s): ${missingRequired.join(', ')}.`;
                 importButton.disabled = true;
-            } else if (emptyRequiredCells) {
+            } else if (rowErrors) {
+                // Empty required cells and values the database won't accept would make the whole import fail
+                summary.classList.add('alert-danger');
+                summary.textContent = `Can't import yet: ${plural(rowErrors, 'row')} ${rowErrors === 1 ? 'has' : 'have'} errors (see the Data Preview). Fix them in the file and choose it again.`;
+                importButton.disabled = true;
+            } else if (rowWarnings) {
                 summary.classList.add('alert-warning');
-                summary.textContent = `All required columns found, but ${emptyRequiredCells} required cell(s) are empty. Rows with blanks may fail to import.`;
+                summary.textContent = `Ready to import ${plural(dataRows.length, 'row')}, but ${plural(rowWarnings, 'row')} ${rowWarnings === 1 ? 'is' : 'are'} for a different level than the Import Target. They will be saved under their own level.`;
                 importButton.disabled = false;
             } else {
                 summary.classList.add('alert-success');
@@ -284,22 +481,31 @@
                 importButton.disabled = false;
             }
             show(checkCard);
+            setStep(missingRequired.length ? 2 : 3);
         }
+
+        // Changing the Import Target re-checks the file that's already chosen
+        document.getElementById('importTarget').addEventListener('change', () => { if (lastFile) render(lastFile, lastRows); });
 
         // Show progress while the server imports (the page reloads when it's done)
         form.addEventListener('submit', () => {
+            setStep(4);
             importButton.disabled = true;
             importButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Importing…';
         });
 
-        // A CSV with the expected header row plus one example row
-        document.getElementById('downloadTemplate').addEventListener('click', () => {
-            const csv = [COLUMNS.map(c => c.key).join(','), COLUMNS.map(c => c.example).join(',')].join('\n');
+        // Templates: a CSV with the header row plus two example rows for that level
+        document.querySelectorAll('[data-template]').forEach(btn => btn.addEventListener('click', () => {
+            const level = btn.dataset.template;
+            const quote = v => /[",]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+            const rows = TEMPLATE_EXAMPLES[level].map(([sub, first, last, gender, school, program]) =>
+                ['2025-2026', level, sub, first, last, gender, school, program, 'regular', 'not_taken', 'pooling']);
+            const csv = [COLUMNS.map(c => c.key), ...rows].map(r => r.map(quote).join(',')).join('\n');
             const link = document.createElement('a');
             link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-            link.download = 'iaris_import_template.csv';
+            link.download = `iaris_template_${level}.csv`;
             link.click();
             URL.revokeObjectURL(link.href);
-        });
+        }));
     </script>
 @endsection

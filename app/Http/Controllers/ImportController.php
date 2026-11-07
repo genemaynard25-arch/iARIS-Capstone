@@ -12,7 +12,17 @@ class ImportController extends Controller
 {
     public function show()
     {
-        return view('import');
+        // Import History: the latest uploads, with who uploaded them
+        $history = ImportBatch::query()
+            ->leftJoin('users', 'users.id', '=', 'import_batches.uploaded_by')
+            ->orderByDesc('import_batches.created_at')
+            ->take(6)
+            // How many applicants each import saved (row_count isn't filled in by store())
+            ->selectRaw('(select count(*) from applicants where applicants.imported_batch_id = import_batches.id) as saved_count')
+            ->addSelect(['import_batches.*', 'users.name as uploader'])
+            ->get();
+
+        return view('import', ['history' => $history]);
     }
 
     public function store(Request $request)

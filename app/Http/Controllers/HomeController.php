@@ -145,12 +145,14 @@ class HomeController extends Controller
      */
     private function notifications(): array
     {
-        $imports = ImportBatch::latest('created_at')->take(5)->get()->map(fn (ImportBatch $b) => [
+        $imports = ImportBatch::latest('created_at')->take(5)
+            ->withCount(['applicants as saved_count'])
+            ->get()->map(fn (ImportBatch $b) => [
             'at' => Carbon::parse($b->created_at),
             'icon' => $b->status === 'failed' ? 'bi-exclamation-triangle' : 'bi-cloud-arrow-up',
             'tone' => $b->status === 'failed' ? 'danger' : 'info',
             'title' => match ($b->status) { 'failed' => 'Data import failed', 'processing' => 'Data import in progress', default => 'Data import completed' },
-            'body' => ($b->row_count !== null ? number_format($b->row_count) . ' records from ' : '') . $b->original_filename,
+            'body' => number_format($b->saved_count) . ' records from ' . $b->original_filename,
         ]);
 
         $requests = User::where('status', 'Pending')->latest()->take(5)->get()->map(fn (User $u) => [

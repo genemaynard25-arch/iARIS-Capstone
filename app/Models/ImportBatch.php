@@ -14,4 +14,10 @@ class ImportBatch extends Model
         'row_count',
         'status',
     ];
+
+    // The applicants this upload saved
+    public function applicants(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Applicant::class, 'imported_batch_id');
+    }
 }
