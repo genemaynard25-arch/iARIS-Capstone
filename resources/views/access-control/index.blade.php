@@ -61,8 +61,7 @@
             <div class="small text-body-secondary p-3 rounded-3 bg-body-tertiary border {{ $tempAdmin ? 'd-none' : '' }}" id="tempEmpty">
                 <i class="bi bi-info-circle me-1"></i> No temporary admin is active right now.
             </div>
-        </div>
-    </div>
+
 
     {{-- Permission matrix --}}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
