@@ -5,6 +5,7 @@
 @section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
 
 @section('content')
+    @includeWhen($staffStrip, 'home.partials.staff-strip')
     @include('home.partials.stats')
     @include('home.partials.charts')
 

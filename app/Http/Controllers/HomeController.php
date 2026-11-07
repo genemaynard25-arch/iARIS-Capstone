@@ -43,7 +43,31 @@ class HomeController extends Controller
             'weekChart' => $this->applicationsThisWeek(),
             'recentApplicants' => $this->recentApplicants(),
             'notifications' => $this->notifications(),
+            'staffStrip' => $this->staffStrip(),
         ]);
+    }
+
+    /**
+     * IATO Staff only: their Temporary Admin access (if any) and their submissions.
+     * null for everyone else.
+     */
+    private function staffStrip(): ?array
+    {
+        $user = auth()->user();
+        if ($user->role !== 'iato_staff') {
+            return null;
+        }
+
+        $tempAdmin = \App\Models\TempAdmin::active()->where('user_id', $user->id)->with('grantedBy')->latest('starts_at')->first();
+
+        return [
+            'tempAdmin' => $tempAdmin ? [
+                'until' => $tempAdmin->expires_at->format('M j, Y · g:i A'),
+                'by' => $tempAdmin->grantedBy?->name ?? 'the Super Admin',
+                'since' => $tempAdmin->starts_at->format('M j'),
+            ] : null,
+            'submissions' => SubmissionsController::counts(),
+        ];
     }
 
     /**
@@ -155,7 +179,8 @@ class HomeController extends Controller
             'body' => number_format($b->saved_count) . ' records from ' . $b->original_filename,
         ]);
 
-        $requests = User::where('status', 'Pending')->latest()->take(5)->get()->map(fn (User $u) => [
+        // Only admins can approve accounts, so only they hear about requests
+        $requests = ! auth()->user()->isAdmin() ? collect() : User::where('status', 'Pending')->latest()->take(5)->get()->map(fn (User $u) => [
             'at' => $u->created_at ?? now(),
             'icon' => 'bi-person-plus',
             'tone' => 'warning',

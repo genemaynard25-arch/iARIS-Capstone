@@ -20,6 +20,7 @@ use App\Http\Controllers\SuccessionController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
+use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
@@ -69,6 +70,8 @@ Route::delete('/accounts/{user}', [AccountController::class, 'destroy'])->middle
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['auth', 'module:audit'])->name('audit-logs');
 // Review Queue (front end only for now) and Super User Succession
 Route::get('/review-queue', [ReviewQueueController::class, 'index'])->middleware(['auth', 'admin'])->name('review-queue');
+// IATO Staff: their own edits and imports in the Review Queue
+Route::get('/submissions', [SubmissionsController::class, 'index'])->middleware('auth')->name('submissions');
 Route::get('/succession', [SuccessionController::class, 'index'])->middleware(['auth', 'admin'])->name('succession');
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware(['auth', 'module:import']);

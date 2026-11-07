@@ -9,6 +9,9 @@
     // Only the real Super Admin (not a Temporary Admin) can hand over the role
     $isSuperAdmin = $user->role === 'admin' && ! $user->isShsPrincipal();
 
+    // IATO Staff get a "My Work" section instead of the admin's System section (see below)
+    $isStaff = $user->role === 'iato_staff';
+
     // The menu. A 'group' is a dropdown of links.
     $sections = [
         'MAIN' => [
@@ -44,6 +47,24 @@
         ],
     ];
 
+    if ($isStaff) {
+        unset($sections['SYSTEM']);
+        $sections['MY WORK'] = [
+            $link('Import Data', 'bi-cloud-arrow-up', '/import', 'import*', $user->canAccess('import')),
+            // The number: submissions the Super Admin sent back to you
+            $link('My Submissions', 'bi-send', '/submissions', 'submissions*', true, \App\Http\Controllers\SubmissionsController::counts()['sent']),
+            $link('Audit Logs', 'bi-clipboard-data', '/audit-logs', 'audit-logs*', $user->canAccess('audit')),
+        ];
+        // While they are a Temporary Admin, they also get the admin pages
+        if ($user->isAdmin()) {
+            $sections['ADMIN (TEMPORARY)'] = [
+                $link('Review Queue', 'bi-list-check', '/review-queue', 'review-queue*', true, \App\Http\Controllers\ReviewQueueController::waitingCount()),
+                $link('Access Control', 'bi-shield-check', '/access-control', 'access-control*'),
+                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', true, \App\Support\AccessRequests::waitingCount()),
+            ];
+        }
+    }
+
     // Drop links this user can't open. A group left with no links disappears;
     // a group left with one link shows as that plain link (no one-item dropdowns).
     foreach ($sections as $title => $entries) {
@@ -76,7 +97,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">IATO · De La Salle Lipa</div>
+                    <div class="small text-white-50">{{ $isStaff ? 'Staff · IATO' : 'IATO · De La Salle Lipa' }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
@@ -107,12 +128,12 @@
                             <div class="collapse {{ $open ? 'show' : '' }}" id="{{ $id }}">
                                 <div class="nav nav-pills flex-column nav-sub">
                                     @foreach ($entry['items'] as $item)
-                                        <a href="{{ url($item['url']) }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}" @if ($isActive($item)) aria-current="page" @endif><i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}@if ($item['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting">{{ $item['badge'] }}</span>@endif</a>
+                                        <a href="{{ url($item['url']) }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}" @if ($isActive($item)) aria-current="page" @endif><i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}@if ($item['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting" id="nav-count-{{ \Illuminate\Support\Str::slug($item['label']) }}">{{ $item['badge'] }}</span>@endif</a>
                                     @endforeach
                                 </div>
                             </div>
                         @else
-                            <a href="{{ url($entry['url']) }}" class="nav-link {{ $isActive($entry) ? 'active' : '' }}" @if ($isActive($entry)) aria-current="page" @endif><i class="bi {{ $entry['icon'] }}"></i> {{ $entry['label'] }}@if ($entry['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting">{{ $entry['badge'] }}</span>@endif</a>
+                            <a href="{{ url($entry['url']) }}" class="nav-link {{ $isActive($entry) ? 'active' : '' }}" @if ($isActive($entry)) aria-current="page" @endif><i class="bi {{ $entry['icon'] }}"></i> {{ $entry['label'] }}@if ($entry['badge'])<span class="badge rounded-pill nav-count ms-auto" title="Waiting" id="nav-count-{{ \Illuminate\Support\Str::slug($entry['label']) }}">{{ $entry['badge'] }}</span>@endif</a>
                         @endif
                     @endforeach
                 </nav>
