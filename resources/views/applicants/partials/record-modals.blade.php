@@ -133,6 +133,8 @@
     <div class="toast align-items-center border-0 text-bg-dark" id="recordToast" role="status" aria-live="polite">
         <div class="d-flex">
             <div class="toast-body" id="recordToastText"></div>
+            {{-- Shown only after Remove --}}
+            <button type="button" class="btn btn-sm btn-light fw-semibold my-auto d-none" id="recordUndo">Undo</button>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
@@ -144,7 +146,13 @@
         const $ = id => document.getElementById(id);
         const recordModal = bootstrap.Modal.getOrCreateInstance($('recordModal'));
         const removeModal = bootstrap.Modal.getOrCreateInstance($('removeModal'));
-        const toast = text => { $('recordToastText').textContent = text; bootstrap.Toast.getOrCreateInstance($('recordToast')).show(); };
+        // undo: shows the Undo button (only after Remove)
+        const toast = (text, undo = false) => {
+            $('recordToastText').textContent = text;
+            $('recordUndo').classList.toggle('d-none', !undo);
+            bootstrap.Toast.getOrCreateInstance($('recordToast')).show();
+        };
+        let lastRemoved = null;   // { row, position } so Undo can put it back
         const unique = values => [...new Set(values)].filter(v => v && v !== '—').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         let editing = null;
 
@@ -207,6 +215,16 @@
             removeModal.show();
         });
 
+        // Undo: put the removed row back where it was
+        $('recordUndo').addEventListener('click', () => {
+            if (!lastRemoved) return;
+            rows.splice(lastRemoved.position, 0, lastRemoved.row);
+            document.getElementById('applicantRows').appendChild(lastRemoved.row);
+            render();
+            lastRemoved = null;
+            toast('Restored.');
+        });
+
         // "Other" needs a note
         $('removeReason').addEventListener('change', e => $('removeNote').required = e.target.value === 'Other');
 
@@ -217,9 +235,14 @@
             // Hide the row on this page only (it comes back on reload until the backend can delete it)
             const index = APPLICANTS.indexOf(drawerApplicant);
             const row = rows.find(r => Number(r.dataset.index) === index);
-            if (row) { rows.splice(rows.indexOf(row), 1); row.remove(); render(); }
+            if (row) {
+                lastRemoved = { row, position: rows.indexOf(row) };
+                rows.splice(lastRemoved.position, 1);
+                row.remove();
+                render();
+            }
             removeModal.hide();
-            toast(`${drawerApplicant.name} was removed from this page only. It comes back when you reload, until the backend is connected.`);
+            toast(`${drawerApplicant.name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
         });
     });
 </script>

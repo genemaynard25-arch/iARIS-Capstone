@@ -25,7 +25,7 @@
     // ("Enrolled" isn't in the database yet.)
     $databaseStatuses = ['Pending', 'For Exam', 'Passed', 'Not Qualified', 'Paid'];
     // Pages that read the database: they get an "imported" empty message
-    $fromDatabase = in_array($scope, ['college', 'is', 'graduate']);
+    $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap']);
     // Add / Edit / Remove: only roles with the 'edit' permission (Access Control). Front end only for now.
     $canEdit = auth()->user()->canAccess('edit');
 
@@ -33,7 +33,7 @@
         'extras' => [], 'labels' => null, 'groupBadge' => false, 'programBadges' => [],
         'extraStep' => null, 'examStep' => null, 'finalStep' => null,
         'statuses' => ['Pending', 'For Exam', 'Paid', 'Enrolled'], 'statusLabels' => [],
-        'programField' => 'Program / Track / Strand', 'examField' => 'Exam Schedule', 'drawerExtras' => [],
+        'programField' => 'Program / Track / Strand', 'examField' => 'Exam Schedule', 'drawerExtras' => [], 'guardian' => false,
     ];
     $page = array_merge($defaults, [
         'all' => [
@@ -50,9 +50,34 @@
         'is' => [
             'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
-            'extras' => [['key' => 'level', 'label' => 'Grade / Level', 'first' => true]],
-            'labels' => ['group' => 'Sub-Level', 'groupAll' => 'All Sub-Levels', 'program' => 'Strand / Track', 'programAll' => 'All Strands / Tracks'],
+            'extras' => [['key' => 'level', 'label' => 'Grade', 'first' => true]],
+            'labels' => ['group' => 'Level', 'groupAll' => 'All Levels', 'program' => 'Strand', 'programAll' => 'All Strands'],
             'statuses' => $databaseStatuses,
+            // Learners are children: show LRN and the parent / guardian (contact details are the guardian's)
+            'guardian' => true,
+            'examField' => 'Entrance Exam / Assessment',
+        ],
+        // ETEEAP: the first column is the program, the second the portfolio / assessment status
+        'eteeap' => [
+            'title' => 'ETEEAP Records', 'subtitle' => "Expanded Tertiary Education Equivalency and Accreditation Program — applicant records for AY {$academicYear}",
+            'total' => 'Total Applicants', 'totalSub' => 'All programs combined', 'noun' => 'applicant',
+            'extras' => [
+                ['key' => 'age', 'label' => 'Age', 'first' => false],
+                ['key' => 'education', 'label' => 'Highest Educ. Attainment', 'first' => false],
+                ['key' => 'experience', 'label' => 'Work Experience', 'first' => false],
+            ],
+            'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Portfolio / Assessment', 'programAll' => 'All Assessment Status'],
+            'groupBadge' => true,
+            'programBadges' => ['Pending' => ['secondary', 'bi-hourglass'], 'Submitted' => ['info', 'bi-folder-check'], 'Cleared' => ['primary', 'bi-patch-check'], 'Not Cleared' => ['danger', 'bi-x-circle']],
+            'statuses' => $databaseStatuses,
+            'statusLabels' => ['For Exam' => 'For Assessment'],
+            'programField' => 'Program', 'examField' => 'Competency Assessment',
+            'drawerExtras' => [
+                ['key' => 'program', 'label' => 'Portfolio Status'],
+                ['key' => 'employer', 'label' => 'Current Employer'],
+            ],
+            'examStep' => 'Competency Assessment Scheduled',
+            'finalStep' => 'Admission Confirmed',
         ],
         // Law: the first column is the program (JD / LLM / JSD), the second is the undergraduate degree
         'law' => [
@@ -335,7 +360,7 @@
         </div>
 
         <ul class="nav nav-underline px-4 border-bottom no-print" role="tablist">
-            <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabInfo" type="button" role="tab">Personal Info</button></li>
+            <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabInfo" type="button" role="tab">{{ $page['guardian'] ? 'Personal & Guardian' : 'Personal Info' }}</button></li>
             <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabApplication" type="button" role="tab">Application</button></li>
             <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabTimeline" type="button" role="tab">Timeline</button></li>
         </ul>
@@ -343,19 +368,40 @@
         <div class="offcanvas-body tab-content p-4">
             {{-- Personal info --}}
             <div class="tab-pane fade show active" id="tabInfo" role="tabpanel">
-                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Personal Information</div>
-                <div class="row g-3 mb-4">
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">App Number</div><div class="fw-semibold" data-field="id"></div></div>
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
-                </div>
-                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Contact Details</div>
-                <div class="row g-3">
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Email Address</div><div class="fw-semibold text-break" data-field="email"></div></div>
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Contact Number</div><div class="fw-semibold" data-field="contact"></div></div>
-                    <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Home Address</div><div class="fw-semibold" data-field="address"></div></div>
-                </div>
+                @if ($page['guardian'])
+                    {{-- Integrated School: the learner, then the parent / guardian (the contact details are theirs) --}}
+                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Learner Information</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Applicant No.</div><div class="fw-semibold" data-field="id"></div></div>
+                        {{-- LRN (Learner Reference Number): not in the applicants table yet --}}
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">LRN</div><div class="fw-semibold" data-field="lrn"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
+                        <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Address</div><div class="fw-semibold" data-field="address"></div></div>
+                    </div>
+                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Parent / Guardian</div>
+                    <div class="row g-3">
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Name</div><div class="fw-semibold" data-field="guardian_name"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Relationship</div><div class="fw-semibold" data-field="guardian_relationship"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Contact No.</div><div class="fw-semibold" data-field="contact"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Email</div><div class="fw-semibold text-break" data-field="email"></div></div>
+                    </div>
+                @else
+                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Personal Information</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">App Number</div><div class="fw-semibold" data-field="id"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
+                    </div>
+                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Contact Details</div>
+                    <div class="row g-3">
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Email Address</div><div class="fw-semibold text-break" data-field="email"></div></div>
+                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Contact Number</div><div class="fw-semibold" data-field="contact"></div></div>
+                        <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Home Address</div><div class="fw-semibold" data-field="address"></div></div>
+                    </div>
+                @endif
             </div>
 
             {{-- Application --}}

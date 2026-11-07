@@ -102,27 +102,38 @@ class ApplicantRecords
             'amount' => $payment[0] ?? null,
         ];
 
+        // array_merge: the level's own values replace the shared ones (e.g. 'program' on Graduate and ETEEAP)
         return match ($a->level) {
-            'college' => $row + ['unit' => 'college', 'college' => self::collegeFor($program)],
-            'is' => $row + [
+            'college' => array_merge($row, ['unit' => 'college', 'college' => self::collegeFor($program)]),
+            'is' => array_merge($row, [
                 'unit' => 'is',
                 'sub_level' => self::IS_SUB_LEVELS[$a->sub_level] ?? 'Grade School',
                 'level' => '—', // no grade in the table yet
-            ],
-            'graduate_school' => $row + [
+            ]),
+            'graduate_school' => array_merge($row, [
                 'unit' => 'graduate',
                 'unit_label' => 'Graduate Programs',
                 'group' => self::graduateCode($program),
                 'program_label' => $program,
                 'program' => str_contains($program, 'Doctor') ? 'Doctoral' : "Master's",
                 'degree' => '—',
-            ],
-            default => $row + [
+            ]),
+            'eteeap' => array_merge($row, [
+                'unit' => 'eteeap',
+                'unit_label' => 'ETEEAP',
+                'group' => self::initials($program),
+                'program_label' => $program,
+                // The second column on ETEEAP Records: how far the portfolio / competency assessment is
+                'program' => self::portfolioStatus($a->admission_test_status),
+                // Not in the table yet
+                'age' => '—', 'education' => '—', 'experience' => '—', 'employer' => '—',
+            ]),
+            default => array_merge($row, [
                 'unit' => $a->level,
                 'unit_label' => strtoupper($a->level),
                 'group' => self::initials($program),
                 'program_label' => $program,
-            ],
+            ]),
         };
     }
 
@@ -173,11 +184,22 @@ class ApplicantRecords
         return self::initials($program);
     }
 
-    // "Master of Arts in Teaching" -> "MAT" (small words skipped)
+    // ETEEAP portfolio / competency assessment, from the test status column
+    private static function portfolioStatus(?string $status): string
+    {
+        return match ($status) {
+            'took_test' => 'Submitted',
+            'passed', 'qualified_other_degree', 'reconsidered' => 'Cleared',
+            'failed' => 'Not Cleared',
+            default => 'Pending',
+        };
+    }
+
+    // "Master of Arts in Teaching" -> "MAT", "BS Information Technology" -> "BSIT" (small words skipped, "BS" kept whole)
     private static function initials(string $text): string
     {
-        $words = array_filter(preg_split('/\s+/', $text), fn ($w) => ! in_array(strtolower($w), ['of', 'in', 'and', 'the', '—']));
+        $words = array_filter(preg_split('/\s+/', $text), fn ($w) => ! in_array(strtolower($w), ['of', 'in', 'and', 'the', '&', '—']));
 
-        return strtoupper(implode('', array_map(fn ($w) => $w[0], $words))) ?: '—';
+        return strtoupper(implode('', array_map(fn ($w) => strtoupper($w) === 'BS' ? 'BS' : $w[0], $words))) ?: '—';
     }
 }

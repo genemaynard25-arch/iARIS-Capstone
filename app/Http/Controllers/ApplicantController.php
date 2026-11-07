@@ -35,7 +35,7 @@ class ApplicantController extends Controller
         'Graduate Programs' => ['group' => 'ad', 'icon' => 'bi-journal-bookmark', 'dept' => 'Program', 'colors' => ['#7C3AED', '#F3EAFF'], 'records' => '/records/graduate'],
         'College of Law' => ['group' => 'ad', 'icon' => 'bi-bank2', 'dept' => 'Program', 'colors' => ['#8A1538', '#FBE9EF'], 'records' => '/records/law'],
         'iPACE' => ['group' => 'al', 'icon' => 'bi-laptop', 'dept' => 'Program', 'colors' => ['#B96000', '#FFF3E6'], 'records' => '/records/ipace'],
-        'ETEEAP' => ['group' => 'al', 'icon' => 'bi-briefcase', 'dept' => 'Program', 'colors' => ['#0E7490', '#E3F5F9'], 'records' => null], // no Records page yet
+        'ETEEAP' => ['group' => 'al', 'icon' => 'bi-briefcase', 'dept' => 'Program', 'colors' => ['#0E7490', '#E3F5F9'], 'records' => '/records/eteeap'],
     ];
 
     /**

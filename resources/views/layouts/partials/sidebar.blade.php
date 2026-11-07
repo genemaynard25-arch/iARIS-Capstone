@@ -22,7 +22,7 @@
             ]],
             ['group' => 'Alternative Learning', 'icon' => 'bi-book', 'items' => [
                 $link('iPACE', 'bi-laptop', '/records/ipace', 'records/ipace*'),
-                $link('ETEEAP', 'bi-briefcase', '#'),
+                $link('ETEEAP', 'bi-briefcase', '/records/eteeap', 'records/eteeap*'),
             ]],
             $link('Scholarships', 'bi-award', '/records/scholars', 'records/scholars*', $user->canAccess('scholars')),
         ],

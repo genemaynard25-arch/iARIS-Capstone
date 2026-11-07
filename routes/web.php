@@ -14,6 +14,7 @@ use App\Http\Controllers\CollegeRecordController;
 use App\Http\Controllers\IsRecordController;
 use App\Http\Controllers\LawRecordController;
 use App\Http\Controllers\IpaceRecordController;
+use App\Http\Controllers\EteeapRecordController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
@@ -78,6 +79,7 @@ Route::get('/records/is', [IsRecordController::class, 'index'])->middleware(['au
 // Scholars mixes College and IS students, so it needs its own rule (LAMP Office + IATO).
 Route::get('/records/law', [LawRecordController::class, 'index'])->middleware('auth')->name('records.law');
 Route::get('/records/ipace', [IpaceRecordController::class, 'index'])->middleware('auth')->name('records.ipace');
+Route::get('/records/eteeap', [EteeapRecordController::class, 'index'])->middleware('auth')->name('records.eteeap');
 Route::get('/records/scholars', [ScholarController::class, 'index'])->middleware(['auth', 'module:scholars'])->name('records.scholars');
 Route::get('/records/graduate', [GraduateRecordController::class, 'index'])->middleware('auth')->name('records.graduate');
 
