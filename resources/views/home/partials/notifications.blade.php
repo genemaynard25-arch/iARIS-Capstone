@@ -2,7 +2,10 @@
     <div class="card-body p-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h2 class="fs-6 fw-bold mb-0">Notifications</h2>
-            <a href="#" class="small fw-semibold text-decoration-none">Mark all read</a>
+            @if (count($notifications))
+                {{-- Front end only: greys the list out until the next reload --}}
+                <button type="button" class="btn btn-link btn-sm p-0 fw-semibold text-decoration-none" id="markAllRead">Mark all read</button>
+            @endif
         </div>
 
         @forelse ($notifications as $date => $items)
@@ -14,7 +17,7 @@
                     </div>
                     <div>
                         <p class="small fw-semibold mb-1">{{ $notif['title'] }}</p>
-                        <span class="small text-body-secondary">{{ $notif['body'] }}</span>
+                        <span class="small text-body-secondary">{{ $notif['body'] }}{{ isset($notif['time']) ? ' · ' . $notif['time'] : '' }}</span>
                     </div>
                 </div>
             @endforeach
@@ -23,3 +26,9 @@
         @endforelse
     </div>
 </div>
+<script>
+    document.getElementById('markAllRead')?.addEventListener('click', e => {
+        e.target.closest('.card').querySelectorAll('.icon-circle').forEach(el => el.closest('.d-flex').classList.add('opacity-50'));
+        e.target.remove();
+    });
+</script>

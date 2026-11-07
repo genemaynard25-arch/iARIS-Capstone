@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdmissionStat;
+use App\Models\Applicant;
+use App\Models\ImportBatch;
+use App\Models\User;
+use App\Support\ApplicantRecords;
+use Illuminate\Support\Carbon;
+
 class HomeController extends Controller
 {
     /**
-     * Admin dashboard.
-     *
-     * Everything below is placeholder data so the UI can be built first.
-     * Once RBAC is in place, replace each value with a query scoped to the
-     * logged-in user (e.g. Applicant::visibleTo(auth()->user())->count()).
-     * The Blade views only read these variables, so they won't need to change.
+     * Admin dashboard, from the database: admission_stats (the totals, same as Analytics),
+     * applicants (this week's chart, recent applicants, pending count), import_batches and
+     * users (notifications). Applicants by Location has no data in the database yet.
      *
      * 'tone' is a Bootstrap colour name (primary, info, warning, danger); the
      * views turn it into classes like bg-warning-subtle text-warning-emphasis.
@@ -33,67 +37,135 @@ class HomeController extends Controller
         }
 
         return view('home', [
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'Week of June 8–14, 2026',
-
-            'stats' => [
-                [
-                    'label' => 'Total Applicants',
-                    'value' => 2418,
-                    'change' => '+124 this week',
-                    'trend' => 'up',
-                    'tag' => 'College + SHS',
-                    'tone' => 'primary',
-                ],
-                [
-                    'label' => 'Paid Reservations',
-                    'value' => 1043,
-                    'change' => 'of 2,418 applicants',
-                    'trend' => 'neutral',
-                    'tag' => '43.1% conversion',
-                    'tone' => 'info',
-                ],
-                [
-                    'label' => 'Enrolled',
-                    'value' => 872,
-                    'change' => '+38 this week',
-                    'trend' => 'up',
-                    'tag' => 'Active enrollees',
-                    'tone' => 'primary',
-                ],
-                [
-                    'label' => 'Pending Timestamps',
-                    'value' => 12,
-                    'change' => 'Records updated by applicants',
-                    'trend' => 'neutral',
-                    'tag' => 'Needs review',
-                    'tone' => 'warning',
-                ],
-            ],
-
-            'recentApplicants' => [
-                ['name' => 'Santos, Maria L.', 'reference' => 'APP-2026-0381', 'program' => 'BS Computer Science', 'status' => 'Enrolled', 'tone' => 'primary', 'updated' => 'Jun 8, 9:14 AM'],
-                ['name' => 'Reyes, Joshua D.', 'reference' => 'APP-2026-0382', 'program' => 'Senior High – STEM', 'status' => 'Paid', 'tone' => 'info', 'updated' => 'Jun 8, 10:02 AM'],
-                ['name' => 'Dela Cruz, Ana', 'reference' => 'APP-2026-0383', 'program' => 'BS Accountancy', 'status' => 'For exam', 'tone' => 'warning', 'updated' => 'Jun 7, 3:45 PM'],
-                ['name' => 'Garcia, Mark Anthony', 'reference' => 'APP-2026-0384', 'program' => 'BS Tourism Management', 'status' => 'Enrolled', 'tone' => 'primary', 'updated' => 'Jun 7, 1:20 PM'],
-                ['name' => 'Villanueva, Pia R.', 'reference' => 'APP-2026-0385', 'program' => 'Senior High – ABM', 'status' => 'Pending', 'tone' => 'danger', 'updated' => 'Jun 6, 2:30 PM'],
-            ],
-
-            'notifications' => [
-                'Today, 8:00 AM' => [
-                    ['icon' => 'bi-file-earmark-text', 'tone' => 'primary', 'title' => 'New application submitted', 'body' => 'Santos, Maria L. applied for BS Computer Science'],
-                ],
-                'Yesterday, 3:45 PM' => [
-                    ['icon' => 'bi-clock-history', 'tone' => 'warning', 'title' => 'Pending timestamp flagged', 'body' => '5 applicant records need review before encoding'],
-                    ['icon' => 'bi-cloud-arrow-up', 'tone' => 'info', 'title' => 'Data import completed', 'body' => '238 records imported from Google Sheets'],
-                ],
-                'Jun 7, 9:12 AM' => [
-                    ['icon' => 'bi-check2-circle', 'tone' => 'primary', 'title' => 'Reservation payment confirmed', 'body' => 'Garcia, Mark Anthony — BS Tourism Management'],
-                ],
-                'Jun 6, 2:30 PM' => [
-                    ['icon' => 'bi-exclamation-triangle', 'tone' => 'danger', 'title' => 'Account access request', 'body' => 'New staff account pending approval'],
-                ],
-            ],
+            'academicYear' => ApplicantRecords::academicYear(),
+            'periodLabel' => 'Week of ' . now()->startOfWeek()->format('M j') . '–' . now()->endOfWeek()->format('M j, Y'),
+            'stats' => $this->stats(),
+            'weekChart' => $this->applicationsThisWeek(),
+            'recentApplicants' => $this->recentApplicants(),
+            'notifications' => $this->notifications(),
         ]);
+    }
+
+    /**
+     * The four cards. Totals come from admission_stats (the same numbers as Analytics);
+     * "Pending Applications" counts the applicants table rows still pooling / not submitted.
+     */
+    private function stats(): array
+    {
+        $rows = AdmissionStat::all();
+        $total = (int) $rows->sum('overall_total_current');
+        $previous = (int) $rows->sum('overall_total_previous');
+        $reserved = (int) $rows->sum('total_reserved_current');
+        $enrolled = (int) $rows->sum('officially_enrolled');
+        $change = $total - $previous;
+        $pending = Applicant::whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
+        $addedThisWeek = Applicant::where('created_at', '>=', now()->startOfWeek())->count();
+        $none = $rows->isEmpty();
+
+        return [
+            [
+                'label' => 'Total Applicants',
+                'value' => $total,
+                'change' => $none ? 'No admission data imported yet' : ($previous ? ($change >= 0 ? '+' : '') . number_format($change) . ' vs last SY' : 'No previous SY to compare'),
+                'trend' => ! $none && $previous && $change > 0 ? 'up' : 'neutral',
+                'tag' => 'All levels',
+                'tone' => 'primary',
+            ],
+            [
+                'label' => 'Paid Reservations',
+                'value' => $reserved,
+                'change' => 'of ' . number_format($total) . ' applicants',
+                'trend' => 'neutral',
+                'tag' => ($total ? number_format($reserved / $total * 100, 1) : '0.0') . '% conversion',
+                'tone' => 'info',
+            ],
+            [
+                'label' => 'Enrolled',
+                'value' => $enrolled,
+                'change' => 'Officially enrolled',
+                'trend' => 'neutral',
+                'tag' => 'Active enrollees',
+                'tone' => 'primary',
+            ],
+            [
+                'label' => 'Pending Applications',
+                'value' => $pending,
+                'change' => '+' . number_format($addedThisWeek) . ' applicants added this week',
+                'trend' => $addedThisWeek ? 'up' : 'neutral',
+                'tag' => 'Needs action',
+                'tone' => 'warning',
+            ],
+        ];
+    }
+
+    /** Applicants added per day this week (Mon–Sun), College vs Integrated School, from the applicants table. */
+    private function applicationsThisWeek(): array
+    {
+        $start = now()->startOfWeek();
+        $counts = Applicant::where('created_at', '>=', $start)
+            ->whereIn('level', ['college', 'is'])
+            ->get(['level', 'created_at'])
+            ->groupBy(fn ($a) => $a->level . '|' . $a->created_at->format('Y-m-d'))
+            ->map->count();
+        $days = collect(range(0, 6))->map(fn ($i) => $start->copy()->addDays($i));
+
+        return [
+            'labels' => $days->map(fn ($d) => $d->format('D'))->all(),
+            'college' => $days->map(fn ($d) => $counts['college|' . $d->format('Y-m-d')] ?? 0)->all(),
+            'is' => $days->map(fn ($d) => $counts['is|' . $d->format('Y-m-d')] ?? 0)->all(),
+        ];
+    }
+
+    /** The five newest applicants in the applicants table. */
+    private function recentApplicants(): array
+    {
+        $tones = ['Pending' => 'danger', 'For Exam' => 'warning', 'Passed' => 'primary', 'Not Qualified' => 'secondary', 'Paid' => 'info'];
+
+        $paid = ApplicantRecords::paidReservations();
+
+        return Applicant::whereNull('archived_at')->latest()->take(5)->get()
+            ->map(function (Applicant $a) use ($tones, $paid) {
+                $status = ApplicantRecords::status($a, isset($paid[$a->id]));
+                $program = $a->program_or_track ?: '—';
+
+                return [
+                    'name' => "{$a->last_name}, {$a->first_name}",
+                    'reference' => $a->reference_number,
+                    'program' => $a->level === 'is' ? "IS – {$program}" : $program,
+                    'status' => $status,
+                    'tone' => $tones[$status],
+                    'updated' => ($a->updated_at ?? $a->created_at)?->format('M j, g:i A') ?? '—',
+                ];
+            })->all();
+    }
+
+    /**
+     * Real events, newest first, grouped by day: Excel imports (import_batches)
+     * and account requests waiting for approval (users with status Pending).
+     */
+    private function notifications(): array
+    {
+        $imports = ImportBatch::latest('created_at')->take(5)->get()->map(fn (ImportBatch $b) => [
+            'at' => Carbon::parse($b->created_at),
+            'icon' => $b->status === 'failed' ? 'bi-exclamation-triangle' : 'bi-cloud-arrow-up',
+            'tone' => $b->status === 'failed' ? 'danger' : 'info',
+            'title' => match ($b->status) { 'failed' => 'Data import failed', 'processing' => 'Data import in progress', default => 'Data import completed' },
+            'body' => ($b->row_count !== null ? number_format($b->row_count) . ' records from ' : '') . $b->original_filename,
+        ]);
+
+        $requests = User::where('status', 'Pending')->latest()->take(5)->get()->map(fn (User $u) => [
+            'at' => $u->created_at ?? now(),
+            'icon' => 'bi-person-plus',
+            'tone' => 'warning',
+            'title' => 'Account access request',
+            'body' => "{$u->name} is waiting for approval",
+        ]);
+
+        return $imports->concat($requests)
+            ->sortByDesc('at')
+            ->take(6)
+            ->groupBy(fn ($n) => $n['at']->isToday() ? 'Today' : ($n['at']->isYesterday() ? 'Yesterday' : $n['at']->format('M j')))
+            ->map(fn ($items) => $items->map(fn ($n) => $n + ['time' => $n['at']->format('g:i A')])->values()->all())
+            ->all();
     }
 }

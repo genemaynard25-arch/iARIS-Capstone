@@ -24,7 +24,7 @@
                             <tr>
                                 <td>
                                     <div class="fw-semibold">{{ $applicant['name'] }}</div>
-                                    <div class="small text-body-secondary">{{ $applicant['reference'] }}</div>
+                                    <div class="small text-body-secondary text-nowrap">{{ $applicant['reference'] }}</div>
                                 </td>
                                 <td>{{ $applicant['program'] }}</td>
                                 <td><span class="badge rounded-pill bg-{{ $applicant['tone'] }}-subtle text-{{ $applicant['tone'] }}-emphasis">{{ $applicant['status'] }}</span></td>

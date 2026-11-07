@@ -66,7 +66,7 @@ class ApplicantRecords
     }
 
     /** Applicant id => [amount, paid_at] for paid reservation fees (empty until payments are recorded). */
-    private static function paidReservations(): array
+    public static function paidReservations(): array
     {
         return DB::table('payments')
             ->where('fee_type', 'reservation_fee')

@@ -1,30 +1,40 @@
-{{-- Charts are placeholders for now; drop the <canvas> elements in here later. --}}
 <div class="row g-4 mb-4">
+    {{-- Applicants added each day this week, College vs Integrated School (from the applicants table) --}}
     <div class="col-12 col-xl-6">
         <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-body p-4">
+            <div class="card-body p-4 d-flex flex-column">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h2 class="fs-6 fw-bold mb-0">Applications Received This Week</h2>
-                    <a href="#" class="small fw-semibold text-decoration-none">View all</a>
+                    <h2 class="fs-6 fw-bold mb-0">Applications This Week</h2>
+                    <a href="{{ url('/applicants') }}" class="small fw-semibold text-decoration-none">View all</a>
                 </div>
-                <div class="rounded-3 bg-primary-subtle text-body-secondary text-center py-5">
-                    <i class="bi bi-bar-chart-line fs-2 d-block mb-2"></i>
-                    <span class="small">Chart coming soon</span>
-                </div>
+                @if (array_sum($weekChart['college']) + array_sum($weekChart['is']) === 0)
+                    <div class="rounded-3 bg-body-tertiary text-body-secondary text-center py-5 flex-grow-1 d-flex flex-column justify-content-center">
+                        <i class="bi bi-bar-chart-line fs-2 d-block mb-2"></i>
+                        <span class="small">No College or IS applicants added this week yet.</span>
+                    </div>
+                @else
+                    <div class="chart-box"><canvas id="weekChart" role="img" aria-label="Applications this week, College and Integrated School"></canvas></div>
+                    {{-- Legend (both series are always shown) --}}
+                    <div class="d-flex gap-3 small text-body-secondary mt-3">
+                        <span class="d-flex align-items-center gap-2"><span class="rounded-1" style="width:10px;height:10px;background:#00674F"></span> College</span>
+                        <span class="d-flex align-items-center gap-2"><span class="rounded-1" style="width:10px;height:10px;background:#7FC4AB"></span> Integrated School</span>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 
+    {{-- The applicants table has no address / location yet --}}
     <div class="col-12 col-xl-6">
         <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-body p-4">
+            <div class="card-body p-4 d-flex flex-column">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h2 class="fs-6 fw-bold mb-0">Applicants by Location</h2>
-                    <a href="#" class="small fw-semibold text-decoration-none">Full report</a>
+                    <a href="{{ url('/analytics') }}" class="small fw-semibold text-decoration-none">Full report</a>
                 </div>
-                <div class="rounded-3 bg-primary-subtle text-body-secondary text-center py-5">
-                    <i class="bi bi-pie-chart fs-2 d-block mb-2"></i>
-                    <span class="small">Chart coming soon</span>
+                <div class="rounded-3 bg-body-tertiary text-body-secondary text-center py-5 flex-grow-1 d-flex flex-column justify-content-center">
+                    <i class="bi bi-geo-alt fs-2 d-block mb-2"></i>
+                    <span class="small">No location data yet: imported applicants don't include an address.</span>
                 </div>
             </div>
         </div>
