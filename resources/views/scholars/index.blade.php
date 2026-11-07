@@ -82,6 +82,9 @@
             <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
                 <i class="bi bi-download me-1"></i> Export
             </button>
+            @if ($canEdit)
+                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1"></i> Add Scholar</button>
+            @endif
         </div>
 
         {{-- Admission status pills --}}
@@ -104,7 +107,8 @@
                         <th class="text-body-secondary fw-bold">Admission</th>
                         <th class="text-body-secondary fw-bold">LAMP Check</th>
                         {{-- No arrow column here: the table is wide, and clicking anywhere on a row opens it --}}
-                        <th class="pe-4 text-body-secondary fw-bold">Updated</th>
+                        <th class="text-body-secondary fw-bold">Updated</th>
+                        <th class="pe-4"></th>
                     </tr>
                 </thead>
                 <tbody id="scholarRows">
@@ -130,11 +134,19 @@
                             <td><span class="badge rounded-pill bg-{{ $scholarshipTones[$s['scholarship_status']] }}-subtle text-{{ $scholarshipTones[$s['scholarship_status']] }}-emphasis"><i class="bi bi-circle-fill me-1" style="font-size: 0.45rem; vertical-align: middle;"></i>{{ $s['scholarship_status'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $statusTones[$s['status']] }}-subtle text-{{ $statusTones[$s['status']] }}-emphasis">{{ $s['status'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1"></i>{{ $s['lamp'] }}</span></td>
-                            <td class="pe-4 small text-body-secondary">{{ $s['updated_label'] }}</td>
+                            <td class="small text-body-secondary text-nowrap">{{ $s['updated_label'] }}</td>
+                            <td class="pe-4 text-end text-nowrap">
+                                @if ($canEdit)
+                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil"></i></button>
+                                @else
+                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
-                        <td colspan="7" class="text-center text-body-secondary py-5">
+                        <td colspan="8" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
                             No scholars match your search or filters.
                         </td>
@@ -231,12 +243,20 @@
             </div>
         </div>
 
-        <div class="d-flex gap-2 border-top p-3 no-print">
-            <button type="button" class="btn btn-light border flex-fill" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
-            {{-- TODO: needs an edit form + backend. Disabled for now. --}}
-            <button type="button" class="btn btn-primary fw-semibold flex-fill" disabled title="Coming soon"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+        {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
+        <div class="d-flex flex-wrap gap-2 border-top p-3 no-print">
+            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+            @if ($canEdit)
+                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1"></i> Remove</button>
+                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+            @endif
         </div>
     </div>
+
+    {{-- Add / Edit / Remove (front end only), shared with the Records pages --}}
+    @if ($canEdit)
+        @include('applicants.partials.record-modals', ['scholarFields' => ['types' => array_keys(\App\Http\Controllers\ScholarController::TYPES), 'statuses' => array_keys($scholarshipTones)]])
+    @endif
 @endsection
 
 @section('scripts')
@@ -357,7 +377,10 @@
             'Not Found': { alert: 'secondary', icon: 'bi-question-circle-fill', heading: 'Not found in LAMP records', record: 'text-danger-emphasis' },
         };
 
+        let drawerScholar = null;   // the scholar in the drawer (Edit / Remove use it)
+
         function openDrawer(s) {
+            drawerScholar = s;
             document.getElementById('drawerInitials').textContent = s.initials.toUpperCase();
             document.getElementById('drawerName').textContent = s.name;
             document.getElementById('drawerSub').textContent = `${s.id} · ${s.program}`;
@@ -418,10 +441,28 @@
 
         rows.forEach(row => {
             const open = () => openDrawer(SCHOLARS[row.dataset.index]);
-            row.addEventListener('click', open);
+            row.addEventListener('click', e => {
+                // The pencil opens the edit form instead of the drawer
+                if (e.target.closest('[data-row-action="edit"]')) return window.openRecordForm?.('edit', SCHOLARS[row.dataset.index]);
+                open();
+            });
             row.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
         });
 
         render();
+
+        // Tells the Add / Edit / Remove partial (applicants/partials/record-modals) where things are on this page
+        window.RECORD_FORM = {
+            items: SCHOLARS, rows, tbody: 'scholarRows', render, current: () => drawerScholar,
+            drawer: bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('applicantDrawer')),
+            labels: () => ({ group: 'College / Unit', program: 'Program' }),
+            groupOrder: [], statuses: STATUS_ORDER, statusLabels: {}, noun: 'scholar',
+            // "Santos, Maria Isabel L." -> last / first / middle initial
+            toForm: s => {
+                const [last, rest = ''] = s.name.split(', ');
+                const mi = (rest.match(/ ([A-Z])\.$/) || [])[1] || '';
+                return { ...s, last, first: rest.replace(/ [A-Z]\.$/, ''), mi, group: s.unit, scholarship: s.scholarship_status };
+            },
+        };
     </script>
 @endsection

@@ -36,6 +36,8 @@ class ScholarController extends Controller
     {
         return view('scholars.index', [
             'academicYear' => '2025–2026',
+            // Add / Edit / Remove (front end only): roles with the 'edit' permission
+            'canEdit' => auth()->user()->canAccess('edit'),
             'scholars' => self::sample(),
 
             // Bootstrap colours (and icons) for each kind of badge

@@ -3,7 +3,10 @@
     FRONT END ONLY for now: the form checks the fields and the toast says nothing was saved.
     Remove hides the row on this page until the next reload.
     TODO (backend): POST / PUT / DELETE routes for the applicants table, then send these forms there.
-    Uses the page's script (applicants/index.blade.php): APPLICANTS, PAGE, rows, render(), drawer, drawerApplicant.
+    The page tells the form where its things are with window.RECORD_FORM (set in the page's script):
+      items (the people), rows (table rows), tbody (its id), render(), drawer, current() (the person in the drawer),
+      labels() ({group, program}), groupOrder, statuses, statusLabels, noun, toForm(person) (fields for the form).
+    Used by the Records pages (applicants/index) and Scholars. Scholars passes $scholarFields for its two extra selects.
 --}}
 
 {{-- Add / Edit form --}}
@@ -71,8 +74,28 @@
                         <datalist id="recPrograms"></datalist>
                         <div class="invalid-feedback">Enter the program.</div>
                     </div>
+                    @isset($scholarFields)
+                        <div class="col-sm-6">
+                            <label for="recType" class="form-label small fw-bold text-uppercase">Scholarship Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="recType" required>
+                                <option value="">Choose…</option>
+                                @foreach ($scholarFields['types'] as $type)
+                                    <option>{{ $type }}</option>
+                                @endforeach
+                            </select>
+                            <div class="invalid-feedback">Choose the scholarship type.</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label for="recScholarship" class="form-label small fw-bold text-uppercase">Scholarship Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="recScholarship" required>
+                                @foreach ($scholarFields['statuses'] as $status)
+                                    <option>{{ $status }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endisset
                     <div class="col-sm-6">
-                        <label for="recStatus" class="form-label small fw-bold text-uppercase">Status <span class="text-danger">*</span></label>
+                        <label for="recStatus" class="form-label small fw-bold text-uppercase">{{ isset($scholarFields) ? 'Admission Status' : 'Status' }} <span class="text-danger">*</span></label>
                         <select class="form-select" id="recStatus" required></select>
                     </div>
                     <div class="col-sm-6">
@@ -144,6 +167,7 @@
     // Runs after the page's own script and Bootstrap have loaded
     document.addEventListener('DOMContentLoaded', () => {
         const $ = id => document.getElementById(id);
+        const R = window.RECORD_FORM;   // set by the page (see the comment at the top)
         const recordModal = bootstrap.Modal.getOrCreateInstance($('recordModal'));
         const removeModal = bootstrap.Modal.getOrCreateInstance($('removeModal'));
         // undo: shows the Undo button (only after Remove)
@@ -158,29 +182,31 @@
 
         // Fill the selects from what's on this page (colleges / sub-levels / programs, and this page's statuses)
         function fillChoices() {
-            const labels = currentLabels();
+            const labels = R.labels();
             $('recGroupLabel').textContent = labels.group;
             $('recProgramLabel').textContent = labels.program;
-            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...(GROUP_ORDER || []), ...APPLICANTS.map(a => a.group)]).map(v => new Option(v, v)));
-            $('recPrograms').replaceChildren(...unique(APPLICANTS.map(a => a.program)).map(v => new Option(v)));
-            $('recStatus').replaceChildren(...PAGE.statuses.map(v => new Option(PAGE.statusLabels[v] ?? v, v)));
+            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...(R.groupOrder || []), ...R.items.map(a => R.toForm(a).group)]).map(v => new Option(v, v)));
+            $('recPrograms').replaceChildren(...unique(R.items.map(a => R.toForm(a).program)).map(v => new Option(v)));
+            $('recStatus').replaceChildren(...R.statuses.map(v => new Option(R.statusLabels[v] ?? v, v)));
         }
 
         // mode 'add' = empty form; 'edit' = filled in from an applicant
-        window.openRecordForm = (mode, a = drawerApplicant) => {
+        window.openRecordForm = (mode, a = R.current()) => {
             editing = mode === 'edit' ? a : null;
+            const f = editing ? R.toForm(editing) : null;
             fillChoices();
             $('recordForm').reset();
             $('recordForm').classList.remove('was-validated');
             $('recordTitle').textContent = editing ? 'Edit applicant' : 'Add applicant';
-            $('recordSubtitle').textContent = editing ? `${editing.name} · ${editing.id}` : `New ${PAGE.noun} for AY {{ $academicYear }}`;
+            $('recordSubtitle').textContent = editing ? `${editing.name} · ${editing.id}` : `New ${R.noun} for AY {{ $academicYear }}`;
             $('recordSave').textContent = editing ? 'Save changes' : 'Add applicant';
             if (editing) {
                 const set = (id, value) => { if (value && value !== '—') $(id).value = value; };
-                set('recLast', editing.last); set('recFirst', editing.first); set('recMi', editing.mi);
-                set('recGender', editing.gender); set('recEmail', editing.email); set('recContact', editing.contact);
-                set('recAddress', editing.address); set('recGroup', editing.group); set('recProgram', editing.program);
-                set('recStatus', editing.status); set('recApplied', editing.applied);
+                set('recLast', f.last); set('recFirst', f.first); set('recMi', f.mi);
+                set('recGender', f.gender); set('recEmail', f.email); set('recContact', f.contact);
+                set('recAddress', f.address); set('recGroup', f.group); set('recProgram', f.program);
+                set('recStatus', f.status); set('recApplied', f.applied);
+                if ($('recType')) { set('recType', f.type); set('recScholarship', f.scholarship); }
             } else {
                 $('recApplied').value = new Date().toISOString().slice(0, 10);
             }
@@ -205,22 +231,22 @@
 
         // ---- Remove ----
         document.querySelector('[data-record-remove]')?.addEventListener('click', () => {
-            const a = drawerApplicant;
+            const a = R.current();
             $('removeName').textContent = a.name;
             $('removeId').textContent = a.id;
-            $('removeStatus').textContent = a.status_label;
+            $('removeStatus').textContent = a.status_label ?? a.status;
             $('removeForm').reset();
             $('removeForm').classList.remove('was-validated');
-            drawer.hide();
+            R.drawer.hide();
             removeModal.show();
         });
 
         // Undo: put the removed row back where it was
         $('recordUndo').addEventListener('click', () => {
             if (!lastRemoved) return;
-            rows.splice(lastRemoved.position, 0, lastRemoved.row);
-            document.getElementById('applicantRows').appendChild(lastRemoved.row);
-            render();
+            R.rows.splice(lastRemoved.position, 0, lastRemoved.row);
+            $(R.tbody).appendChild(lastRemoved.row);
+            R.render();
             lastRemoved = null;
             toast('Restored.');
         });
@@ -233,16 +259,16 @@
             e.target.classList.add('was-validated');
             if (!e.target.checkValidity()) return;
             // Hide the row on this page only (it comes back on reload until the backend can delete it)
-            const index = APPLICANTS.indexOf(drawerApplicant);
-            const row = rows.find(r => Number(r.dataset.index) === index);
+            const index = R.items.indexOf(R.current());
+            const row = R.rows.find(r => Number(r.dataset.index) === index);
             if (row) {
-                lastRemoved = { row, position: rows.indexOf(row) };
-                rows.splice(lastRemoved.position, 1);
+                lastRemoved = { row, position: R.rows.indexOf(row) };
+                R.rows.splice(lastRemoved.position, 1);
                 row.remove();
-                render();
+                R.render();
             }
             removeModal.hide();
-            toast(`${drawerApplicant.name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
+            toast(`${R.current().name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
         });
     });
 </script>

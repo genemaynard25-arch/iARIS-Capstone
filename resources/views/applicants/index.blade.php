@@ -700,6 +700,13 @@
         setUpFiltersForTab();
         render();
 
+        // Tells the Add / Edit / Remove partial (applicants/partials/record-modals) where things are on this page
+        window.RECORD_FORM = {
+            items: APPLICANTS, rows, tbody: 'applicantRows', render, drawer, current: () => drawerApplicant,
+            labels: currentLabels, groupOrder: GROUP_ORDER, statuses: PAGE.statuses, statusLabels: PAGE.statusLabels, noun: PAGE.noun,
+            toForm: a => a,   // the rows already use the form's field names
+        };
+
         // ?open=APP-2026-0381 opens that person's drawer (the Applicants master list's "Open in records" links here)
         const linkedApplicant = APPLICANTS.find(a => a.id === new URLSearchParams(location.search).get('open'));
         if (linkedApplicant) openDrawer(linkedApplicant);
