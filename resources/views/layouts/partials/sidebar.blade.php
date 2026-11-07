@@ -24,7 +24,6 @@
                 <a href="{{ url('/applicants') }}" class="nav-link {{ request()->is('applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
                 <a href="{{ url('/reports') }}" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports</a>
                 <a href="{{ url('/analytics') }}" class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
-                <a href="{{ url('/ai-chat') }}" class="nav-link {{ request()->is('ai-chat') ? 'active' : '' }}"><i class="bi bi-stars"></i> AI Assistant</a>
             </nav>
 
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">RECORDS</div>

@@ -9,7 +9,7 @@
 
 <body>
     <div class="d-flex min-vh-100">
-        {{-- Each kind of user gets their own sidebar. The /lamp, /shs and /chancellor pages use theirs too,
+        {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /chancellor and /dean pages use theirs too,
              so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)
              TODO (RBAC): keep these users out of the admin pages. --}}
         @if (request()->is('lamp*') || auth()->user()->isLamp())
@@ -18,6 +18,8 @@
             @include('layouts.partials.sidebar-shs')
         @elseif (request()->is('chancellor*') || auth()->user()->isChancellor())
             @include('layouts.partials.sidebar-chancellor')
+        @elseif (request()->is('dean*') || auth()->user()->isDean())
+            @include('layouts.partials.sidebar-dean')
         @else
             @include('layouts.partials.sidebar')
         @endif

@@ -34,7 +34,8 @@ class SettingsController extends Controller
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
             'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Records, Reports, Analytics, Import'],
-            'dean' => ['Dean / Program Chair', 'Dean', 'College', 'Dashboard, Applicants, Reports, Analytics'],
+            'dean' => ['Dean', 'Dean', 'College of Information Technology and Engineering', 'Dashboard, Applicants, Analytics, Reports'],
+            'program_chair' => ['Program Chair', 'Program Chair', 'BS Computer Science · CITE', 'Dashboard, Applicants, Analytics, Reports'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Applicants, Reports'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Mission Office', 'Dashboard, Scholars, Reports'],

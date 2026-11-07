@@ -53,6 +53,18 @@ class User extends Authenticatable
         return $this->role === 'chancellor';
     }
 
+    // Dean of a college, or a Program Chair: a read-only dashboard at /dean.
+    // A dean sees every program in their college; a program chair sees only their program.
+    public function isDean(): bool
+    {
+        return $this->role === 'dean' || $this->role === 'program_chair';
+    }
+
+    public function isProgramChair(): bool
+    {
+        return $this->role === 'program_chair';
+    }
+
     // The seeded SHS principal has role 'admin' but is assigned to IS / SHS,
     // so either the 'principal' role or the SHS assignment counts.
     public function isShsPrincipal(): bool

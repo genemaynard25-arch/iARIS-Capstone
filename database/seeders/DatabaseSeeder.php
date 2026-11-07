@@ -80,6 +80,18 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
+    // Program Chair: the Dean dashboard at /dean, locked to one program (BS Computer Science for now)
+    \App\Models\User::firstOrCreate(
+        ['email' => 'chair@gmail.com'],
+        [
+            'name' => 'Antonio L. Mercado',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'program_chair',
+            'access_type' => 'viewer',
+            'assigned_level' => 'college',
+        ]
+    );
+
     // LAMP Office: scholar cross-check pages at /lamp
     \App\Models\User::firstOrCreate(
         ['email' => 'lamp@gmail.com'],

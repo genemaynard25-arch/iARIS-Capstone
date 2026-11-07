@@ -7,27 +7,9 @@ use Illuminate\Http\Request;
 
 class AiChatController extends Controller
 {
-    public function show()
-    {
-        return view('ai-chat');
-
-    }
-
-    public function ask(Request $request, AiAssistant $ai)
-    {
-        $request->validate([
-            'message' => 'required|string',
-        ]);
-
-        $reply = $ai->askQuestion($request->message);
-
-        return back()->with([
-            'question' => $request->message,
-            'reply' => $reply,
-        ]);
-    }
-
-     public function widgetAsk(Request $request, AiAssistant $ai)
+    // The floating AI widget (partials/ai-widget) on every page sends its questions here.
+    // (The old full-page AI Assistant at /ai-chat was removed: the widget does the same job.)
+    public function widgetAsk(Request $request, AiAssistant $ai)
     {
         $request->validate([
             'message' => 'required|string|max:2000',

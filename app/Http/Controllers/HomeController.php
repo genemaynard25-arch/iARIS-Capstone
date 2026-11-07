@@ -17,7 +17,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // LAMP Office, SHS principal and Chancellor users have their own dashboards. Every sign-in
+        // LAMP Office, SHS principal, Chancellor, Dean and Program Chair users have their own dashboards. Every sign-in
         // ends up here (login -> splash -> /home), so this sends them to the right place.
         if (auth()->user()->isLamp()) {
             return redirect()->route('lamp.dashboard');
@@ -27,6 +27,9 @@ class HomeController extends Controller
         }
         if (auth()->user()->isChancellor()) {
             return redirect()->route('chancellor.dashboard');
+        }
+        if (auth()->user()->isDean()) {
+            return redirect()->route('dean.dashboard');
         }
 
         return view('home', [

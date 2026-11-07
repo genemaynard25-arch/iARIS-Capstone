@@ -22,6 +22,7 @@ use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ChancellorController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\DeanController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -57,9 +58,7 @@ Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('aut
 
 Route::get('/import/{batch}', [ImportController::class, 'results'])->middleware('auth');
 
-// AI Chat routes
-Route::get('/ai-chat', [AiChatController::class, 'show'])->middleware('auth');
-Route::post('/ai-chat', [AiChatController::class, 'ask'])->middleware('auth');
+// The floating AI widget's questions (the widget is on every page: see layouts/app.blade.php)
 Route::post('/ai-widget/ask', [AiChatController::class, 'widgetAsk'])->middleware('auth');
 
 // College Records. 'level:college' is the team's RBAC check: users with a
@@ -93,3 +92,7 @@ Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->mid
 
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');
+
+// Dean / Program Chair dashboard (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to deans and program chairs, plus IATO admins
+Route::get('/dean', [DeanController::class, 'dashboard'])->middleware('auth')->name('dean.dashboard');
