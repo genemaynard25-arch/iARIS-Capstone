@@ -5,24 +5,109 @@ namespace App\Http\Controllers;
 class ApplicantController extends Controller
 {
     /**
-     * Applicants list.
+     * Applicants: the master pipeline of every division (Integrated School, College, Graduate Programs,
+     * College of Law, iPACE, ETEEAP), built from each Records page's placeholder people.
      *
-     * Everything below is placeholder data so the UI can be built first (same idea
-     * as HomeController). The names are made up. When the backend is ready, replace
-     * $applicants with a query on the applicants table and keep the same keys, so
-     * the Blade view doesn't need to change.
-     *
-     * 'unit' is 'college' or 'is' (Integrated School) and decides which tab a row
-     * appears in. 'status' is one of: Pending, For Exam, Paid, Enrolled.
+     * When the backend is ready, replace pipeline() with a query that returns the same keys,
+     * so the Blade view (applicants/pipeline.blade.php) doesn't need to change.
      */
     public function index()
     {
-        return view('applicants.index', [
-            'scope' => 'all',
+        return view('applicants.pipeline', [
             'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => self::sample(),
+            'divisions' => self::DIVISIONS,
+            'applicants' => self::pipeline(),
         ]);
+    }
+
+    /**
+     * The divisions, in sidebar order.
+     * group: 'ad' = Academic Divisions, 'al' = Alternative Learning (the two filters on the page).
+     * dept: what the Department column means for that division. colors: [text, background] for its tag.
+     * records: its Records page (null = not built yet).
+     */
+    const DIVISIONS = [
+        'Integrated School' => ['group' => 'ad', 'icon' => 'bi-building', 'dept' => 'Level', 'colors' => ['#00674F', '#E6F5EF'], 'records' => '/records/is'],
+        'College' => ['group' => 'ad', 'icon' => 'bi-mortarboard', 'dept' => 'College', 'colors' => ['#2558D9', '#EAF1FF'], 'records' => '/records/college'],
+        'Graduate Programs' => ['group' => 'ad', 'icon' => 'bi-journal-bookmark', 'dept' => 'Program', 'colors' => ['#7C3AED', '#F3EAFF'], 'records' => '/records/graduate'],
+        'College of Law' => ['group' => 'ad', 'icon' => 'bi-bank2', 'dept' => 'Program', 'colors' => ['#8A1538', '#FBE9EF'], 'records' => '/records/law'],
+        'iPACE' => ['group' => 'al', 'icon' => 'bi-laptop', 'dept' => 'Program', 'colors' => ['#B96000', '#FFF3E6'], 'records' => '/records/ipace'],
+        'ETEEAP' => ['group' => 'al', 'icon' => 'bi-briefcase', 'dept' => 'Program', 'colors' => ['#0E7490', '#E3F5F9'], 'records' => null],
+    ];
+
+    /**
+     * Every applicant from every division, in one shape:
+     * id, name, division, dept (short code shown in the table), dept_label (full name),
+     * program, scholarship ('' = none), status, applied (Y-m-d) and the drawer details.
+     */
+    public static function pipeline(): array
+    {
+        // Scholarship type per applicant number (Scholars page), leaving out cancelled ones
+        $scholarships = ScholarController::sample()
+            ->where('scholarship_status', '!=', 'Cancelled')
+            ->pluck('type', 'id');
+
+        $row = fn (array $a, string $division, string $dept, string $deptLabel, string $program) => [
+            'id' => $a['id'],
+            'name' => "{$a['last']}, {$a['first']} {$a['mi']}.",
+            'division' => $division,
+            'dept' => $dept,
+            'dept_label' => $deptLabel,
+            'program' => $program,
+            'scholarship' => $scholarships[$a['id']] ?? '',
+            'status' => $a['status'],
+            'applied' => $a['applied'],
+            'dob' => $a['dob'],
+            'gender' => $a['gender'],
+            'email' => $a['email'],
+            'contact' => $a['contact'],
+            'address' => $a['address'],
+            'exam' => $a['exam'],
+            'paid' => $a['paid'],
+            'amount' => $a['amount'],
+        ];
+
+        $isNames = ['Preschool' => 'Preschool', 'Grade School' => 'GS', 'Junior High' => 'JHS', 'Senior High' => 'SHS'];
+        $all = [];
+        foreach (self::sample() as $a) {
+            if ($a['unit'] === 'is') {
+                $subLevel = IsRecordController::subLevelFor($a['level']);
+                $program = $subLevel === 'Senior High' ? "{$a['level']} · {$a['program']}" : $a['level'];
+                $all[] = $row($a, 'Integrated School', $isNames[$subLevel], $subLevel, $program);
+            } elseif ($a['college'] !== 'College of Law') { // the Law sample below has the law applicants
+                $all[] = $row($a, 'College', $a['college'], $a['college'], $a['program']);
+            }
+        }
+        foreach (GraduateRecordController::sample() as $a) {
+            $all[] = $row($a, 'Graduate Programs', $a['group'], $a['program_label'], $a['program_label']);
+        }
+        foreach (LawRecordController::sample() as $a) {
+            $all[] = $row($a, 'College of Law', $a['group'], $a['program_label'], $a['program_label']);
+        }
+        foreach (IpaceRecordController::sample() as $a) {
+            $all[] = $row($a, 'iPACE', $a['group'], $a['program_label'], "{$a['program_label']} · {$a['program']}");
+        }
+        foreach (self::eteeap() as $a) {
+            $all[] = $row($a, 'ETEEAP', $a['group'], $a['program_label'], $a['program_label']);
+        }
+
+        return $all;
+    }
+
+    /**
+     * ETEEAP (Expanded Tertiary Education Equivalency and Accreditation Program) has no Records page yet,
+     * so its placeholder people live here. Made up. 'For Exam' means waiting for the portfolio assessment.
+     */
+    private static function eteeap(): array
+    {
+        $bsba = ['group' => 'BSBA', 'program_label' => 'BS Business Administration (BSBA)'];
+        $bsit = ['group' => 'BSIT', 'program_label' => 'BS Information Technology (BSIT)'];
+
+        return [
+            $bsba + ['id' => 'APP-2026-E001', 'last' => 'Umali', 'first' => 'Rogelio', 'mi' => 'T', 'status' => 'Paid', 'applied' => '2026-05-04', 'dob' => '1984-02-11', 'gender' => 'Male', 'email' => 'r.umali@example.com', 'contact' => '0917 000 3001', 'address' => 'Lipa City, Batangas', 'exam' => 'Portfolio reviewed May 28, 2026', 'paid' => '2026-06-02', 'amount' => 2500],
+            $bsit + ['id' => 'APP-2026-E002', 'last' => 'Katigbak', 'first' => 'Marites', 'mi' => 'L', 'status' => 'For Exam', 'applied' => '2026-05-11', 'dob' => '1987-09-30', 'gender' => 'Female', 'email' => 'm.katigbak@example.com', 'contact' => '0917 000 3002', 'address' => 'Batangas City, Batangas', 'exam' => 'Portfolio due Jun 20, 2026', 'paid' => null, 'amount' => null],
+            $bsba + ['id' => 'APP-2026-E003', 'last' => 'Recto', 'first' => 'Arnel', 'mi' => 'D', 'status' => 'Pending', 'applied' => '2026-05-21', 'dob' => '1979-12-05', 'gender' => 'Male', 'email' => 'a.recto@example.com', 'contact' => '0917 000 3003', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null, 'amount' => null],
+        ];
     }
 
     /**

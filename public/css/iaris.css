@@ -168,6 +168,10 @@ body:has(.report-tray.show) main { padding-bottom: 6rem; }
     .report-tray.show { transform: none; }
 }
 
+/* Applicants: the choices in the "Add an applicant" window */
+.add-option { transition: border-color 0.15s, background 0.15s; }
+.add-option:hover, .add-option:focus-visible { border-color: var(--iaris-green) !important; background: var(--bs-tertiary-bg); }
+
 /* 4. Printing an applicant profile: only the open drawer is printed */
 @media print {
     body * { visibility: hidden; }

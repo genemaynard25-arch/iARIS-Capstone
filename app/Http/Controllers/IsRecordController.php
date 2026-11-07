@@ -22,7 +22,7 @@ class IsRecordController extends Controller
         $students = collect(ApplicantController::sample())
             ->where('unit', 'is')
             ->map(function ($a) {
-                $subLevel = $this->subLevelFor($a['level']);
+                $subLevel = self::subLevelFor($a['level']);
 
                 return array_merge($a, [
                     'sub_level' => $subLevel,
@@ -44,7 +44,7 @@ class IsRecordController extends Controller
     }
 
     // "Grade 11" -> Senior High, "Grade 7" -> Junior High, "Grade 3" -> Grade School, anything else -> Preschool
-    private function subLevelFor(string $level): string
+    public static function subLevelFor(string $level): string
     {
         $grade = (int) preg_replace('/\D/', '', $level);
 

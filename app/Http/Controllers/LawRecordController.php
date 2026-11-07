@@ -18,6 +18,18 @@ class LawRecordController extends Controller
      */
     public function index()
     {
+        return view('applicants.index', [
+            'scope' => 'law',
+            'academicYear' => '2025–2026',
+            'periodLabel' => 'June 2026',
+            'applicants' => self::sample(),
+            'groupOrder' => ['JD', 'LLM', 'JSD'],
+        ]);
+    }
+
+    // The placeholder applicants. Public and static so the Applicants master list can reuse them.
+    public static function sample(): array
+    {
         $jd = ['group' => 'JD', 'program_label' => 'Juris Doctor (JD)'];
         $llm = ['group' => 'LLM', 'program_label' => 'Master of Laws (LLM)'];
         $jsd = ['group' => 'JSD', 'program_label' => 'Doctor of Juridical Science (JSD)'];
@@ -34,12 +46,6 @@ class LawRecordController extends Controller
             $base + $jd + ['id' => 'APP-2026-L008', 'last' => 'Panganiban', 'first' => 'Andrea', 'mi' => 'M', 'program' => 'AB Communication · DLSL', 'bar' => 'N/A', 'status' => 'Paid', 'applied' => '2026-05-09', 'updated' => '2026-06-01 16:10', 'dob' => '2001-04-27', 'gender' => 'Female', 'email' => 'a.panganiban@example.com', 'contact' => '0917 000 1008', 'address' => 'Malvar, Batangas', 'exam' => 'Jun 9, 2026 · 10:00 AM', 'paid' => '2026-06-01', 'amount' => 3500],
         ];
 
-        return view('applicants.index', [
-            'scope' => 'law',
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => $applicants,
-            'groupOrder' => ['JD', 'LLM', 'JSD'],
-        ]);
+        return $applicants;
     }
 }

@@ -4,6 +4,14 @@ namespace App\Http\Controllers;
 
 class IpaceRecordController extends Controller
 {
+    const PROGRAMS = [
+        'BSIT' => 'BS Information Technology',
+        'BSCS' => 'BS Computer Science',
+        'BSBA' => 'BS Business Administration',
+        'BSN' => 'BS Nursing',
+        'BEED' => 'Bachelor of Elementary Education',
+    ];
+
     /**
      * iPACE Records page (Individualized Program for Adult and Continuing Education).
      *
@@ -17,13 +25,19 @@ class IpaceRecordController extends Controller
      */
     public function index()
     {
-        $programs = [
-            'BSIT' => 'BS Information Technology',
-            'BSCS' => 'BS Computer Science',
-            'BSBA' => 'BS Business Administration',
-            'BSN' => 'BS Nursing',
-            'BEED' => 'Bachelor of Elementary Education',
-        ];
+        return view('applicants.index', [
+            'scope' => 'ipace',
+            'academicYear' => '2025–2026',
+            'periodLabel' => 'June 2026',
+            'applicants' => self::sample(),
+            'groupOrder' => array_keys(self::PROGRAMS),
+        ]);
+    }
+
+    // The placeholder applicants. Public and static so the Applicants master list can reuse them.
+    public static function sample(): array
+    {
+        $programs = self::PROGRAMS;
 
         $applicants = [
             ['group' => 'BSIT', 'id' => 'APP-2026-I001', 'last' => 'Lim', 'first' => 'Kenneth Andrew', 'mi' => 'P', 'program' => 'Online', 'year' => '2nd Year', 'working' => 'Yes', 'employer' => 'BDO Unibank · IT Associate', 'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => '2026-06-01 09:00', 'dob' => '1999-04-12', 'gender' => 'Male', 'email' => 'ka.lim@example.com', 'contact' => '0917 000 2001', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => '2026-06-01', 'amount' => 2000],
@@ -43,12 +57,6 @@ class IpaceRecordController extends Controller
             'program_label' => "{$programs[$a['group']]} ({$a['group']})",
         ], $applicants);
 
-        return view('applicants.index', [
-            'scope' => 'ipace',
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => $applicants,
-            'groupOrder' => array_keys($programs),
-        ]);
+        return $applicants;
     }
 }

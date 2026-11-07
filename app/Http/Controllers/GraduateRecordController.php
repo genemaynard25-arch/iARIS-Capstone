@@ -4,6 +4,15 @@ namespace App\Http\Controllers;
 
 class GraduateRecordController extends Controller
 {
+    // Code => [full name, level]
+    const PROGRAMS = [
+        'MBA' => ['Master of Business Administration', "Master's"],
+        'MEd' => ['Master of Education', "Master's"],
+        'MIT' => ['Master of Information Technology', "Master's"],
+        'MPA' => ['Master of Public Administration', "Master's"],
+        'PhD' => ['Doctor of Philosophy in Education', 'Doctoral'],
+    ];
+
     /**
      * Graduate Programs Records page (master's and doctoral).
      *
@@ -16,14 +25,19 @@ class GraduateRecordController extends Controller
      */
     public function index()
     {
-        // Code => [full name, level]
-        $programs = [
-            'MBA' => ['Master of Business Administration', "Master's"],
-            'MEd' => ['Master of Education', "Master's"],
-            'MIT' => ['Master of Information Technology', "Master's"],
-            'MPA' => ['Master of Public Administration', "Master's"],
-            'PhD' => ['Doctor of Philosophy in Education', 'Doctoral'],
-        ];
+        return view('applicants.index', [
+            'scope' => 'graduate',
+            'academicYear' => '2025–2026',
+            'periodLabel' => 'June 2026',
+            'applicants' => self::sample(),
+            'groupOrder' => array_keys(self::PROGRAMS),
+        ]);
+    }
+
+    // The placeholder applicants. Public and static so the Applicants master list can reuse them.
+    public static function sample(): array
+    {
+        $programs = self::PROGRAMS;
 
         $applicants = [
             ['group' => 'MBA', 'id' => 'APP-2026-G001', 'last' => 'Bautista', 'first' => 'Ramon Jose', 'mi' => 'A', 'degree' => 'BS Business Administration · DLSL', 'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => '2026-06-01 09:00', 'dob' => '1990-06-15', 'gender' => 'Male', 'email' => 'rj.bautista@example.com', 'contact' => '0917 000 3001', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => '2026-06-01', 'amount' => 3000],
@@ -44,12 +58,6 @@ class GraduateRecordController extends Controller
             'program_label' => "{$programs[$a['group']][0]} ({$a['group']})",
         ], $applicants);
 
-        return view('applicants.index', [
-            'scope' => 'graduate',
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => $applicants,
-            'groupOrder' => array_keys($programs),
-        ]);
+        return $applicants;
     }
 }

@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 {{--
-    This view is used by six pages, picked by $scope:
-    'all' = /applicants, 'college' = /records/college, 'is' = /records/is,
+    This view is used by the Records pages, picked by $scope:
+    ('all' was /applicants, which now has its own view: applicants/pipeline.blade.php), 'college' = /records/college, 'is' = /records/is,
     'law' = /records/law, 'ipace' = /records/ipace, 'graduate' = /records/graduate.
     $page holds what's different between them ($defaults fills in anything a page leaves out):
       extras       extra columns: which field, its heading, and whether it goes
@@ -597,5 +597,9 @@
 
         setUpFiltersForTab();
         render();
+
+        // ?open=APP-2026-0381 opens that person's drawer (the Applicants master list's "Open in records" links here)
+        const linkedApplicant = APPLICANTS.find(a => a.id === new URLSearchParams(location.search).get('open'));
+        if (linkedApplicant) openDrawer(linkedApplicant);
     </script>
 @endsection
