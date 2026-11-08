@@ -104,6 +104,18 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
+    // IS Registrar: the same Registrar pages, for Integrated School records only
+    \App\Models\User::firstOrCreate(
+        ['email' => 'isregistrar@gmail.com'],
+        [
+            'name' => 'Michelle Reyes',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'registrar',
+            'access_type' => 'viewer',
+            'assigned_level' => 'is',
+        ]
+    );
+
     // LAMP Office: scholar cross-check pages at /lamp
     \App\Models\User::firstOrCreate(
         ['email' => 'lamp@gmail.com'],

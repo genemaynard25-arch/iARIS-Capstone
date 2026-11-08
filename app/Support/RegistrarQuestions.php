@@ -13,12 +13,10 @@ namespace App\Support;
 class RegistrarQuestions
 {
     // $me: how the Registrar's own messages are signed, e.g. ['name' => 'Santos, Remian', 'role' => 'College Registrar']
-    public static function sample(array $me = ['name' => 'Registrar', 'role' => 'College Registrar']): array
+    public static function sample(array $me = ['name' => 'Registrar', 'role' => 'College Registrar'], ?string $scope = null): array
     {
-        $rows = collect(RegistrarData::rows())->keyBy('id');
-        // Two records to talk about: a College applicant from the database (if any) and an iPACE one
-        $college = collect(RegistrarData::rows())->firstWhere('unit', 'College');
-        $ipace = $rows->get('APP-2026-I002');
+        $scope ??= RegistrarData::scope();
+        $rows = collect(RegistrarData::rows($scope));
 
         $question = fn ($row, $topic, $status, $messages) => $row ? [
             'id' => $row['id'], 'name' => $row['name'], 'unit' => $row['unit'], 'program' => $row['program'],
@@ -26,6 +24,23 @@ class RegistrarQuestions
         ] : null;
         $reg = fn ($at, $text) => ['from' => 'reg', 'name' => $me['name'], 'role' => $me['role'], 'at' => $at, 'text' => $text];
         $iato = fn ($name, $role, $at, $text) => ['from' => 'iato', 'name' => $name, 'role' => $role, 'at' => $at, 'text' => $text];
+
+        if ($scope === 'is') {
+            // Two Integrated School records from the database (if any): a Preschool and a Senior High one
+            return array_values(array_filter([
+                $question($rows->firstWhere('dept', 'Preschool'), 'Personal details', 'answered', [
+                    $reg('Jun 9, 2026 · 9:40 AM', "Her birth certificate shows a middle name, but the record has none. Please confirm her full name before enrollment."),
+                    $iato('Renegado, Randolph', 'Super Admin', 'Jun 9, 2026 · 10:05 AM', "Thanks. The middle name was missing from the imported file. We'll correct the record."),
+                ]),
+                $question($rows->firstWhere('dept', 'Senior High'), 'Program or year level', 'waiting', [
+                    $reg('Jun 11, 2026 · 4:15 PM', 'The record shows the track, but not the strand. Which strand should we enroll this student in?'),
+                ]),
+            ]));
+        }
+
+        // College Registrar: a College applicant from the database (if any) and an iPACE one
+        $college = $rows->firstWhere('unit', 'College');
+        $ipace = $rows->firstWhere('id', 'APP-2026-I002');
 
         return array_values(array_filter([
             $question($college, 'Personal details', 'answered', [

@@ -9,7 +9,7 @@ use App\Support\RegistrarQuestions;
 class RegistrarController extends Controller
 {
     /**
-     * College Registrar pages: Dashboard, Ready for Enrollment, Reports, Questions to IATO.
+     * Registrar pages (College Registrar and IS Registrar): Dashboard, Ready for Enrollment, Reports, Questions to IATO.
      * Records are view only (the Records pages, with "Ask IATO about this record" in the drawer).
      *
      * Real data where the database has it (College, Graduate Programs, ETEEAP); College of Law and
@@ -22,7 +22,7 @@ class RegistrarController extends Controller
         $rows = RegistrarData::rows();
 
         return view('registrar.dashboard', $this->shared() + [
-            'counts' => RegistrarData::countsByUnit($rows),
+            'counts' => RegistrarData::countsByGroup($rows),
             'latestPaid' => collect($rows)->where('status', 'Paid')->sortByDesc('paid')->take(5)->values()->all(),
         ]);
     }
@@ -40,8 +40,8 @@ class RegistrarController extends Controller
             'rows' => RegistrarData::rows(),
             // Reports generated earlier (placeholders until reports are saved)
             'history' => [
-                ['Paid reservations list', 'All units', 'This week', 'Excel (CSV)', now()->subDay()->format('M j, Y') . ' · 4:30 PM'],
-                ['Applicants by status', 'College', 'AY ' . ApplicantRecords::academicYear() . ' (to date)', 'PDF', now()->subDays(7)->format('M j, Y') . ' · 10:12 AM'],
+                ['Paid reservations list', count(RegistrarData::units()) > 1 ? 'All units' : array_key_first(RegistrarData::units()), 'Last 7 days', 'Excel (CSV)', now()->subDay()->format('M j, Y') . ' · 4:30 PM'],
+                ['Applicants by status', array_key_first(RegistrarData::units()), 'AY ' . ApplicantRecords::academicYear() . ' (to date)', 'PDF', now()->subDays(7)->format('M j, Y') . ' · 10:12 AM'],
             ],
         ]);
     }
@@ -60,14 +60,16 @@ class RegistrarController extends Controller
         $user = auth()->user();
         $me = [
             'name' => self::lastFirst($user->name),
-            'role' => $user->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar',
+            'role' => RegistrarData::scope() === 'is' ? 'IS Registrar' : 'College Registrar',
         ];
         $questions = RegistrarQuestions::sample($me);
 
         return [
             'academicYear' => ApplicantRecords::academicYear(),
             'me' => $me,
-            'units' => array_keys(RegistrarData::UNITS),
+            'units' => array_keys(RegistrarData::units()),
+            // IS Registrar: one unit, so pages break it down by level instead
+            'levels' => RegistrarData::scope() === 'is' ? RegistrarData::IS_LEVELS : [],
             'questions' => $questions,
             // Amber number on the sidebar: questions IATO answered
             'answeredCount' => collect($questions)->where('status', 'answered')->count(),

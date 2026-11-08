@@ -10,16 +10,16 @@
     // key => [title, icon, colour, description]
     $templates = [
         'paid' => ['Paid reservations list', 'bi-clipboard-check', 'info', 'Every applicant who paid, with payment date and amount. For enrollment.'],
-        'status' => ['Applicants by status', 'bi-bar-chart', 'primary', 'Pending, For Exam, Passed and Paid counts by unit and department.'],
+        'status' => ['Applicants by status', 'bi-bar-chart', 'primary', 'Pending, For Exam, Passed and Paid counts by unit and department (or level).'],
         'daily' => ['Daily payments summary', 'bi-calendar-day', 'warning', 'Reservations paid per day, with totals.'],
-        'program' => ['Applicants by program', 'bi-layers', 'secondary', 'Counts per program, by unit.'],
+        'program' => ['Applicants by program / grade', 'bi-layers', 'secondary', 'Counts per program or grade, by unit.'],
     ];
     $periods = ["AY {$academicYear} (to date)", 'Last 7 days', 'This month', 'Last month'];
 @endphp
 
 @section('title', 'iARIS — Registrar Reports')
 @section('page-title', 'Reports')
-@section('page-subtitle', 'Generate reports for ' . implode(', ', array_slice($units, 0, -1)) . ', and ' . last($units) . ' from the data in iARIS')
+@section('page-subtitle', 'Generate reports for ' . (count($units) > 1 ? implode(', ', array_slice($units, 0, -1)) . ', and ' . last($units) : $units[0]) . ' from the data in iARIS')
 
 @section('content')
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
@@ -73,7 +73,9 @@
                 <div class="modal-body p-4">
                     <label for="genScope" class="form-label small fw-bold text-uppercase text-body-secondary">Scope</label>
                     <select class="form-select mb-3" id="genScope">
-                        <option>All units</option>
+                        @if (count($units) > 1)
+                            <option>All units</option>
+                        @endif
                         @foreach ($units as $unit)
                             <option>{{ $unit }}</option>
                         @endforeach

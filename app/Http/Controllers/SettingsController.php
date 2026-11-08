@@ -53,6 +53,10 @@ class SettingsController extends Controller
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
         $roleKey = $user->isShsPrincipal() ? 'principal' : $user->role;
         [$roleLabel, $title, $office, $modules] = $roles[$roleKey] ?? [ucwords(str_replace('_', ' ', $user->role ?? 'User')), '—', '—', '—'];
+        // Registrars: "College Registrar" or "IS Registrar"
+        if ($user->role === 'registrar') {
+            $roleLabel = $title = $user->roleInfo()[0];
+        }
 
         $scopes = ['college' => 'College', 'is' => 'Integrated School'];
         $scope = $user->isChancellor() || ($user->isAdmin() && ! $user->assigned_level)

@@ -15,8 +15,11 @@
                 <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search name or applicant number…" aria-label="Search">
             </div>
-            <select class="form-select w-auto" id="unitFilter" aria-label="Unit">
-                <option value="">All units</option>
+            {{-- One unit (IS Registrar): no unit choice, just its levels --}}
+            <select class="form-select w-auto {{ count($units) > 1 ? '' : 'd-none' }}" id="unitFilter" aria-label="Unit">
+                @if (count($units) > 1)
+                    <option value="">All units</option>
+                @endif
                 @foreach ($units as $unit)
                     <option>{{ $unit }}</option>
                 @endforeach
@@ -56,6 +59,7 @@
     <script>
         const ROWS = @json($rows);
         const UNITS = @json($units);
+        const LEVELS = @json($levels);   // IS Registrar only
         const $ = id => document.getElementById(id);
         const el = (tag, className, text) => {
             const e = document.createElement(tag);
@@ -70,7 +74,8 @@
             const dept = $('deptFilter');
             dept.classList.toggle('d-none', !unit);
             const depts = [...new Set(ROWS.filter(r => r.unit === unit).map(r => r.dept))].sort();
-            dept.replaceChildren(new Option(unit === 'College' ? 'All colleges' : 'All programs', ''), ...depts.map(d => new Option(d)));
+            const all = { 'College': 'All colleges', 'Integrated School': 'All levels' }[unit] || 'All programs';
+            dept.replaceChildren(new Option(all, ''), ...(LEVELS.length ? LEVELS : depts).map(d => new Option(d)));
         }
 
         function filtered() {
@@ -83,10 +88,11 @@
         function draw() {
             const list = filtered(), unit = $('unitFilter').value, dept = $('deptFilter').value;
 
-            // Cards: this view, then the paid count of each unit
+            // Cards: this view, then the paid count of each unit (IS Registrar: of each level)
+            const groupKey = LEVELS.length ? 'dept' : 'unit';
             $('statCards').replaceChildren(...[
-                ['Ready for enrollment', list.length, 'info', dept || unit || 'All your units'],
-                ...UNITS.slice(0, 3).map(u => [u, ROWS.filter(r => r.unit === u).length, 'primary', 'Paid reservations']),
+                ['Ready for enrollment', list.length, 'info', dept || (UNITS.length > 1 ? unit : '') || 'All your units'],
+                ...(LEVELS.length ? LEVELS : UNITS).slice(0, 3).map(g => [g, ROWS.filter(r => r[groupKey] === g).length, 'primary', 'Paid reservations']),
             ].map(([label, value, tone, sub]) => {
                 const col = el('div', 'col');
                 const card = el('div', `card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100`);
@@ -139,6 +145,7 @@
             URL.revokeObjectURL(link.href);
         });
 
+        fillDepartments();
         draw();
     </script>
 @endsection

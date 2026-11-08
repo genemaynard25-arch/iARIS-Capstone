@@ -8,7 +8,10 @@
             $link('Ready for Enrollment', 'bi-clipboard-check', '/registrar/enrollment', 'registrar/enrollment*'),
             $link('Reports', 'bi-file-earmark-text', '/registrar/reports', 'registrar/reports*'),
         ],
-        'RECORDS · VIEW ONLY' => [
+        // IS Registrar: only the Integrated School
+        'RECORDS · VIEW ONLY' => \App\Support\RegistrarData::scope() === 'is' ? [
+            $link('Integrated School', 'bi-building', '/records/is', 'records/is*'),
+        ] : [
             $link('College', 'bi-mortarboard', '/records/college', 'records/college*'),
             $link('Graduate Programs', 'bi-journal-bookmark', '/records/graduate', 'records/graduate*'),
             $link('College of Law', 'bi-bank2', '/records/law', 'records/law*'),

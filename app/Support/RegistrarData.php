@@ -9,16 +9,19 @@ use Illuminate\Support\Carbon;
 /**
  * The Registrar's pages (RegistrarController): the records of their units, in one shape.
  *
- * College Registrar: College, Graduate Programs, College of Law, iPACE and ETEEAP.
- *   College, Graduate Programs and ETEEAP come from the applicants table (ApplicantRecords).
- *   College of Law and iPACE are still placeholder data (their controllers' sample()),
- *   because the applicants table has no level for them yet.
+ * Two kinds of Registrar, by the user's assigned_level ("scope"):
+ *   College Registrar ('college'): College, Graduate Programs, College of Law, iPACE and ETEEAP.
+ *     College, Graduate Programs and ETEEAP come from the applicants table (ApplicantRecords).
+ *     College of Law and iPACE are still placeholder data (their controllers' sample()),
+ *     because the applicants table has no level for them yet.
+ *   IS Registrar ('is'): the Integrated School only, from the applicants table, by level.
  *
  * Each row: id, name, unit, dept, program, status, applied, paid, amount, url (opens the record).
  */
 class RegistrarData
 {
     // Unit => [where the rows come from, records page]
+    public const IS_UNITS = ['Integrated School' => ['is', '/records/is']];
     public const UNITS = [
         'College' => ['college', '/records/college'],
         'Graduate Programs' => ['graduate_school', '/records/graduate'],
@@ -27,11 +30,26 @@ class RegistrarData
         'ETEEAP' => ['eteeap', '/records/eteeap'],
     ];
 
+    // The Integrated School's levels, in order (the "departments" of the IS Registrar)
+    public const IS_LEVELS = ['Preschool', 'Grade School', 'Junior High', 'Senior High'];
+
+    /** 'is' for the IS Registrar, 'college' for the College Registrar (and anyone else previewing). */
+    public static function scope(): string
+    {
+        return auth()->user()?->assigned_level === 'is' ? 'is' : 'college';
+    }
+
+    /** The units of a scope: [unit => [source, records page]]. */
+    public static function units(?string $scope = null): array
+    {
+        return ($scope ?? self::scope()) === 'is' ? self::IS_UNITS : self::UNITS;
+    }
+
     /** Every applicant in the Registrar's units. */
-    public static function rows(): array
+    public static function rows(?string $scope = null): array
     {
         $rows = [];
-        foreach (self::UNITS as $unit => [$source, $url]) {
+        foreach (self::units($scope) as $unit => [$source, $url]) {
             $list = match ($source) {
                 'law' => LawRecordController::sample(),
                 'ipace' => IpaceRecordController::sample(),
@@ -42,9 +60,10 @@ class RegistrarData
                     'id' => $a['id'],
                     'name' => trim("{$a['last']}, {$a['first']}" . (($a['mi'] ?? '') ? " {$a['mi']}." : '')),
                     'unit' => $unit,
-                    // College: the college (CITE…); the others: the program code (MBA, JD, BSIT…)
-                    'dept' => $a['college'] ?? $a['group'] ?? '—',
-                    'program' => $source === 'college' ? $a['program'] : ($a['program_label'] ?? $a['program']),
+                    // College: the college (CITE…); IS: the level (Junior High…); the others: the program code (MBA, JD, BSIT…)
+                    'dept' => $a['college'] ?? $a['sub_level'] ?? $a['group'] ?? '—',
+                    // College / IS: the program or grade as imported; the others: the program's full name
+                    'program' => in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']),
                     'status' => $a['status'],
                     'applied' => $a['applied'],
                     'applied_label' => $a['applied'] ? Carbon::parse($a['applied'])->format('M j, Y') : '—',
@@ -60,15 +79,20 @@ class RegistrarData
     }
 
     /**
-     * Counts per unit: [unit => [Pending, For Exam, Passed, Paid, total]].
+     * Counts per group: [group => [Pending, For Exam, Passed, Paid, total, url]].
+     * Groups are the units (College Registrar) or, with only one unit, its levels (IS Registrar).
      * (Not Qualified is only in the total.)
      */
-    public static function countsByUnit(array $rows): array
+    public static function countsByGroup(array $rows, ?string $scope = null): array
     {
+        $units = self::units($scope);
+        $byLevel = count($units) === 1;
+        $groups = $byLevel ? self::IS_LEVELS : array_keys($units);
         $counts = [];
-        foreach (array_keys(self::UNITS) as $unit) {
-            $mine = collect($rows)->where('unit', $unit);
-            $counts[$unit] = [
+        foreach ($groups as $group) {
+            $mine = collect($rows)->where($byLevel ? 'dept' : 'unit', $group);
+            $counts[$group] = [
+                'url' => url($byLevel ? reset($units)[1] : $units[$group][1]),
                 'Pending' => $mine->where('status', 'Pending')->count(),
                 'For Exam' => $mine->where('status', 'For Exam')->count(),
                 'Passed' => $mine->where('status', 'Passed')->count(),

@@ -14,7 +14,7 @@
 
 @section('title', 'iARIS — Registrar Dashboard')
 @section('page-title', $greeting . ', ' . \Illuminate\Support\Str::after($me['name'], ', '))
-@section('page-subtitle', 'Admissions for ' . implode(', ', array_slice($units, 0, -1)) . ', and ' . last($units) . " · AY {$academicYear}")
+@section('page-subtitle', 'Admissions for ' . (count($units) > 1 ? implode(', ', array_slice($units, 0, -1)) . ', and ' . last($units) : $units[0]) . " · AY {$academicYear}")
 
 @section('content')
     <div class="alert alert-info d-flex align-items-center gap-2 rounded-4 small mb-4">
@@ -47,13 +47,13 @@
         <div class="col-12 col-xl-7">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
-                    <h2 class="fs-6 fw-bold mb-0">Applicants by unit</h2>
+                    <h2 class="fs-6 fw-bold mb-0">Applicants by {{ $levels ? 'level' : 'unit' }}</h2>
                     <span class="small text-body-secondary">AY {{ $academicYear }}</span>
                 </div>
                 <div class="card-body px-4 pb-4">
                     @foreach ($counts as $unit => $c)
                         <div class="d-flex align-items-center gap-3 mb-3">
-                            <a href="{{ url(\App\Support\RegistrarData::UNITS[$unit][1]) }}" class="small fw-bold text-body text-decoration-none flex-shrink-0" style="width: 130px;">{{ $unit }}</a>
+                            <a href="{{ $c['url'] }}" class="small fw-bold text-body text-decoration-none flex-shrink-0" style="width: 130px;">{{ $unit }}</a>
                             <div class="flex-grow-1">
                                 @if ($c['total'])
                                     {{-- Bar length = the unit's total, compared with the biggest unit --}}
@@ -79,7 +79,7 @@
                             <span><i class="bi bi-square-fill text-{{ $tone }} me-1"></i>{{ $status === 'For Exam' ? 'For Exam / Assessment' : $status }}</span>
                         @endforeach
                         {{-- The grey end of a bar --}}
-                        <span><i class="bi bi-square-fill text-body-tertiary me-1"></i>Not Qualified</span>
+                        <span><i class="bi bi-square-fill me-1" style="color: var(--bs-progress-bg, var(--bs-secondary-bg));"></i>Not Qualified</span>
                     </div>
                 </div>
             </div>
