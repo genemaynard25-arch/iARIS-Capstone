@@ -1,11 +1,12 @@
-{{-- Sidebar for Deans, Program Chairs and the IS Principal. Same look as the Executive sidebar, read-only links. --}}
+{{-- Sidebar for Deans, Program Chairs, the IS Principal and the iPACE Director. Same look as the Executive sidebar, read-only links. --}}
 @php
     $isChair = auth()->user()->isProgramChair();
     $isPrincipal = auth()->user()->isPrincipal();
+    $isDirector = auth()->user()->isDirector();
     $college = \App\Http\Controllers\CollegeController::college();
     $code = $college['label'] ?? $college['code'];
     // The pages' address: /principal for the IS Principal, /college for everyone else here
-    $base = $isPrincipal ? 'principal' : 'college';
+    $base = $isPrincipal ? 'principal' : ($isDirector ? 'director' : 'college');
 @endphp
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
@@ -16,7 +17,7 @@
                 @include('partials.logo-mark', ['size' => 40])
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : 'Dean View') }}</div>
+                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : ($isDirector ? 'Director View' : 'Dean View')) }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>

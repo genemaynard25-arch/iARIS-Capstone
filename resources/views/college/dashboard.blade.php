@@ -2,7 +2,9 @@
 
 {{--
     Briefing: the home page of a Dean, a Program Chair or the IS Principal (CollegeController::dashboard).
-    $word is what the groups are called ("program", or "level" for the Integrated School); $whole is "college" or "school".
+    $word is what the groups are called ("program", or "level" for the Integrated School); $whole is what you see
+    ("your college", "your school", "iPACE and ETEEAP"). The iPACE Director's programs each have a 'unit' (iPACE or ETEEAP):
+    they are grouped by unit, and $profiles adds the Learner profile.
     Same layout as the Executive Briefing, for the programs in $programs. Everything is worked out
     by the script from $programs, so the Briefing always agrees with Analytics:
       - the summary sentence, the four tiles (with a 4-year sparkline each)
@@ -19,7 +21,7 @@
 
 @section('title', 'iARIS — Briefing')
 @section('page-title', "{$greeting}, {$greetName}")
-@section('page-subtitle', ($isChair ? "{$label} · " : '') . ($college['code'] === 'IS' ? 'Kindergarten to Grade 12' : $college['name']) . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
+@section('page-subtitle', ($isChair ? "{$label} · " : '') . $college['subtitle'] . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
@@ -35,7 +37,7 @@
                 <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-2"><i class="bi bi-stars me-1"></i> This week's briefing · {{ $label }} · {{ $weekLabel }}</div>
                 <h2 class="fs-5 fw-bold mb-3" id="briefHeadline"></h2>
                 <div class="d-flex flex-wrap gap-2 mb-3" id="briefPoints"></div>
-                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : "your {$whole}" }} only. Summaries describe the data; decisions stay with you.</div>
+                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : $whole }} only. Summaries describe the data; decisions stay with you.</div>
             </div>
             <div class="text-md-center px-md-3 flex-shrink-0">
                 <div class="display-5 fw-bold font-brand" id="briefBig"></div>
@@ -53,6 +55,39 @@
         <span class="small text-body-secondary">Click a card for the full breakdown</span>
     </div>
     <div class="row row-cols-1 row-cols-lg-3 g-3 mb-4" id="attention"></div>
+
+    {{-- Learner profile: one card per unit, counts only (iPACE Director) --}}
+    @if ($profiles)
+        <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+            <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-person-vcard text-primary me-1"></i> Learner profile</h2>
+            <span class="small text-body-secondary">Counts only · {{ $years[3] }}</span>
+        </div>
+        <div class="row row-cols-1 row-cols-lg-2 g-3 mb-4">
+            @foreach ($profiles as $unitName => [$title, $groups, $note])
+                <div class="col">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h3 class="fs-6 fw-bold mb-3">{{ $unitName }} <span class="small fw-normal text-body-secondary">· {{ $title }}</span></h3>
+                            @foreach ($groups as [$group, $parts])
+                                @php($sum = array_sum(array_column($parts, 1)))
+                                <div class="small fw-semibold mb-1">{{ $group }}</div>
+                                <div class="mb-3">
+                                    @foreach ($parts as $i => [$partLabel, $count])
+                                        <div class="d-flex align-items-center gap-2 small mb-1">
+                                            <span style="width: 170px;">{{ $partLabel }}</span>
+                                            <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 10px;"><div class="rounded" style="height: 10px; width: {{ round($count / $sum * 100, 1) }}%; background: {{ ['#00674F', '#4DAB8E', '#2558D9', '#B96000'][$i % 4] }};"></div></div>
+                                            <span class="fw-bold text-end text-nowrap" style="width: 84px;">{{ number_format($count) }} · {{ round($count / $sum * 100) }}%</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                            <p class="small text-body-secondary mb-0">{{ $note }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- Programs (or levels) at a glance --}}
     <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
@@ -130,6 +165,10 @@
         const APPLICANTS = @json("{$base}/applicants");
         // "program" or "level"; "college" or "school"
         const WORD = @json($word), WHOLE = @json($whole);
+        // The units (iPACE and ETEEAP for the iPACE Director; none for a college)
+        const UNITS = [...new Set(Object.values(PROGRAMS).map(p => p.unit).filter(Boolean))];
+        // A program's name, with its unit when there are units ("BS Nursing · ETEEAP")
+        const nameOf = c => PROGRAMS[c].unit ? `${PROGRAMS[c].name} · ${PROGRAMS[c].unit}` : PROGRAMS[c].name;
         const CODES = Object.keys(PROGRAMS);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
@@ -150,7 +189,7 @@
         const dApp = pc(app[2], app[3]), dPaid = pc(paidPrev, paidNow), dEnr = pc(enr[2], enr[3]);
         const dConv = +conv[3].toFixed(1) - +conv[2].toFixed(1);
         // Programs, largest first; t = applicants this AY
-        const rows = CODES.map(c => { const p = PROGRAMS[c], t = p.applicants[3]; return { c, name: p.name, s: p.status, t, pending: p.status[0] / t * 100, paidRate: p.status[2] / t * 100 }; })
+        const rows = CODES.map(c => { const p = PROGRAMS[c], t = p.applicants[3]; return { c, name: nameOf(c), s: p.status, t, pending: p.status[0] / t * 100, paidRate: p.status[2] / t * 100 }; })
             .sort((a, b) => b.t - a.t);
 
         // ---- Summary ----
@@ -216,7 +255,7 @@
             $('detailGo').href = go[1];
             $('detailTitle').textContent = title;
             $('detailSub').textContent = sub;
-            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? 'your ' + WHOLE : 'your program'} only.</p>`;
+            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? WHOLE : 'your program'} only.</p>`;
             drawer.show();
         }
 
@@ -238,7 +277,12 @@
                             `Over four years conversion went ${conv.map(c => c.toFixed(1) + '%').join(' → ')}.`,
                             `${fm(app[3] - enr[3])} of this year's applicants have not enrolled yet. Enrollment is still open.`])
                         + section('Conversion over four years') + line(conv, '#B96000', v => v.toFixed(1) + '%')
-                        + section('Year by year') + table(['Year', 'Applicants', 'Enrolled', 'Conversion'], YEARS.map((y, k) => [y, fm(app[k]), fm(enr[k]), conv[k].toFixed(1) + '%'])));
+                        + section('Year by year') + table(['Year', 'Applicants', 'Enrolled', 'Conversion'], YEARS.map((y, k) => [y, fm(app[k]), fm(enr[k]), conv[k].toFixed(1) + '%']))
+                        // With units: conversion per unit, last AY and this AY
+                        + (UNITS.length > 1 ? section('By unit') + table(['Unit', YEARS[2], YEARS[3]], UNITS.map(u => {
+                            const codes = CODES.filter(c => PROGRAMS[c].unit === u), sum = (k, i) => codes.reduce((x, c) => x + PROGRAMS[c][k][i], 0);
+                            return [u, (sum('enrolled', 2) / sum('applicants', 2) * 100).toFixed(1) + '%', (sum('enrolled', 3) / sum('applicants', 3) * 100).toFixed(1) + '%'];
+                        })) : ''));
                 },
             },
             {
@@ -290,9 +334,11 @@
         document.querySelectorAll('[data-attention]').forEach(b => b.addEventListener('click', () => ATTENTION[b.dataset.attention].open()));
 
         // ---- Programs at a glance ----
-        $('programCards').innerHTML = CODES.filter(c => PREFS['unit:' + PROGRAMS[c].name] !== false).map(c => {
+        // With units, each unit gets a heading above its programs
+        $('programCards').innerHTML = CODES.filter(c => PREFS['unit:' + PROGRAMS[c].name] !== false).map((c, i, shown) => {
             const p = PROGRAMS[c], s = p.status, t = p.applicants[3];
-            return `
+            const heading = p.unit && p.unit !== PROGRAMS[shown[i - 1]]?.unit ? `<div class="col-12 w-100"><div class="fw-bold text-body-secondary border-bottom pb-1">${esc(p.unit)}</div></div>` : '';
+            return heading + `
             <div class="col">
                 <button type="button" class="card border-0 shadow-sm rounded-4 h-100 w-100 text-start" data-program="${c}" aria-label="Open ${esc(p.name)}">
                     <div class="card-body">
@@ -307,15 +353,16 @@
         document.querySelectorAll('[data-program]').forEach(b => b.addEventListener('click', () => {
             const c = b.dataset.program, p = PROGRAMS[c], s = p.status, t = p.applicants[3];
             const rank = rows.findIndex(r => r.c === c) + 1;
-            openDrawer(p.name, `${LABEL} · ${(t / app[3] * 100).toFixed(1)}% of your applicants · ${YEARS[3]}`,
+            openDrawer(p.name, `${p.unit || LABEL} · ${(t / app[3] * 100).toFixed(1)}% of your applicants · ${YEARS[3]}`,
                 stats([['Applicants', fm(t)], ['Pending', fm(s[0])], ['For Exam', fm(s[1])], ['Paid', fm(s[2])]])
                 + section('Status') + statusBar(s)
                 + `<div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2"><span><i class="bi bi-square-fill me-1" style="color:#E8A0A0"></i>Pending ${(s[0] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#F0C27B"></i>For Exam ${(s[1] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#2558D9"></i>Paid ${(s[2] / t * 100).toFixed(1)}%</span></div>`
                 + (CODES.length > 1 ? section(`Compared with your other ${WORD}s`) + facts([
                     `Rank <b>#${rank}</b> of ${CODES.length} by applicants.`,
-                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for your whole ${WHOLE}.`]) : '')
+                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for ${WHOLE.startsWith('your ') ? 'your whole ' + WHOLE.slice(5) : 'all of ' + WHOLE}.`]) : '')
                 + section('Applicants over four years') + line(p.applicants, '#00674F', fm),
-                ['See applicants', `${APPLICANTS}?program=${encodeURIComponent(c)}`]);
+                // The iPACE Director's Applicants page shows one unit at a time
+                ['See applicants', `${APPLICANTS}?${p.unit === 'ETEEAP' ? 'unit=eteeap&' : ''}program=${encodeURIComponent(c)}`]);
         }));
 
         // ---- Ask iARIS: open the AI button and ask ----

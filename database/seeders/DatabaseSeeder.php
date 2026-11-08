@@ -110,6 +110,17 @@ class DatabaseSeeder extends Seeder
     // TOIC opens /home (which sends them to /toic), so it needs the dashboard permission. Only that one: no applicant data.
     \App\Models\RolePermission::updateOrCreate(['role' => 'toic', 'module' => 'dashboard'], ['enabled' => true]);
 
+    // iPACE Director (also heads ETEEAP): the Dean pages for both units, at /director. Named as in the mockup.
+    \App\Models\User::updateOrCreate(['email' => 'director@gmail.com'], [
+        'name' => 'Haidee Angeles',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'director',
+        'access_type' => 'viewer',
+        'assigned_level' => 'ipace',
+    ]);
+    // /home sends the Director to /director, so it needs the dashboard permission
+    \App\Models\RolePermission::updateOrCreate(['role' => 'director', 'module' => 'dashboard'], ['enabled' => true]);
+
     // Integrated School Principal: the Dean pages by level, at /principal (Kindergarten to Senior High). Named as in the mockup.
     \App\Models\User::updateOrCreate(['email' => 'principal@gmail.com'], [
         'name' => 'Kristine Anne Dimaculangan',

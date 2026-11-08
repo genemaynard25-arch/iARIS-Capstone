@@ -143,8 +143,10 @@
                 return { title, sub, head: ['Step', 'Applicants', 'Share of applied'],
                     rows: ['Applied', 'Took exam', 'Passed', 'Paid', 'Enrolled'].map((s, i) => [s, fm(stage(i)), (stage(i) / applied * 100).toFixed(1) + '%']) };
             }
-            return { title, sub, head: [WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid', 'Total'],
-                rows: CODES.map(c => { const s = PROGRAMS[c].status; return [PROGRAMS[c].name, s[0], s[1], s[2], s[0] + s[1] + s[2]]; }) };
+            // With units (iPACE Director): a Unit column
+            const units = CODES.some(c => PROGRAMS[c].unit);
+            return { title, sub, head: [...(units ? ['Unit'] : []), WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid', 'Total'],
+                rows: CODES.map(c => { const s = PROGRAMS[c].status; return [...(units ? [PROGRAMS[c].unit] : []), PROGRAMS[c].name, s[0], s[1], s[2], s[0] + s[1] + s[2]]; }) };
         }
 
         // ---- Download as PDF (print window), Excel or CSV ----

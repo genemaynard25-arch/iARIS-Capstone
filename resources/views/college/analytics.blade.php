@@ -153,18 +153,20 @@
         // ---- Programs: sortable table ----
         // Settings → Display → "Program shown first on Analytics" keeps that program at the top
         const first = window.IARIS_SETTINGS?.display?.unit || '';
-        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, P, E, D, T, R: D / T * 100, S: T / app[3] * 100 }; });
-        const columns = [['name', WORD[0].toUpperCase() + WORD.slice(1)], ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];
+        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, unit: p.unit || '', P, E, D, T, R: D / T * 100, S: T / app[3] * 100 }; });
+        // The iPACE Director's programs have a unit (iPACE or ETEEAP): add a Unit column
+        const hasUnits = PR.some(r => r.unit);
+        const columns = [['name', WORD[0].toUpperCase() + WORD.slice(1)], ...(hasUnits ? [['unit', 'Unit']] : []), ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];
         let sortKey = 'T', sortDir = -1;
         function drawPrograms() {
             // sortDir: 1 = ascending, -1 = descending. The "shown first" program stays on top.
             const sorted = PR.slice().sort((a, b) => (b.name === first) - (a.name === first)
-                || sortDir * (sortKey === 'name' ? a.name.localeCompare(b.name) : a[sortKey] - b[sortKey]));
-            $('programTable').innerHTML = `<thead class="table-light"><tr>${columns.map(([k, l], i) => `<th class="${i ? 'text-end' : 'ps-4'} text-body-secondary fw-bold" role="button" data-sort="${k}" aria-sort="${sortKey === k ? (sortDir < 0 ? 'descending' : 'ascending') : 'none'}">${l}${sortKey === k ? (sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('')}</tr></thead>`
-                + `<tbody>${sorted.map(r => `<tr class="${r.name === first ? 'table-success' : ''}"><td class="ps-4 fw-semibold">${esc(r.name)}${r.name === first ? ' <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis ms-1" title="Settings → Display">Shown first</span>' : ''}</td><td class="text-end">${fm(r.P)}</td><td class="text-end">${fm(r.E)}</td><td class="text-end">${fm(r.D)}</td><td class="text-end fw-bold">${fm(r.T)}</td><td class="text-end">${r.R.toFixed(1)}%</td><td class="text-end pe-4">${r.S.toFixed(1)}%</td></tr>`).join('')}</tbody>`;
+                || sortDir * (typeof a[sortKey] === 'string' ? a[sortKey].localeCompare(b[sortKey]) : a[sortKey] - b[sortKey]));
+            $('programTable').innerHTML = `<thead class="table-light"><tr>${columns.map(([k, l], i) => `<th class="${i === 0 ? 'ps-4' : k === 'unit' ? '' : 'text-end'} text-body-secondary fw-bold" role="button" data-sort="${k}" aria-sort="${sortKey === k ? (sortDir < 0 ? 'descending' : 'ascending') : 'none'}">${l}${sortKey === k ? (sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('')}</tr></thead>`
+                + `<tbody>${sorted.map(r => `<tr class="${r.name === first ? 'table-success' : ''}"><td class="ps-4 fw-semibold">${esc(r.name)}${r.name === first ? ' <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis ms-1" title="Settings → Display">Shown first</span>' : ''}</td>${hasUnits ? `<td>${esc(r.unit)}</td>` : ''}<td class="text-end">${fm(r.P)}</td><td class="text-end">${fm(r.E)}</td><td class="text-end">${fm(r.D)}</td><td class="text-end fw-bold">${fm(r.T)}</td><td class="text-end">${r.R.toFixed(1)}%</td><td class="text-end pe-4">${r.S.toFixed(1)}%</td></tr>`).join('')}</tbody>`;
             $('programTable').querySelectorAll('[data-sort]').forEach(th => th.addEventListener('click', () => {
                 // A new column starts A→Z for names, largest first for numbers
-                if (sortKey === th.dataset.sort) sortDir = -sortDir; else { sortKey = th.dataset.sort; sortDir = sortKey === 'name' ? 1 : -1; }
+                if (sortKey === th.dataset.sort) sortDir = -sortDir; else { sortKey = th.dataset.sort; sortDir = ['name', 'unit'].includes(sortKey) ? 1 : -1; }
                 drawPrograms();
             }));
         }
@@ -176,13 +178,14 @@
 
         // ---- AI insights: four cards worked out from the numbers (descriptive, not forecasts) ----
         const byTotal = PR.slice().sort((a, b) => b.T - a.T), byRate = PR.slice().sort((a, b) => b.R - a.R);
+        const unitOf = r => r.unit ? ` (${r.unit})` : '';
         const g4 = pc(app[0], app[3]);
         const INSIGHTS = [
             ['success', 'bi-graph-up-arrow', `Applicants ${g4 >= 0 ? 'up' : 'down'} ${Math.abs(g4).toFixed(1)}% in three years`, `From ${fm(app[0])} in ${YEARS[0]} to ${fm(app[3])} now.`],
             ...(PR.length > 1 ? [
-                ['warning', 'bi-trophy', `${byTotal[0].name} is your largest ${WORD}`, `${fm(byTotal[0].T)} applicants, ${byTotal[0].S.toFixed(1)}% of your total.`],
-                ['success', 'bi-check-circle', `${byRate[0].name} converts best`, `${byRate[0].R.toFixed(1)}% of its applicants have paid.`],
-                ['danger', 'bi-exclamation-triangle', `${byRate.at(-1).name} has the lowest paid rate`, `${byRate.at(-1).R.toFixed(1)}% paid so far, with ${fm(byRate.at(-1).P)} still Pending.`],
+                ['warning', 'bi-trophy', `${byTotal[0].name}${unitOf(byTotal[0])} is your largest ${WORD}`, `${fm(byTotal[0].T)} applicants, ${byTotal[0].S.toFixed(1)}% of your total.`],
+                ['success', 'bi-check-circle', `${byRate[0].name}${unitOf(byRate[0])} converts best`, `${byRate[0].R.toFixed(1)}% of its applicants have paid.`],
+                ['danger', 'bi-exclamation-triangle', `${byRate.at(-1).name}${unitOf(byRate.at(-1))} has the lowest paid rate`, `${byRate.at(-1).R.toFixed(1)}% paid so far, with ${fm(byRate.at(-1).P)} still Pending.`],
             ] : [
                 ['success', 'bi-check-circle', `${PR[0].R.toFixed(1)}% of applicants have paid`, `${fm(PR[0].D)} of ${fm(PR[0].T)}, with ${fm(PR[0].P)} still Pending.`],
                 [dConv < 0 ? 'danger' : 'success', 'bi-funnel', `Conversion ${dConv < 0 ? 'slipped' : 'improved'} to ${conv[3].toFixed(1)}%`, `${signed(dConv, 1, '')} pts from ${conv[2].toFixed(1)}% last AY.`],

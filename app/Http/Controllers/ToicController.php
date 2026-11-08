@@ -29,6 +29,7 @@ class ToicController extends Controller
         'chancellor' => ['Chancellor', 'Institution-wide'],
         'vice_chancellor' => ['Vice Chancellor', 'Institution-wide'],
         'vice_president' => ['Vice President', 'Institution-wide'],
+        'director' => ['iPACE Director', 'iPACE and ETEEAP'],
         'toic' => ['TOIC (System Support)', 'System data only'],
     ];
 

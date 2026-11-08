@@ -151,6 +151,15 @@ Route::middleware('auth')->prefix('toic')->name('toic.')->group(function () {
     Route::get('/messages', [ToicController::class, 'messages'])->name('messages');
 });
 
+// iPACE Director (also heads ETEEAP): the same pages as a Dean, for both units
+Route::middleware('auth')->prefix('director')->name('director.')->group(function () {
+    Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
+    Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
+    Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');
+    Route::get('/reports', [CollegeController::class, 'reports'])->name('reports');
+    Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
+});
+
 Route::middleware('auth')->prefix('principal')->name('principal.')->group(function () {
     Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
     Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');

@@ -79,7 +79,7 @@ class CollegeController extends Controller
                 'funnel' => [142, 105, 89, 44, 39], 'status' => [40, 58, 44], 'paidLastYear' => 43],
         ]],
         // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
-        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School',
+        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Kindergarten to Grade 12',
             'office' => 'Integrated School · Kindergarten to Grade 12', 'word' => 'level', 'programs' => [
             'K' => ['name' => 'Kindergarten', 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
                 'funnel' => [58, 46, 39, 18, 14], 'status' => [10, 30, 18], 'paidLastYear' => 17],
@@ -90,13 +90,49 @@ class CollegeController extends Controller
             'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
                 'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
         ]],
+        // iPACE and ETEEAP, for the iPACE Director (who heads both). Two units: each program has a 'unit',
+        // and the same program can be in both (so the codes start with I- or E-). Unit totals as in the mockup.
+        // 'profiles': the Learner profile on the Briefing, per unit: [title, [[group, [[label, count], …]], …], note]
+        'IPACE' => ['name' => 'Institute for Professional Advancement and Continuing Education', 'title' => 'iPACE', 'label' => 'iPACE + ETEEAP',
+            'subtitle' => 'Institute for Professional Advancement and Continuing Education · with ETEEAP', 'scope' => 'iPACE and ETEEAP', 'programs' => [
+            'I-BSIT' => ['unit' => 'iPACE', 'name' => 'BS Information Technology', 'applicants' => [46, 62, 82, 104], 'enrolled' => [12, 16, 21, 26],
+                'funnel' => [104, 69, 61, 30, 26], 'status' => [29, 45, 30], 'paidLastYear' => 23],
+            'I-BSCS' => ['unit' => 'iPACE', 'name' => 'BS Computer Science', 'applicants' => [28, 37, 47, 58], 'enrolled' => [7, 10, 12, 15],
+                'funnel' => [58, 38, 33, 17, 15], 'status' => [16, 25, 17], 'paidLastYear' => 14],
+            'I-BSBA' => ['unit' => 'iPACE', 'name' => 'BS Business Administration', 'applicants' => [33, 44, 57, 72], 'enrolled' => [9, 11, 15, 18],
+                'funnel' => [72, 48, 42, 21, 18], 'status' => [20, 31, 21], 'paidLastYear' => 17],
+            'I-BSN' => ['unit' => 'iPACE', 'name' => 'BS Nursing', 'applicants' => [26, 32, 39, 46], 'enrolled' => [7, 9, 11, 12],
+                'funnel' => [46, 31, 27, 14, 12], 'status' => [12, 20, 14], 'paidLastYear' => 12],
+            'I-BEED' => ['unit' => 'iPACE', 'name' => 'Bachelor of Elementary Education', 'applicants' => [17, 21, 27, 32], 'enrolled' => [5, 6, 7, 9],
+                'funnel' => [32, 21, 19, 10, 9], 'status' => [9, 13, 10], 'paidLastYear' => 8],
+            'E-BSIT' => ['unit' => 'ETEEAP', 'name' => 'BS Information Technology', 'applicants' => [16, 20, 24, 30], 'enrolled' => [5, 6, 6, 7],
+                'funnel' => [30, 19, 16, 8, 7], 'status' => [9, 13, 8], 'paidLastYear' => 6],
+            'E-BSBA' => ['unit' => 'ETEEAP', 'name' => 'BS Business Administration', 'applicants' => [13, 16, 20, 24], 'enrolled' => [3, 5, 5, 5],
+                'funnel' => [24, 16, 13, 6, 5], 'status' => [7, 11, 6], 'paidLastYear' => 5],
+            'E-BEED' => ['unit' => 'ETEEAP', 'name' => 'Bachelor of Elementary Education', 'applicants' => [9, 11, 14, 16], 'enrolled' => [2, 3, 4, 4],
+                'funnel' => [16, 10, 8, 4, 4], 'status' => [5, 7, 4], 'paidLastYear' => 3],
+            'E-BSN' => ['unit' => 'ETEEAP', 'name' => 'BS Nursing', 'applicants' => [9, 10, 12, 14], 'enrolled' => [3, 3, 3, 4],
+                'funnel' => [14, 9, 8, 4, 4], 'status' => [4, 6, 4], 'paidLastYear' => 3],
+            'E-BSHRM' => ['unit' => 'ETEEAP', 'name' => 'BS Hotel & Restaurant Management', 'applicants' => [5, 6, 8, 10], 'enrolled' => [1, 1, 2, 2],
+                'funnel' => [10, 7, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
+        ], 'profiles' => [
+            'iPACE' => ['Learner profile', [
+                ['Delivery mode', [['Online', 198], ['Blended', 114]]],
+                ['Working students', [['Working', 236], ['Not working', 76]]],
+            ], 'Most iPACE applicants study while working, so most choose Online classes.'],
+            'ETEEAP' => ['Applicant profile', [
+                ['Portfolio and competency assessment', [['Not yet submitted', 31], ['Submitted, being assessed', 38], ['Assessment cleared', 25]]],
+                ['Work experience', [['5–9 years', 38], ['10–14 years', 34], ['15 years or more', 22]]],
+                ['Highest educational attainment', [['High school graduate', 19], ['Some college', 47], ['Vocational / technical', 28]]],
+            ], 'Average work experience is 11.4 years. ETEEAP requires at least 5 years.'],
+        ]],
     ];
 
     // How a dean is greeted ("Good morning, Engr. Villafuerte"). Names as in the mockups.
     private const HONORIFICS = [
         'Cherrie Villafuerte' => 'Engr.', 'Jasmin De Silva' => 'Dr.', 'Gina Dimaano' => 'Dr.',
         'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.', 'Margie Ebreo' => 'Dr.',
-        'Kristine Anne Dimaculangan' => 'Ms.',
+        'Kristine Anne Dimaculangan' => 'Ms.', 'Haidee Angeles' => 'Dr.',
     ];
 
     /**
@@ -107,7 +143,8 @@ class CollegeController extends Controller
     public static function college(): array
     {
         $user = auth()->user();
-        $code = $user?->isPrincipal() ? 'IS' : strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
+        $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : null);
+        $code ??= strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
         $code = isset(self::COLLEGES[$code]) ? $code : 'CITE';
 
         return ['code' => $code] + self::COLLEGES[$code];
@@ -116,13 +153,16 @@ class CollegeController extends Controller
     /** Where these pages live for the signed-in user: /principal for the IS Principal, /college otherwise. */
     public static function base(): string
     {
-        return url(auth()->user()?->isPrincipal() ? '/principal' : '/college');
+        $user = auth()->user();
+
+        return url($user?->isPrincipal() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
     }
 
     /** Program names, for Settings (Briefing and Display). */
     public static function programNames(): array
     {
-        return array_column(self::college()['programs'], 'name');
+        // iPACE and ETEEAP share some programs: list each name once
+        return array_values(array_unique(array_column(self::college()['programs'], 'name')));
     }
 
     // What the pages share: the programs in scope, the years, and who is looking.
@@ -136,10 +176,12 @@ class CollegeController extends Controller
             'isChair' => $isChair,
             // Short name of what you see: "CITE", "Integrated School", or a program chair's program
             'label' => $isChair ? 'BS Computer Science' : ($college['label'] ?? $college['code']),
-            'college' => ['code' => $college['code'], 'name' => $college['name']],
-            // What the groups are called ("program" or "level") and what the whole is ("college" or "school")
+            'college' => ['code' => $college['code'], 'name' => $college['name'], 'subtitle' => $college['subtitle'] ?? $college['name']],
+            // What the groups are called ("program" or "level") and what you see ("your college", "your school", "iPACE and ETEEAP")
             'word' => $college['word'] ?? 'program',
-            'whole' => $college['code'] === 'IS' ? 'school' : 'college',
+            'whole' => $college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college'),
+            // The Learner profile on the Briefing (iPACE Director only)
+            'profiles' => $college['profiles'] ?? [],
             // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
             'base' => self::base(),
             'programs' => $isChair ? ['BSCS' => self::COLLEGES['CITE']['programs']['BSCS']] : $college['programs'],
@@ -164,9 +206,23 @@ class CollegeController extends Controller
     }
 
     // Applicants: the applicants in scope, view only. ?program=BSCS picks a program first (the Briefing's "See applicants").
+    // The iPACE Director gets their own page: iPACE or ETEEAP (?unit=eteeap), each with its own columns.
     public function applicants(Request $request)
     {
         $common = $this->common();
+        if (auth()->user()->isDirector()) {
+            $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';
+            $programs = array_filter($common['programs'], fn ($p) => $p['unit'] === $unit);
+
+            return view('college.applicants-director', $common + [
+                'unit' => $unit,
+                'unitPrograms' => $programs,
+                // Applicants in each unit (for the switch at the top)
+                'unitTotals' => array_map(fn ($u) => array_sum(array_map(fn ($p) => array_sum($p['status']), array_filter($common['programs'], fn ($p) => $p['unit'] === $u))), ['iPACE' => 'iPACE', 'ETEEAP' => 'ETEEAP']),
+                'selected' => isset($programs[$request->query('program')]) ? $request->query('program') : '',
+                'rows' => self::directorApplicants()[$unit],
+            ]);
+        }
 
         return view('college.applicants', $common + [
             'selected' => isset($common['programs'][$request->query('program')]) ? $request->query('program') : '',
@@ -190,7 +246,7 @@ class CollegeController extends Controller
             'received' => self::received($common['isChair']),
             // For the "Paid reservations" report: applicants in scope who paid
             'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'], $a['paid']],
-                array_filter(self::applicantsIn($common['programs']), fn ($a) => $a['paid']))),
+                array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::applicantsIn($common['programs']), fn ($a) => $a['paid']))),
             // Reports you generated before (kept for 90 days)
             'history' => [['template' => 'programs', 'period' => 'AY 2025–26', 'at' => 'Jun 5, 2026 · 10:12 AM']],
         ]);
@@ -240,7 +296,64 @@ class CollegeController extends Controller
                 'message' => 'Attached is the list of paid reservations as of May 30.'],
             ['title' => "{$name} Enrollment Trends — AY 2024–25", 'kind' => 'trend', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
                 'at' => 'Jun 14, 2025 · 8:30 AM', 'status' => 'read',
-                'message' => 'Year-end enrollment trends for your ' . ($college['code'] === 'IS' ? 'school.' : 'college.')],
+                'message' => 'Year-end enrollment trends for ' . ($college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college')) . '.'],
+        ];
+    }
+
+    /**
+     * The iPACE Director's sample applicants (as in the mockups), per unit. 'program' is a code in COLLEGES['IPACE'].
+     * iPACE: delivery mode, year level, working student, employer. ETEEAP: age, education, work history, portfolio.
+     */
+    private static function directorApplicants(): array
+    {
+        $paid = fn ($on, $amount) => ['paid' => $on, 'amount' => $amount];
+
+        return [
+            'iPACE' => [
+                ['id' => 'APP-2026-I005', 'name' => 'Villanueva, Rodel Santos C.', 'program' => 'I-BEED', 'mode' => 'Online', 'year' => '2nd Year', 'working' => 'Yes', 'employer' => 'DepEd Lipa · Teacher Aide',
+                    'dob' => 'June 20, 1998', 'gender' => 'Male', 'email' => 'rs.villanueva@dlsl.edu.ph', 'phone' => '0921 500 5555', 'address' => 'Lipa City, Batangas',
+                    'status' => 'For Exam', 'applied' => '2026-05-11', 'updated' => 'Jun 4, 11:00 AM', 'exam' => 'Jun 18, 2026 · 9:00 AM'] + $paid(null, null),
+                ['id' => 'APP-2026-I004', 'name' => 'Torres, Angelica Mae D.', 'program' => 'I-BSN', 'mode' => 'Blended', 'year' => '1st Year', 'working' => 'Yes', 'employer' => 'Adventist Medical Center · Nursing Aide',
+                    'dob' => 'October 5, 2002', 'gender' => 'Female', 'email' => 'am.torres@dlsl.edu.ph', 'phone' => '0920 600 4444', 'address' => 'Santo Tomas, Batangas',
+                    'status' => 'Pending', 'applied' => '2026-05-16', 'updated' => 'May 16, 3:00 PM', 'exam' => null] + $paid(null, null),
+                ['id' => 'APP-2026-I002', 'name' => 'Garcia, Joanna Marie T.', 'program' => 'I-BSBA', 'mode' => 'Blended', 'year' => '1st Year', 'working' => 'Yes', 'employer' => 'SM Lipa · Sales Associate',
+                    'dob' => 'July 30, 2001', 'gender' => 'Female', 'email' => 'jm.garcia@dlsl.edu.ph', 'phone' => '0918 900 2222', 'address' => 'Batangas City, Batangas',
+                    'status' => 'For Exam', 'applied' => '2026-05-09', 'updated' => 'Jun 3, 2:00 PM', 'exam' => 'Jun 15, 2026 · 10:00 AM'] + $paid(null, null),
+                ['id' => 'APP-2026-I001', 'name' => 'Lim, Kenneth Andrew P.', 'program' => 'I-BSIT', 'mode' => 'Online', 'year' => '2nd Year', 'working' => 'Yes', 'employer' => 'BDO Unibank · IT Associate',
+                    'dob' => 'April 12, 1999', 'gender' => 'Male', 'email' => 'ka.lim@dlsl.edu.ph', 'phone' => '0917 800 1111', 'address' => 'Lipa City, Batangas',
+                    'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 9:00 AM', 'exam' => 'Jun 10, 2026 · 9:00 AM'] + $paid('Jun 1, 2026', '₱2,000.00'),
+                ['id' => 'APP-2026-I003', 'name' => 'Ramos, Aldrich Jose B.', 'program' => 'I-BSCS', 'mode' => 'Online', 'year' => '3rd Year', 'working' => 'No', 'employer' => null,
+                    'dob' => 'February 14, 2000', 'gender' => 'Male', 'email' => 'aj.ramos@dlsl.edu.ph', 'phone' => '0919 700 3333', 'address' => 'Tanauan City, Batangas',
+                    'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 28, 10:00 AM', 'exam' => 'Jun 8, 2026 · 8:00 AM'] + $paid('May 28, 2026', '₱2,000.00'),
+            ],
+            // assess: pending (portfolio not yet submitted), submitted (being assessed) or cleared. work: [title, company, period, years]
+            'ETEEAP' => [
+                ['id' => 'APP-2026-E005', 'name' => 'Villanueva, Dario Cortez M.', 'program' => 'E-BSHRM', 'age' => 39, 'dob' => 'June 17, 1987', 'gender' => 'Male',
+                    'email' => 'dc.villanueva@dlsl.edu.ph', 'phone' => '0921 555 6666', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS HRM — DLSL, 2006, incomplete)',
+                    'workYears' => 16, 'employer' => 'Dusit Thani Manila · Food & Beverage Supervisor', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 4, 2026',
+                    'work' => [['F&B Supervisor', 'Dusit Thani Manila', '2015 – Present', '9 years'], ['Head Waiter', 'Crimson Hotel Filinvest City', '2009 – 2015', '6 years']],
+                    'status' => 'For Assessment', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 11:00 AM'] + $paid(null, null),
+                ['id' => 'APP-2026-E004', 'name' => 'Santos, Loreta Manalo A.', 'program' => 'E-BSN', 'age' => 35, 'dob' => 'September 4, 1991', 'gender' => 'Female',
+                    'email' => 'lm.santos@dlsl.edu.ph', 'phone' => '0920 444 5555', 'address' => 'Tanauan City, Batangas', 'education' => 'High School Graduate — Tanauan City National High School, 2008',
+                    'workYears' => 10, 'employer' => 'Adventist Medical Center · Senior Nursing Aide', 'assess' => 'pending', 'portfolio' => 'Not yet submitted',
+                    'work' => [['Senior Nursing Aide', 'Adventist Medical Center', '2016 – Present', '8 years'], ['Caregiver', 'Mabini Medical Center', '2014 – 2016', '2 years']],
+                    'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'May 14, 3:30 PM'] + $paid(null, null),
+                ['id' => 'APP-2026-E002', 'name' => 'Dela Cruz, Maricel Santos B.', 'program' => 'E-BEED', 'age' => 42, 'dob' => 'July 8, 1984', 'gender' => 'Female',
+                    'email' => 'ms.delacruz@dlsl.edu.ph', 'phone' => '0918 222 3333', 'address' => 'Batangas City, Batangas', 'education' => 'High School Graduate — Batangas National High School, 2001',
+                    'workYears' => 18, 'employer' => 'DepEd Batangas · Paraprofessional Teacher', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 3, 2026',
+                    'work' => [['Paraprofessional Teacher', 'DepEd Batangas', '2006 – Present', '18 years'], ['Daycare Teacher', "City Gov't of Batangas", '2003 – 2006', '3 years']],
+                    'status' => 'For Assessment', 'applied' => '2026-05-07', 'updated' => 'Jun 3, 2:00 PM'] + $paid(null, null),
+                ['id' => 'APP-2026-E003', 'name' => 'Reyes, Ernesto Datu C.', 'program' => 'E-BSBA', 'age' => 45, 'dob' => 'January 20, 1981', 'gender' => 'Male',
+                    'email' => 'ed.reyes@dlsl.edu.ph', 'phone' => '0919 333 4444', 'address' => 'San Jose, Batangas', 'education' => '3 Years College (BS Commerce — Lyceum of the Philippines, 1999, incomplete)',
+                    'workYears' => 22, 'employer' => 'Jollibee Foods Corporation · Area Manager', 'assess' => 'cleared', 'portfolio' => 'Submitted — May 30, 2026',
+                    'work' => [['Area Manager', 'Jollibee Foods Corporation', '2010 – Present', '14 years'], ['Store Manager', "McDonald's Philippines", '2003 – 2010', '7 years']],
+                    'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 10:00 AM'] + $paid('Jun 1, 2026', '₱2,500.00'),
+                ['id' => 'APP-2026-E001', 'name' => 'Pascual, Roberto Miguel A.', 'program' => 'E-BSIT', 'age' => 38, 'dob' => 'March 12, 1988', 'gender' => 'Male',
+                    'email' => 'rm.pascual@dlsl.edu.ph', 'phone' => '0917 111 2222', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS Computer Engineering — DLSL, 2007, incomplete)',
+                    'workYears' => 14, 'employer' => 'Philippine Long Distance Telephone Co. · IT Specialist', 'assess' => 'cleared', 'portfolio' => 'Submitted — Jun 1, 2026',
+                    'work' => [['IT Specialist', 'PLDT', '2012 – Present', '12 years'], ['IT Support Technician', 'Globe Telecom', '2009 – 2012', '3 years']],
+                    'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'Jun 2, 9:00 AM'] + $paid('Jun 2, 2026', '₱2,500.00'),
+            ],
         ];
     }
 

@@ -22,7 +22,7 @@
             @include('layouts.partials.sidebar-executive')
         @elseif (request()->is('registrar*') || auth()->user()->role === 'registrar')
             @include('layouts.partials.sidebar-registrar')
-        @elseif (request()->is('college*', 'principal*') || auth()->user()->isDeanOrChair() || auth()->user()->isPrincipal())
+        @elseif (request()->is('college*', 'principal*', 'director*') || auth()->user()->isDeanOrChair() || auth()->user()->isPrincipal() || auth()->user()->isDirector())
             @include('layouts.partials.sidebar-college')
         @else
             @include('layouts.partials.sidebar')

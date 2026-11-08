@@ -137,6 +137,12 @@ class User extends Authenticatable
         return $this->role === "toic";
     }
 
+    // The iPACE Director, who also heads ETEEAP: the Dean pages for both, at /director
+    public function isDirector(): bool
+    {
+        return $this->role === "director";
+    }
+
     // Executive Office: the President, the Chancellor, Vice Presidents and Vice Chancellors.
     // They share the same read-only, university-wide pages at /executive.
     public function isExecutive(): bool
@@ -216,6 +222,7 @@ class User extends Authenticatable
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],
             "toic" => ["TOIC", "System Support", "bi-tools"],
+            "director" => ["Director", "iPACE", "bi-mortarboard"],
             "president" => ["President", "Executive Office", "bi-bank"],
             "vice_president" => ["Vice President", "Executive Office", "bi-bank"],
             "chancellor" => ["Chancellor", "Executive Office", "bi-bank"],
