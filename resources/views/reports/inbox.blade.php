@@ -28,14 +28,14 @@
 
 @section('content')
     {{-- Two views: reports the IATO sent, and generating your own.
-         Without the tabs (canGenerate false) only "Received from IATO" shows. --}}
-    <ul class="nav nav-pills gap-2 mb-4 {{ ($labels['canGenerate'] ?? true) ? '' : 'd-none' }}" role="tablist">
+         canGenerate false hides the "Generate a Report" tab (its section stays, the script uses it). --}}
+    <ul class="nav nav-pills gap-2 mb-4" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#receivedView" type="button" role="tab">
                 <i class="bi bi-inbox me-1"></i> Received from IATO <span class="badge rounded-pill bg-body-secondary text-body-secondary ms-1">{{ count($received) }}</span>
             </button>
         </li>
-        <li class="nav-item" role="presentation">
+        <li class="nav-item {{ ($labels['canGenerate'] ?? true) ? '' : 'd-none' }}" role="presentation">
             <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#generateView" type="button" role="tab">
                 <i class="bi bi-stars me-1"></i> Generate a Report <span class="badge rounded-pill bg-body-secondary text-body-secondary ms-1" id="historyCount">{{ count($history) }}</span>
             </button>
