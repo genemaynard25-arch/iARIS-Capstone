@@ -35,6 +35,9 @@ class HomeController extends Controller
         if (auth()->user()->isExecutive()) {
             return redirect()->route('executive.dashboard');
         }
+        if (auth()->user()->isPrincipal()) {
+            return redirect()->route('principal.dashboard');
+        }
         if (auth()->user()->isDeanOrChair()) {
             return redirect()->route('college.dashboard');
         }

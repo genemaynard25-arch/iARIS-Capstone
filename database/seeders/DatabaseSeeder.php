@@ -100,6 +100,15 @@ class DatabaseSeeder extends Seeder
         ]);
     }
 
+    // Integrated School Principal: the Dean pages by level, at /principal (Kindergarten to Senior High). Named as in the mockup.
+    \App\Models\User::updateOrCreate(['email' => 'principal@gmail.com'], [
+        'name' => 'Kristine Anne Dimaculangan',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'principal',
+        'access_type' => 'viewer',
+        'assigned_level' => 'is',
+    ]);
+
     // Program Chair: the College dashboard at /college, locked to one program (BS Computer Science for now)
     \App\Models\User::firstOrCreate(
         ['email' => 'chair@gmail.com'],

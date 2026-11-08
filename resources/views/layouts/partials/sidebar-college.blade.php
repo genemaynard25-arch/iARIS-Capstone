@@ -1,7 +1,11 @@
-{{-- Sidebar for Deans and Program Chairs. Same look as the Executive sidebar, read-only links. --}}
+{{-- Sidebar for Deans, Program Chairs and the IS Principal. Same look as the Executive sidebar, read-only links. --}}
 @php
     $isChair = auth()->user()->isProgramChair();
-    $code = \App\Http\Controllers\CollegeController::college()['code'];
+    $isPrincipal = auth()->user()->isPrincipal();
+    $college = \App\Http\Controllers\CollegeController::college();
+    $code = $college['label'] ?? $college['code'];
+    // The pages' address: /principal for the IS Principal, /college for everyone else here
+    $base = $isPrincipal ? 'principal' : 'college';
 @endphp
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
@@ -14,7 +18,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : 'Dean View' }}</div>
+                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : 'Dean View') }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
@@ -31,14 +35,14 @@
                 // [label, what it's for, icon, url, active pattern, badge html]
                 $menu = [
                     'MENU' => [
-                        ['Briefing', 'Summary and alerts', 'bi-compass', '/college', 'college', ''],
-                        ['Applicants', ($isChair ? 'BSCS' : $code) . ' · view only', 'bi-people', '/college/applicants', 'college/applicants*', ''],
-                        ['Analytics', 'Trends, programs, insights', 'bi-bar-chart-line', '/college/analytics', 'college/analytics*', ''],
-                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/college/reports', 'college/reports*',
+                        ['Briefing', 'Summary and alerts', 'bi-compass', "/{$base}", $base, ''],
+                        ['Applicants', ($isChair ? 'BSCS' : $code) . ' · view only', 'bi-people', "/{$base}/applicants", "{$base}/applicants*", ''],
+                        ['Analytics', $isPrincipal ? 'Trends, levels, insights' : 'Trends, programs, insights', 'bi-bar-chart-line', "/{$base}/analytics", "{$base}/analytics*", ''],
+                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', "/{$base}/reports", "{$base}/reports*",
                             '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
                     ],
                     'HELP' => [
-                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/college/messages', 'college/messages*',
+                        ['Messages', 'Talk with IATO', 'bi-chat-dots', "/{$base}/messages", "{$base}/messages*",
                             '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>'],
                     ],
                 ];

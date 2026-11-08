@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 {{--
-    Analytics for a Dean (or Program Chair) (CollegeController::analytics). As in the mockup:
+    Analytics for a Dean, Program Chair or the IS Principal (CollegeController::analytics). As in the mockup
+    ($word is "program", or "level" for the Integrated School):
     four tiles, then four tabs — Overview (trend and funnel), Programs (sortable table),
     Compare years, AI insights. Everything is worked out by the script from $programs,
     the same numbers as the Briefing. Tabs follow the address: #overview, #programs, #years, #insights.
@@ -21,7 +22,7 @@
 
         <ul class="nav nav-pills gap-2 mb-3 no-print" role="tablist" id="analyticsTabs">
             <li class="nav-item" role="presentation"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tabOverview" type="button" role="tab" data-hash="overview"><i class="bi bi-graph-up me-1"></i> Overview <span class="small fw-normal opacity-75 d-none d-md-inline">· trend and funnel</span></button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabPrograms" type="button" role="tab" data-hash="programs"><i class="bi bi-layers me-1"></i> Programs</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabPrograms" type="button" role="tab" data-hash="programs"><i class="bi bi-layers me-1"></i> {{ ucfirst($word) }}s</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabYears" type="button" role="tab" data-hash="years"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights</button></li>
         </ul>
@@ -60,7 +61,7 @@
             <div class="tab-pane fade" id="tabPrograms" role="tabpanel">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-header bg-white border-0 rounded-top-4 d-flex flex-wrap justify-content-between align-items-center gap-2 px-4 pt-4 pb-2">
-                        <h2 class="fs-6 fw-bold mb-0">Programs · {{ $years[3] }}</h2>
+                        <h2 class="fs-6 fw-bold mb-0">{{ ucfirst($word) }}s · {{ $years[3] }}</h2>
                         <span class="small text-body-secondary">Click a column to sort</span>
                     </div>
                     <div class="table-responsive">
@@ -93,6 +94,7 @@
         const PROGRAMS = @json($programs);
         const YEARS = @json($years);
         const CODES = Object.keys(PROGRAMS);
+        const WORD = @json($word);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
         const pc = (a, b) => (b - a) / a * 100;
@@ -152,7 +154,7 @@
         // Settings → Display → "Program shown first on Analytics" keeps that program at the top
         const first = window.IARIS_SETTINGS?.display?.unit || '';
         const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, P, E, D, T, R: D / T * 100, S: T / app[3] * 100 }; });
-        const columns = [['name', 'Program'], ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];
+        const columns = [['name', WORD[0].toUpperCase() + WORD.slice(1)], ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];
         let sortKey = 'T', sortDir = -1;
         function drawPrograms() {
             // sortDir: 1 = ascending, -1 = descending. The "shown first" program stays on top.
@@ -178,7 +180,7 @@
         const INSIGHTS = [
             ['success', 'bi-graph-up-arrow', `Applicants ${g4 >= 0 ? 'up' : 'down'} ${Math.abs(g4).toFixed(1)}% in three years`, `From ${fm(app[0])} in ${YEARS[0]} to ${fm(app[3])} now.`],
             ...(PR.length > 1 ? [
-                ['warning', 'bi-trophy', `${byTotal[0].name} is your largest program`, `${fm(byTotal[0].T)} applicants, ${byTotal[0].S.toFixed(1)}% of your total.`],
+                ['warning', 'bi-trophy', `${byTotal[0].name} is your largest ${WORD}`, `${fm(byTotal[0].T)} applicants, ${byTotal[0].S.toFixed(1)}% of your total.`],
                 ['success', 'bi-check-circle', `${byRate[0].name} converts best`, `${byRate[0].R.toFixed(1)}% of its applicants have paid.`],
                 ['danger', 'bi-exclamation-triangle', `${byRate.at(-1).name} has the lowest paid rate`, `${byRate.at(-1).R.toFixed(1)}% paid so far, with ${fm(byRate.at(-1).P)} still Pending.`],
             ] : [

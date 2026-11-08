@@ -141,12 +141,18 @@ class User extends Authenticatable
         return $this->role === "program_chair";
     }
 
-    // The seeded SHS principal has role 'admin' but is assigned to IS / SHS,
-    // so either the 'principal' role or the SHS assignment counts.
+    // The seeded SHS principal has role 'admin' but is assigned to IS / SHS, so the SHS assignment decides
+    // (a 'principal' assigned to SHS also counts). A 'principal' without it is the IS Principal (below).
     public function isShsPrincipal(): bool
     {
-        return $this->role === "principal" ||
-            $this->assigned_sub_level === "shs";
+        return $this->assigned_sub_level === "shs";
+    }
+
+    // The Integrated School Principal: every IS level (Kindergarten to Senior High), view only.
+    // Same pages as a Dean (CollegeController), by level instead of program, at /principal.
+    public function isPrincipal(): bool
+    {
+        return $this->role === "principal" && ! $this->isShsPrincipal();
     }
 
     // How the role is shown to people: [label, office, Bootstrap icon].
@@ -163,6 +169,9 @@ class User extends Authenticatable
         }
         if ($this->isShsPrincipal()) {
             return ["SHS Principal", "Senior High School", "bi-building"];
+        }
+        if ($this->isPrincipal()) {
+            return ["Principal", "Integrated School", "bi-building"];
         }
         if ($this->role !== "admin" && $this->activeTempAdminGrant()) {
             return ["Temporary Admin", "IATO", "bi-hourglass-split"];

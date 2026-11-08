@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 {{--
-    Briefing: the Dean's (or Program Chair's) home page (CollegeController::dashboard).
+    Briefing: the home page of a Dean, a Program Chair or the IS Principal (CollegeController::dashboard).
+    $word is what the groups are called ("program", or "level" for the Integrated School); $whole is "college" or "school".
     Same layout as the Executive Briefing, for the programs in $programs. Everything is worked out
     by the script from $programs, so the Briefing always agrees with Analytics:
       - the summary sentence, the four tiles (with a 4-year sparkline each)
@@ -18,7 +19,7 @@
 
 @section('title', 'iARIS — Briefing')
 @section('page-title', "{$greeting}, {$greetName}")
-@section('page-subtitle', ($isChair ? "{$label} · " : '') . "{$college['name']} · AY " . \App\Support\ApplicantRecords::academicYear())
+@section('page-subtitle', ($isChair ? "{$label} · " : '') . ($college['code'] === 'IS' ? 'Kindergarten to Grade 12' : $college['name']) . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
@@ -34,7 +35,7 @@
                 <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-2"><i class="bi bi-stars me-1"></i> This week's briefing · {{ $label }} · {{ $weekLabel }}</div>
                 <h2 class="fs-5 fw-bold mb-3" id="briefHeadline"></h2>
                 <div class="d-flex flex-wrap gap-2 mb-3" id="briefPoints"></div>
-                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : 'your college' }} only. Summaries describe the data; decisions stay with you.</div>
+                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : "your {$whole}" }} only. Summaries describe the data; decisions stay with you.</div>
             </div>
             <div class="text-md-center px-md-3 flex-shrink-0">
                 <div class="display-5 fw-bold font-brand" id="briefBig"></div>
@@ -53,10 +54,10 @@
     </div>
     <div class="row row-cols-1 row-cols-lg-3 g-3 mb-4" id="attention"></div>
 
-    {{-- Programs at a glance --}}
+    {{-- Programs (or levels) at a glance --}}
     <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
-        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-layers text-primary me-1"></i> Programs at a glance</h2>
-        <span class="small text-body-secondary">Click a program for its breakdown</span>
+        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-layers text-primary me-1"></i> {{ ucfirst($word) }}s at a glance</h2>
+        <span class="small text-body-secondary">Click a {{ $word }} for its breakdown</span>
     </div>
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-2" id="programCards"></div>
     <div class="d-flex flex-wrap gap-3 small text-body-secondary mb-4">
@@ -71,11 +72,11 @@
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
                     <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
-                    <a href="{{ url('/college/reports') }}" class="small fw-bold text-decoration-none">All reports →</a>
+                    <a href="{{ $base }}/reports" class="small fw-bold text-decoration-none">All reports →</a>
                 </div>
                 <div class="list-group list-group-flush rounded-bottom-4">
                     @foreach ($reports as $r)
-                        <a href="{{ url('/college/reports') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                        <a href="{{ $base }}/reports" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
                             <span class="rounded-3 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-file-earmark-text"></i></span>
                             <div class="flex-grow-1">
                                 <div class="{{ $r['status'] === 'new' ? 'fw-bold' : 'fw-semibold' }} small">{{ $r['title'] }}</div>
@@ -95,7 +96,7 @@
                     <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-stars text-primary me-1"></i> Ask iARIS</h2>
                     <p class="small text-body-secondary">Quick answers about {{ $label }}. It never changes anything.</p>
                     <div class="vstack gap-2">
-                        @foreach ([['bi-graph-up-arrow', 'Summarize enrollment trends'], ['bi-trophy', 'Which program is largest?'], ['bi-funnel', 'What happened to conversion?']] as [$icon, $question])
+                        @foreach ([['bi-graph-up-arrow', 'Summarize enrollment trends'], ['bi-trophy', "Which {$word} is largest?"], ['bi-funnel', 'What happened to conversion?']] as [$icon, $question])
                             <button type="button" class="btn btn-light border text-start fw-semibold small" data-ask="{{ $question }}"><i class="bi {{ $icon }} text-primary me-2"></i>{{ $question }}</button>
                         @endforeach
                     </div>
@@ -115,7 +116,7 @@
         </div>
         <div class="offcanvas-body p-4" id="detailBody"></div>
         <div class="border-top p-3">
-            <a class="btn btn-primary fw-semibold" id="detailGo" href="{{ url('/college/analytics') }}"></a>
+            <a class="btn btn-primary fw-semibold" id="detailGo" href="{{ $base }}/analytics"></a>
         </div>
     </div>
 @endsection
@@ -125,8 +126,10 @@
         const PROGRAMS = @json($programs);
         const YEARS = @json($years);
         const LABEL = @json($label);
-        const ANALYTICS = @json(url('/college/analytics'));
-        const APPLICANTS = @json(url('/college/applicants'));
+        const ANALYTICS = @json("{$base}/analytics");
+        const APPLICANTS = @json("{$base}/applicants");
+        // "program" or "level"; "college" or "school"
+        const WORD = @json($word), WHOLE = @json($whole);
         const CODES = Object.keys(PROGRAMS);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
@@ -154,7 +157,7 @@
         $('briefBig').textContent = fm(app[3]);
         $('briefHeadline').innerHTML = `Applicants are ${dApp >= 0 ? 'up' : 'down'} <b>${Math.abs(dApp).toFixed(1)}%</b> to ${fm(app[3])}, and paid reservations ${dPaid >= 0 ? 'rose' : 'fell'} <b>${Math.abs(dPaid).toFixed(1)}%</b>. Conversion to enrollment is <b>${conv[3].toFixed(1)}%</b> (${signed(dConv, 1, '')} pts).`;
         $('briefPoints').innerHTML = [
-            ['bi-trophy', CODES.length > 1 ? `${esc(rows[0].name)} is your largest program (${fm(rows[0].t)})` : `${fm(rows[0].t)} applicants this AY`],
+            ['bi-trophy', CODES.length > 1 ? `${esc(rows[0].name)} is your largest ${WORD} (${fm(rows[0].t)})` : `${fm(rows[0].t)} applicants this AY`],
             ['bi-person-check', `${fm(enr[3])} enrolled so far`],
             ['bi-hourglass-split', `${fm(passed - paidNow)} exam passers not yet paid`],
         ].map(([icon, text]) => `<span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 fw-semibold py-2 px-3"><i class="bi ${icon} me-1"></i>${text}</span>`).join('');
@@ -213,7 +216,7 @@
             $('detailGo').href = go[1];
             $('detailTitle').textContent = title;
             $('detailSub').textContent = sub;
-            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? 'your college' : 'your program'} only.</p>`;
+            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? 'your ' + WHOLE : 'your program'} only.</p>`;
             drawer.show();
         }
 
@@ -251,23 +254,23 @@
                             ...(rates.length > 1 ? [`<b>${esc(rates[0][0])}</b> has the lowest paid rate (${rates[0][1].toFixed(1)}% of its applicants). <b>${esc(rates.at(-1)[0])}</b> has the highest (${rates.at(-1)[1].toFixed(1)}%).`] : []),
                             'Paying the reservation fee is what turns a passer into a likely enrollee.'])
                         + section('Where applicants drop off') + table(['Step', 'Lost', 'Drop'], lost.map(r => [r[0], fm(r[1]), r[2].toFixed(1) + '%']), lost.indexOf(biggest))
-                        + section('Paid rate by program') + bars(rates, v => v.toFixed(1) + '%', '#2558D9'));
+                        + section(`Paid rate by ${WORD}`) + bars(rates, v => v.toFixed(1) + '%', '#2558D9'));
                 },
             },
             {
                 tone: 'danger', icon: 'bi-clock',
                 title: `${byPending[0].name}: ${byPending[0].pending.toFixed(0)}% still Pending`,
-                text: `${fm(byPending[0].s[0])} of ${fm(byPending[0].t)} applicants haven't moved past Pending${CODES.length > 1 ? ', the highest share among your programs' : ''}.`,
+                text: `${fm(byPending[0].s[0])} of ${fm(byPending[0].t)} applicants haven't moved past Pending${CODES.length > 1 ? `, the highest share among your ${WORD}s` : ''}.`,
                 open() {
                     const top = byPending[0], allPending = rows.reduce((s, r) => s + r.s[0], 0);
                     openDrawer(this.title, `Applicants still at Pending · ${YEARS[3]}`,
                         stats([['Pending', fm(top.s[0]), 'danger'], ['For Exam', fm(top.s[1])], ['Paid', fm(top.s[2])], ['Total', fm(top.t)]])
                         + section('What happened') + facts([
-                            `<b>${esc(top.name)}</b> has ${top.pending.toFixed(1)}% of its applicants still Pending${CODES.length > 1 ? ', the highest among your programs' : ''}.`,
-                            ...(CODES.length > 1 ? [`Across all your programs, ${fm(allPending)} applicants are still Pending (${(allPending / app[3] * 100).toFixed(1)}%).`] : []),
-                            'Pending means the application is in but no exam is scheduled yet. IATO schedules exams; ask them if a program needs more slots.'])
-                        + section('Pending share by program') + bars(byPending.map(r => [r.name, r.pending]), v => v.toFixed(1) + '%', '#E8A0A0')
-                        + section('All programs') + table(['Program', 'Pending', 'For Exam', 'Paid'], rows.map(r => [esc(r.name), fm(r.s[0]), fm(r.s[1]), fm(r.s[2])])),
+                            `<b>${esc(top.name)}</b> has ${top.pending.toFixed(1)}% of its applicants still Pending${CODES.length > 1 ? `, the highest among your ${WORD}s` : ''}.`,
+                            ...(CODES.length > 1 ? [`Across all your ${WORD}s, ${fm(allPending)} applicants are still Pending (${(allPending / app[3] * 100).toFixed(1)}%).`] : []),
+                            'Pending means the application is in but no exam is scheduled yet. IATO schedules exams; ask them if a ' + WORD + ' needs more slots.'])
+                        + section(`Pending share by ${WORD}`) + bars(byPending.map(r => [r.name, r.pending]), v => v.toFixed(1) + '%', '#E8A0A0')
+                        + section(`All ${WORD}s`) + table([WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid'], rows.map(r => [esc(r.name), fm(r.s[0]), fm(r.s[1]), fm(r.s[2])])),
                         ['Open in Analytics', ANALYTICS + '#programs']);
                 },
             },
@@ -308,9 +311,9 @@
                 stats([['Applicants', fm(t)], ['Pending', fm(s[0])], ['For Exam', fm(s[1])], ['Paid', fm(s[2])]])
                 + section('Status') + statusBar(s)
                 + `<div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2"><span><i class="bi bi-square-fill me-1" style="color:#E8A0A0"></i>Pending ${(s[0] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#F0C27B"></i>For Exam ${(s[1] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#2558D9"></i>Paid ${(s[2] / t * 100).toFixed(1)}%</span></div>`
-                + (CODES.length > 1 ? section('Compared with your other programs') + facts([
+                + (CODES.length > 1 ? section(`Compared with your other ${WORD}s`) + facts([
                     `Rank <b>#${rank}</b> of ${CODES.length} by applicants.`,
-                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for your whole college.`]) : '')
+                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for your whole ${WHOLE}.`]) : '')
                 + section('Applicants over four years') + line(p.applicants, '#00674F', fm),
                 ['See applicants', `${APPLICANTS}?program=${encodeURIComponent(c)}`]);
         }));

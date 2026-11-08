@@ -258,9 +258,9 @@
                                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-3">Needs your attention</div>
                                 @include('settings.partials.switch', ['name' => 'conversion', 'label' => 'Conversion changes', 'description' => 'Flag when applied-to-enrolled conversion moves by 0.5 points or more.', 'checked' => true])
                                 @include('settings.partials.switch', ['name' => 'dropoff', 'label' => 'Funnel drop-offs', 'description' => "Flag the step where the most applicants are lost, such as passers who haven't paid.", 'checked' => true])
-                                {{-- The third card: unit growth (Executive Office) or programs stuck at Pending (Dean, Program Chair) --}}
-                                @if ($unitWord === 'program')
-                                    @include('settings.partials.switch', ['name' => 'pending', 'label' => 'Programs stuck at Pending', 'description' => 'Flag programs with a high share of applicants still Pending.', 'checked' => true])
+                                {{-- The third card: unit growth (Executive Office), or programs / levels stuck at Pending (Dean, Program Chair, IS Principal) --}}
+                                @if ($unitWord !== 'unit')
+                                    @include('settings.partials.switch', ['name' => 'pending', 'label' => ucfirst($unitWord) . 's stuck at Pending', 'description' => "Flag {$unitWord}s with a high share of applicants still Pending.", 'checked' => true])
                                 @else
                                     @include('settings.partials.switch', ['name' => 'growth', 'label' => 'Fast growth or decline', 'description' => 'Flag units whose applicants change by 15% or more from last year.', 'checked' => true])
                                 @endif
@@ -271,7 +271,7 @@
                                         <label class="btn btn-sm btn-outline-primary rounded-pill px-3" for="briefUnit{{ $i }}">{{ $unit }}</label>
                                     @endforeach
                                 </div>
-                                <div class="form-text">Unchecked {{ $unitWord }}s are hidden from your Briefing. They still appear in Analytics{{ $unitWord === 'program' ? ' and Applicants' : '' }}.</div>
+                                <div class="form-text">Unchecked {{ $unitWord }}s are hidden from your Briefing. They still appear in Analytics{{ $unitWord !== 'unit' ? ' and Applicants' : '' }}.</div>
                                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4 mb-2">Compare with</div>
                                 @foreach (['last' => 'Last academic year', 'week' => 'Same week last year (coming soon)', 'average' => 'Average of the last three years (coming soon)'] as $value => $label)
                                     <div class="form-check">

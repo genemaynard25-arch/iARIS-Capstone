@@ -71,10 +71,24 @@ class CollegeController extends Controller
             'BSFS' => ['name' => 'BS Forensic Science', 'applicants' => [24, 27, 30, 33], 'enrolled' => [6, 7, 8, 8],
                 'funnel' => [33, 24, 20, 9, 8], 'status' => [10, 14, 9], 'paidLastYear' => 8],
         ]],
-        // 'title' (optional): how the dean's title reads when it isn't the code ("Dean, College of Nursing")
+        // Optional keys: 'title' — how the title reads when it isn't the code ("Dean, College of Nursing");
+        // 'label' — the short name on the pages when it isn't the code; 'office' — Settings' office line;
+        // 'word' — what the groups are called ('program' by default, 'level' for the Integrated School).
         'CON' => ['name' => 'College of Nursing', 'title' => 'College of Nursing', 'programs' => [
             'BSN' => ['name' => 'BS Nursing', 'applicants' => [123, 129, 135, 142], 'enrolled' => [36, 37, 39, 39],
                 'funnel' => [142, 105, 89, 44, 39], 'status' => [40, 58, 44], 'paidLastYear' => 43],
+        ]],
+        // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
+        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School',
+            'office' => 'Integrated School · Kindergarten to Grade 12', 'word' => 'level', 'programs' => [
+            'K' => ['name' => 'Kindergarten', 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
+                'funnel' => [58, 46, 39, 18, 14], 'status' => [10, 30, 18], 'paidLastYear' => 17],
+            'GS' => ['name' => 'Grade School', 'applicants' => [194, 199, 204, 214], 'enrolled' => [49, 52, 54, 55],
+                'funnel' => [214, 173, 146, 74, 55], 'status' => [32, 108, 74], 'paidLastYear' => 72],
+            'JHS' => ['name' => 'Junior High School', 'applicants' => [205, 214, 221, 236], 'enrolled' => [52, 56, 58, 61],
+                'funnel' => [236, 190, 160, 82, 61], 'status' => [36, 118, 82], 'paidLastYear' => 78],
+            'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
+                'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
         ]],
     ];
 
@@ -82,20 +96,27 @@ class CollegeController extends Controller
     private const HONORIFICS = [
         'Cherrie Villafuerte' => 'Engr.', 'Jasmin De Silva' => 'Dr.', 'Gina Dimaano' => 'Dr.',
         'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.', 'Margie Ebreo' => 'Dr.',
+        'Kristine Anne Dimaculangan' => 'Ms.',
     ];
 
     /**
-     * The signed-in dean's college: ['code' => 'CITE', 'name' => …, 'programs' => […]].
+     * The signed-in dean's college: ['code' => 'CITE', 'name' => …, 'programs' => […]]. The IS Principal gets 'IS'.
      * TODO: read users.assigned_college once the backend adds it. Until then the college code is kept
      * in users.department (see the seeder). Anyone without one (e.g. the Program Chair) is CITE.
      */
     public static function college(): array
     {
         $user = auth()->user();
-        $code = strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
+        $code = $user?->isPrincipal() ? 'IS' : strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
         $code = isset(self::COLLEGES[$code]) ? $code : 'CITE';
 
         return ['code' => $code] + self::COLLEGES[$code];
+    }
+
+    /** Where these pages live for the signed-in user: /principal for the IS Principal, /college otherwise. */
+    public static function base(): string
+    {
+        return url(auth()->user()?->isPrincipal() ? '/principal' : '/college');
     }
 
     /** Program names, for Settings (Briefing and Display). */
@@ -113,9 +134,14 @@ class CollegeController extends Controller
 
         return [
             'isChair' => $isChair,
-            // Short name of what you see: "CITE", or a program chair's program
-            'label' => $isChair ? 'BS Computer Science' : $college['code'],
+            // Short name of what you see: "CITE", "Integrated School", or a program chair's program
+            'label' => $isChair ? 'BS Computer Science' : ($college['label'] ?? $college['code']),
             'college' => ['code' => $college['code'], 'name' => $college['name']],
+            // What the groups are called ("program" or "level") and what the whole is ("college" or "school")
+            'word' => $college['word'] ?? 'program',
+            'whole' => $college['code'] === 'IS' ? 'school' : 'college',
+            // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
+            'base' => self::base(),
             'programs' => $isChair ? ['BSCS' => self::COLLEGES['CITE']['programs']['BSCS']] : $college['programs'],
             'years' => ExecutiveController::YEARS,
         ];
@@ -173,7 +199,7 @@ class CollegeController extends Controller
     // Messages with IATO: the same page as the Executive Office's
     public function messages()
     {
-        return view('executive.messages', ['threads' => self::threads(), 'base' => url('/college')]);
+        return view('executive.messages', ['threads' => self::threads(), 'base' => self::base()]);
     }
 
     /** Conversations IATO answered (the number on the sidebar's Messages link). */
@@ -202,7 +228,8 @@ class CollegeController extends Controller
      */
     public static function received(bool $isChair): array
     {
-        $name = $isChair ? 'BS Computer Science' : self::college()['code'];
+        $college = self::college();
+        $name = $isChair ? 'BS Computer Science' : ($college['label'] ?? $college['code']);
 
         return [
             ['title' => "{$name} Applicants Summary — AY 2025–26", 'kind' => 'programs', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
@@ -213,14 +240,15 @@ class CollegeController extends Controller
                 'message' => 'Attached is the list of paid reservations as of May 30.'],
             ['title' => "{$name} Enrollment Trends — AY 2024–25", 'kind' => 'trend', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
                 'at' => 'Jun 14, 2025 · 8:30 AM', 'status' => 'read',
-                'message' => 'Year-end enrollment trends for your college.'],
+                'message' => 'Year-end enrollment trends for your ' . ($college['code'] === 'IS' ? 'school.' : 'college.')],
         ];
     }
 
     /**
      * Applicants in the given programs, newest first. Placeholder records (every college); later a query on the
      * applicants table (e.g. Applicant::where('college', 'CITE')->whereIn('program', ...)).
-     * paid: date of the reservation payment, or null if not paid yet.
+     * paid: date of the reservation payment, or null if not paid yet. year (optional): "Grade 11 · STEM" (default 1st Year).
+     * amount (optional): the reservation fee paid (default ₱2,000.00).
      */
     private static function applicantsIn(array $scope): array
     {
@@ -265,6 +293,25 @@ class CollegeController extends Controller
             ['id' => 'APP-2026-0641', 'name' => 'Bautista, Patricia Anne L.', 'program' => 'BSN', 'status' => 'Paid', 'applied' => '2026-05-23', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'March 22, 2006', 'gender' => 'Female', 'email' => 'p.bautista@dlsl.edu.ph', 'phone' => '0917 941 2241', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 9, 2026 · 8:00 AM', 'paid' => 'Jun 4, 2026'],
             ['id' => 'APP-2026-0642', 'name' => 'Mercado, John Paul R.', 'program' => 'BSN', 'status' => 'For Exam', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'August 14, 2005', 'gender' => 'Male', 'email' => 'j.mercado@dlsl.edu.ph', 'phone' => '0918 942 3342', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
             ['id' => 'APP-2026-0643', 'name' => 'Ilagan, Sophia Marie C.', 'program' => 'BSN', 'status' => 'Pending', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'November 9, 2005', 'gender' => 'Female', 'email' => 's.ilagan@dlsl.edu.ph', 'phone' => '0919 943 4443', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
+            // Integrated School (as in the Principal's mockup). 'year' and 'amount' are given here; elsewhere they default.
+            ['id' => 'IS-2026-1101', 'name' => 'Santos, Bianca Mae R.', 'program' => 'K', 'year' => 'Kinder', 'status' => 'Pending', 'applied' => '2026-05-26', 'updated' => 'Jun 2, 8:12 AM', 'dob' => 'March 2, 2021', 'gender' => 'Female', 'email' => 'santos.family@gmail.com', 'phone' => '0917 200 1000', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
+            ['id' => 'IS-2026-1102', 'name' => 'Lim, Ethan Gabriel S.', 'program' => 'GS', 'year' => 'Grade 1', 'status' => 'For Exam', 'applied' => '2026-05-25', 'updated' => 'Jun 3, 9:19 AM', 'dob' => 'June 18, 2019', 'gender' => 'Male', 'email' => 'lim.family@gmail.com', 'phone' => '0918 241 1733', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 9:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1103', 'name' => 'Reyes, Andrea Nicole P.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'Paid', 'applied' => '2026-05-24', 'updated' => 'Jun 4, 10:26 AM', 'dob' => 'October 9, 2009', 'gender' => 'Female', 'email' => 'reyes.family@gmail.com', 'phone' => '0919 282 2466', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 10:00 AM', 'paid' => 'Jun 4, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1104', 'name' => 'Garcia, Miguel Andres T.', 'program' => 'JHS', 'year' => 'Grade 7', 'status' => 'For Exam', 'applied' => '2026-05-23', 'updated' => 'Jun 5, 11:33 AM', 'dob' => 'January 21, 2013', 'gender' => 'Male', 'email' => 'garcia.family@gmail.com', 'phone' => '0920 323 3199', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 17, 2026 · 8:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1105', 'name' => 'Mendoza, Sofia Isabel L.', 'program' => 'SHS', 'year' => 'Grade 11 · ABM', 'status' => 'For Exam', 'applied' => '2026-05-22', 'updated' => 'Jun 6, 8:40 AM', 'dob' => 'May 30, 2009', 'gender' => 'Female', 'email' => 'mendoza.family@gmail.com', 'phone' => '0917 364 3932', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1106', 'name' => 'Navarro, Joaquin Luis D.', 'program' => 'GS', 'year' => 'Grade 4', 'status' => 'Paid', 'applied' => '2026-05-21', 'updated' => 'Jun 7, 9:47 AM', 'dob' => 'August 3, 2016', 'gender' => 'Male', 'email' => 'navarro.family@gmail.com', 'phone' => '0918 405 4665', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 19, 2026 · 10:00 AM', 'paid' => 'Jun 7, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1107', 'name' => 'Villanueva, Gwyneth Anne C.', 'program' => 'SHS', 'year' => 'Grade 11 · HUMSS', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'Jun 8, 10:54 AM', 'dob' => 'July 14, 2009', 'gender' => 'Female', 'email' => 'villanueva.family@gmail.com', 'phone' => '0919 446 5398', 'address' => 'San Jose, Batangas', 'exam' => null, 'paid' => null],
+            ['id' => 'IS-2026-1108', 'name' => 'Castillo, Lorenzo Miguel B.', 'program' => 'JHS', 'year' => 'Grade 8', 'status' => 'Paid', 'applied' => '2026-05-19', 'updated' => 'Jun 2, 11:01 AM', 'dob' => 'November 27, 2012', 'gender' => 'Male', 'email' => 'castillo.family@gmail.com', 'phone' => '0920 487 6131', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 21, 2026 · 9:00 AM', 'paid' => 'Jun 3, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1109', 'name' => 'Aquino, Chloe Margaret V.', 'program' => 'K', 'year' => 'Kinder', 'status' => 'Paid', 'applied' => '2026-05-18', 'updated' => 'Jun 3, 8:08 AM', 'dob' => 'February 11, 2021', 'gender' => 'Female', 'email' => 'aquino.family@gmail.com', 'phone' => '0917 528 6864', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 22, 2026 · 10:00 AM', 'paid' => 'Jun 4, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1110', 'name' => 'Bautista, Rafael Jose M.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'For Exam', 'applied' => '2026-05-17', 'updated' => 'Jun 4, 9:15 AM', 'dob' => 'December 5, 2009', 'gender' => 'Male', 'email' => 'bautista.family@gmail.com', 'phone' => '0918 569 7597', 'address' => 'Calamba, Laguna', 'exam' => 'Jun 14, 2026 · 8:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1111', 'name' => 'Dela Rosa, Kyla Marie F.', 'program' => 'GS', 'year' => 'Grade 2', 'status' => 'Pending', 'applied' => '2026-05-16', 'updated' => 'Jun 5, 10:22 AM', 'dob' => 'April 19, 2018', 'gender' => 'Female', 'email' => 'delarosa.family@gmail.com', 'phone' => '0919 610 8330', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
+            ['id' => 'IS-2026-1112', 'name' => 'Torres, Nathaniel James R.', 'program' => 'SHS', 'year' => 'Grade 12 · GAS', 'status' => 'Paid', 'applied' => '2026-05-15', 'updated' => 'Jun 6, 11:29 AM', 'dob' => 'September 8, 2008', 'gender' => 'Male', 'email' => 'torres.family@gmail.com', 'phone' => '0920 651 9063', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 16, 2026 · 10:00 AM', 'paid' => 'Jun 7, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1113', 'name' => 'Flores, Alyssa Jane C.', 'program' => 'JHS', 'year' => 'Grade 7', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'Jun 7, 8:36 AM', 'dob' => 'March 25, 2013', 'gender' => 'Female', 'email' => 'flores.family@gmail.com', 'phone' => '0917 692 9796', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null],
+            ['id' => 'IS-2026-1114', 'name' => 'Ramos, Gabriel Vince A.', 'program' => 'SHS', 'year' => 'Grade 11 · TVL', 'status' => 'For Exam', 'applied' => '2026-05-13', 'updated' => 'Jun 8, 9:43 AM', 'dob' => 'June 1, 2009', 'gender' => 'Male', 'email' => 'ramos.family@gmail.com', 'phone' => '0918 733 1529', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1115', 'name' => 'Pascual, Isabella Rose T.', 'program' => 'GS', 'year' => 'Grade 6', 'status' => 'For Exam', 'applied' => '2026-05-12', 'updated' => 'Jun 2, 10:50 AM', 'dob' => 'January 7, 2014', 'gender' => 'Female', 'email' => 'pascual.family@gmail.com', 'phone' => '0919 774 2262', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 19, 2026 · 10:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1116', 'name' => 'Cruz, Daniel Matthew S.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'Paid', 'applied' => '2026-05-11', 'updated' => 'Jun 3, 11:57 AM', 'dob' => 'August 22, 2009', 'gender' => 'Male', 'email' => 'cruz.family@gmail.com', 'phone' => '0920 815 2995', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 20, 2026 · 8:00 AM', 'paid' => 'Jun 5, 2026', 'amount' => '₱1,500.00'],
+            ['id' => 'IS-2026-1117', 'name' => 'Ocampo, Leah Patricia M.', 'program' => 'JHS', 'year' => 'Grade 9', 'status' => 'For Exam', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 8:04 AM', 'dob' => 'October 15, 2011', 'gender' => 'Female', 'email' => 'ocampo.family@gmail.com', 'phone' => '0917 856 3728', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 21, 2026 · 9:00 AM', 'paid' => null],
+            ['id' => 'IS-2026-1118', 'name' => 'Salazar, Marco Antonio G.', 'program' => 'SHS', 'year' => 'Grade 11 · ABM', 'status' => 'Pending', 'applied' => '2026-05-09', 'updated' => 'Jun 5, 9:11 AM', 'dob' => 'April 2, 2009', 'gender' => 'Male', 'email' => 'salazar.family@gmail.com', 'phone' => '0918 897 4461', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
         ];
 
         return array_values(array_filter($all, fn ($a) => isset($scope[$a['program']])));

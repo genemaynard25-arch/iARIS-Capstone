@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 {{--
-    Reports for a Dean (or Program Chair) (CollegeController::reports). As in the mockup, one page:
+    Reports for a Dean, Program Chair or the IS Principal (CollegeController::reports). As in the mockup, one page:
       - From IATO: open one to read or download it; questions go to Messages ("Ask IATO")
       - Generate a report: four ready-made reports from the same numbers as Analytics
       - Your reports: the ones you generated, each with Download (PDF, Excel or CSV)
@@ -11,7 +11,7 @@
 @php
     // key => [title, icon, colour, description]
     $templates = [
-        'programs' => ['Applicants by program', 'bi-layers', 'primary', 'Pending, For Exam, and Paid for every program.'],
+        'programs' => ["Applicants by {$word}", 'bi-layers', 'primary', "Pending, For Exam, and Paid for every {$word}."],
         'paid' => ['Paid reservations', 'bi-clipboard-check', 'info', 'Applicants who paid, ready for enrollment.'],
         'trend' => ['Four-year trend', 'bi-graph-up', 'secondary', "Applicants, enrolled, and conversion since {$years[0]}."],
         'funnel' => ['Conversion funnel', 'bi-funnel', 'warning', 'Where applicants drop off this AY.'],
@@ -117,7 +117,8 @@
         const PAID_ROWS = @json($paidRows);
         // {template, period, at, isNew}
         const HISTORY = @json($history);
-        const MESSAGES = @json(url('/college/messages'));
+        const MESSAGES = @json("{$base}/messages");
+        const WORD = @json($word);
         const CODES = Object.keys(PROGRAMS);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
@@ -131,7 +132,7 @@
             const stage = i => CODES.reduce((s, c) => s + PROGRAMS[c].funnel[i], 0);
             const sub = `${LABEL} · ${YEARS[3]} · Generated ${now()}`;
             if (kind === 'paid') {
-                return { title, sub, head: ['Applicant no.', 'Name', 'Program', 'Paid on'], rows: PAID_ROWS.length ? PAID_ROWS : [['—', 'No paid applicants yet', '', '']] };
+                return { title, sub, head: ['Applicant no.', 'Name', WORD[0].toUpperCase() + WORD.slice(1), 'Paid on'], rows: PAID_ROWS.length ? PAID_ROWS : [['—', 'No paid applicants yet', '', '']] };
             }
             if (kind === 'trend') {
                 const a = sum('applicants'), e = sum('enrolled');
@@ -142,7 +143,7 @@
                 return { title, sub, head: ['Step', 'Applicants', 'Share of applied'],
                     rows: ['Applied', 'Took exam', 'Passed', 'Paid', 'Enrolled'].map((s, i) => [s, fm(stage(i)), (stage(i) / applied * 100).toFixed(1) + '%']) };
             }
-            return { title, sub, head: ['Program', 'Pending', 'For Exam', 'Paid', 'Total'],
+            return { title, sub, head: [WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid', 'Total'],
                 rows: CODES.map(c => { const s = PROGRAMS[c].status; return [PROGRAMS[c].name, s[0], s[1], s[2], s[0] + s[1] + s[2]]; }) };
         }
 

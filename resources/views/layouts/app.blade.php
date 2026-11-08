@@ -20,7 +20,7 @@
             @include('layouts.partials.sidebar-executive')
         @elseif (request()->is('registrar*') || auth()->user()->role === 'registrar')
             @include('layouts.partials.sidebar-registrar')
-        @elseif (request()->is('college*') || auth()->user()->isDeanOrChair())
+        @elseif (request()->is('college*', 'principal*') || auth()->user()->isDeanOrChair() || auth()->user()->isPrincipal())
             @include('layouts.partials.sidebar-college')
         @else
             @include('layouts.partials.sidebar')

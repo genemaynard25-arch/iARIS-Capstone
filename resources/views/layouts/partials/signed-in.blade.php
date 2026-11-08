@@ -17,6 +17,6 @@
     <span class="d-flex flex-column lh-sm overflow-hidden">
         <span class="text-white-50 text-uppercase fw-bold tracking-wide signed-in-label">Signed in as</span>
         <span class="fw-bold text-truncate" title="{{ $displayName }}">{{ $displayName }}</span>
-        <span class="signed-in-role small fw-semibold text-truncate" title="{{ $roleLabel }} · {{ $office }}"><i class="bi {{ $roleIcon }} me-1"></i>{{ $roleLabel }} · {{ $office }}</span>
+        <span class="signed-in-role small fw-semibold lh-sm" title="{{ $roleLabel }} · {{ $office }}"><i class="bi {{ $roleIcon }} me-1"></i>{{ $roleLabel }} · {{ $office }}</span>
     </span>
 </a>

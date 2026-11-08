@@ -133,3 +133,12 @@ Route::get('/college/applicants', [CollegeController::class, 'applicants'])->mid
 Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');
 Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware('auth')->name('college.reports');
 Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware('auth')->name('college.messages');
+
+// Integrated School Principal: the same pages as a Dean, by level (their own sidebar: see layouts/app.blade.php)
+Route::middleware('auth')->prefix('principal')->name('principal.')->group(function () {
+    Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
+    Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
+    Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');
+    Route::get('/reports', [CollegeController::class, 'reports'])->name('reports');
+    Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
+});

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 {{--
-    Applicants for a Dean (or Program Chair) (CollegeController::applicants). View only, as in the mockup:
+    Applicants for a Dean, Program Chair or the IS Principal (CollegeController::applicants). View only, as in the mockup
+    ($word is "program", or "level" for the Integrated School):
       - four tiles: every applicant this AY by status (the programs' totals, same as the Briefing)
       - a table of sample records with search, a program filter and status pills
       - click a row for the applicant's details
@@ -30,8 +31,8 @@
                 <input type="search" class="form-control bg-body-tertiary" id="search" placeholder="Search name or applicant number…" aria-label="Search">
             </div>
             @if (count($programs) > 1)
-                <select class="form-select w-auto" id="programFilter" aria-label="Program">
-                    <option value="">All programs</option>
+                <select class="form-select w-auto" id="programFilter" aria-label="{{ ucfirst($word) }}">
+                    <option value="">All {{ $word }}s</option>
                     @foreach ($programs as $code => $program)
                         <option value="{{ $code }}" @selected($selected === $code)>{{ $program['name'] }}</option>
                     @endforeach
@@ -45,7 +46,7 @@
                 <thead class="table-light">
                     <tr class="small text-uppercase">
                         <th class="ps-4 text-body-secondary fw-bold">Applicant</th>
-                        <th class="text-body-secondary fw-bold">Program</th>
+                        <th class="text-body-secondary fw-bold">{{ ucfirst($word) }}</th>
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date applied</th>
                         <th class="text-body-secondary fw-bold">Exam</th>
@@ -57,7 +58,7 @@
         </div>
         <div class="card-footer bg-white border-top rounded-bottom-4 small text-body-secondary px-4 py-3" id="footer"></div>
     </div>
-    <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Records are managed by IATO. If something looks wrong, tell IATO in <a href="{{ url('/college/messages') }}" class="fw-semibold text-decoration-none">Messages</a>.</p>
+    <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Records are managed by IATO. If something looks wrong, tell IATO in <a href="{{ $base }}/messages" class="fw-semibold text-decoration-none">Messages</a>.</p>
 
     {{-- One applicant --}}
     <div class="offcanvas offcanvas-end" tabindex="-1" id="applicantDrawer" aria-labelledby="applicantName" style="--bs-offcanvas-width: 540px;">
@@ -76,7 +77,9 @@
     <script>
         const PROGRAMS = @json($programs);
         const ROWS = @json($rows);
-        const COLLEGE = @json($college['code']);
+        // The unit: "CITE", "Integrated School" (a program chair's unit is their college)
+        const COLLEGE = @json($isChair ? $college['code'] : $label);
+        const WORD = @json($word);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
         const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -146,8 +149,8 @@
             const table = rows => `<table class="table table-sm small mb-0"><tbody>${rows.map(([l, v]) => `<tr><td class="text-body-secondary" style="width: 42%;">${l}</td><td class="fw-semibold">${esc(v || '—')}</td></tr>`).join('')}</tbody></table>`;
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name}`;
-            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? '₱2,000.00' : '—')}</div>`
-                + section('Application') + table([['Unit', COLLEGE], ['Program', PROGRAMS[r.program].name], ['Year / level', '1st Year'], ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
+            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? (r.amount || '₱2,000.00') : '—')}</div>`
+                + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
                 + section('Applicant') + table([['Date of birth', r.dob], ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]])
                 + '<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-lock me-1"></i>View only. IATO manages applicant records.</p>';
             drawer.show();
@@ -155,12 +158,12 @@
 
         // ---- Download the rows you see ----
         $('downloadButton').addEventListener('click', () => {
-            const head = ['Applicant No.', 'Name', 'Unit', 'Program', 'Status', 'Date applied', 'Exam', 'Paid on'];
+            const head = ['Applicant No.', 'Name', 'Unit', WORD[0].toUpperCase() + WORD.slice(1), 'Status', 'Date applied', 'Exam', 'Paid on'];
             const csv = [head, ...shown().map(r => [r.id, r.name, COLLEGE, PROGRAMS[r.program].name, r.status, longDate(r.applied), r.exam || 'Not yet scheduled', r.paid || '—'])]
                 .map(cols => cols.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
             link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-            link.download = `${COLLEGE.toLowerCase()}-applicants${program() ? '-' + program().toLowerCase() : ''}.csv`;
+            link.download = `${COLLEGE.toLowerCase().replace(/\s+/g, '-')}-applicants${program() ? '-' + program().toLowerCase() : ''}.csv`;
             link.click();
             URL.revokeObjectURL(link.href);
         });
