@@ -1,7 +1,7 @@
 {{-- Sidebar for Deans and Program Chairs. Same look as the Executive sidebar, read-only links. --}}
 @php
     $isChair = auth()->user()->isProgramChair();
-    $code = \App\Http\Controllers\CollegeController::COLLEGE['code'];
+    $code = \App\Http\Controllers\CollegeController::college()['code'];
 @endphp
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">

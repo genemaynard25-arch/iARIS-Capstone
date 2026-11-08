@@ -83,6 +83,10 @@ class User extends Authenticatable
         $parts = preg_split('/\s+/', trim($this->name ?? ''));
         $suffix = count($parts) > 2 && preg_match('/^(FSC|Jr\.?|Sr\.?|II|III|IV)$/i', end($parts)) ? array_pop($parts) : '';
         $last = array_pop($parts);
+        // Surname particles stay with the last name: "Jasmin De Silva" -> "De Silva", "Ana Dela Cruz" -> "Dela Cruz"
+        while (count($parts) > 1 && preg_match('/^(De|Del|Dela|Delos|Los|San|Santa|Sta\.|Van|Von)$/i', end($parts))) {
+            $last = array_pop($parts) . ' ' . $last;
+        }
 
         return [implode(' ', $parts), $last, $suffix];
     }
@@ -167,7 +171,8 @@ class User extends Authenticatable
         return match ($this->role) {
             "admin" => ["Super Admin", "IATO", "bi-star-fill"],
             "iato_staff" => ["IATO Staff", "IATO", "bi-person-badge"],
-            "dean" => ["Dean", "CITE", "bi-mortarboard"],
+            // A dean's college: assigned_college once the backend adds it, the department until then (CITE by default)
+            "dean" => ["Dean", strtoupper($this->assigned_college ?? $this->department ?? "CITE"), "bi-mortarboard"],
             "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],

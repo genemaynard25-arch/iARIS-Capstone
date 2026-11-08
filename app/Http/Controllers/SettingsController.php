@@ -45,7 +45,7 @@ class SettingsController extends Controller
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
             'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Analytics & Reports, all records, Import Data, My Submissions, Audit Logs (view)'],
-            'dean' => ['Dean, CITE', 'Dean, CITE', 'College of Information Technology and Engineering', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
+            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
@@ -58,6 +58,12 @@ class SettingsController extends Controller
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
         $roleKey = $user->isShsPrincipal() ? 'principal' : $user->role;
         [$roleLabel, $title, $office, $modules] = $roles[$roleKey] ?? [ucwords(str_replace('_', ' ', $user->role ?? 'User')), '—', '—', '—'];
+        // Deans: "Dean, CBEAM" and their college's full name
+        if ($user->role === 'dean') {
+            $college = CollegeController::college();
+            $roleLabel = $title = "Dean, {$college['code']}";
+            $office = $college['name'];
+        }
         // Registrars: "College Registrar" or "IS Registrar"
         if ($user->role === 'registrar') {
             $roleLabel = $title = $user->roleInfo()[0];
@@ -103,7 +109,7 @@ class SettingsController extends Controller
                     $user->isLamp() => 'Scholarships only',
                     $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
                     $user->role === 'iato_staff' => 'All units',
-                    $user->role === 'dean' => CollegeController::COLLEGE['code'] . ' only',
+                    $user->role === 'dean' => CollegeController::college()['code'] . ' only',
                     $user->isProgramChair() => 'BS Computer Science only',
                     default => $scope,
                 },

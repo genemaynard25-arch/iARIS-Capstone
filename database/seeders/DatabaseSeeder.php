@@ -25,18 +25,25 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
-    // Dean of CITE: the Dean pages at /college. Named as in the mockups; updateOrCreate, so running
-    // the seeder again renames the old "Test Dean".
-    \App\Models\User::updateOrCreate(
-        ['email' => 'dean@gmail.com'],
-        [
-            'name' => 'Cherrie Villafuerte',
+    // Deans: the Dean pages at /college, each for their own college. Named as in the mockups.
+    // The college code goes in `department` (as in Account Management) until users.assigned_college exists.
+    // updateOrCreate, so running the seeder again renames the old "Test Dean".
+    foreach ([
+        ['dean@gmail.com', 'Cherrie Villafuerte', 'CITE'],
+        ['deancbeam@gmail.com', 'Jasmin De Silva', 'CBEAM'],
+        ['deanceas@gmail.com', 'Gina Dimaano', 'CEAS'],
+        ['deancihtm@gmail.com', 'Evangeline Necio', 'CIHTM'],
+        ['deanccje@gmail.com', 'Aristotle Balba', 'CCJE'],
+    ] as [$email, $name, $college]) {
+        \App\Models\User::updateOrCreate(['email' => $email], [
+            'name' => $name,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'role' => 'dean',
             'access_type' => 'viewer',
             'assigned_level' => 'college',
-        ]
-    );
+            'department' => $college,
+        ]);
+    }
 
     \App\Models\User::firstOrCreate(
         ['email' => 'staff@gmail.com'],
