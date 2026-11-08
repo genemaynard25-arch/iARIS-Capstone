@@ -40,7 +40,7 @@ class SettingsController extends Controller
         // Role key => [label, title, office, modules]. Same role keys as Access Control.
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
-            'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Records, Reports, Analytics, Import'],
+            'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Analytics & Reports, all records, Import Data, My Submissions, Audit Logs (view)'],
             'dean' => ['Dean', 'Dean', 'College of Information Technology and Engineering', 'Dashboard, Applicants, Analytics, Reports'],
             'program_chair' => ['Program Chair', 'Program Chair', 'BS Computer Science · CITE', 'Dashboard, Applicants, Analytics, Reports'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
@@ -76,10 +76,15 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
                     $user->access_type === 'editor' => 'Can view and edit',
                     default => 'Read-only',
                 },
-                'Data scope' => $user->isLamp() ? 'Scholarships only' : $scope,
+                'Data scope' => match (true) {
+                    $user->isLamp() => 'Scholarships only',
+                    $user->role === 'iato_staff' => 'All units',
+                    default => $scope,
+                },
                 'Modules' => $modules,
                 'Account status' => 'Active',
                 'Member since' => $user->created_at?->format('M j, Y') ?? '—',
@@ -108,6 +113,22 @@ class SettingsController extends Controller
      */
     private function notificationGroups($user): array
     {
+        if ($user->role === 'iato_staff') {
+            return [
+                'My submissions' => [
+                    ['sentBack', 'Submission sent back', 'The Super Admin returned an edit or import to you with a reason. Recommended.', true],
+                    ['approved', 'Submission approved', 'Your edit or import is now visible to other users.', false],
+                ],
+                'Data' => [
+                    ['importErrors', 'Import finished with errors', 'A batch import completed but some rows were skipped.', true],
+                    ['lampFlag', 'LAMP Office flagged a scholar discrepancy', 'LAMP confirmed, flagged, or edited a scholar record.', true],
+                ],
+                'Reports' => [
+                    ['reply', 'Reply on a report', 'The Chancellor, a Dean, LAMP, or another office replied to a report you sent.', true],
+                    ['weekly', 'Weekly admissions summary', 'Every Monday: applicants, paid reservations, and pending items for the week.', false],
+                ],
+            ];
+        }
         if ($user->isLamp()) {
             return [
                 'Requests from IATO' => [

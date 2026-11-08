@@ -17,7 +17,14 @@ class SubmissionsController extends Controller
         // Admins use the Review Queue instead
         abort_unless(auth()->user()->role === 'iato_staff', 403);
 
-        return view('submissions.index', ['items' => self::items()]);
+        return view('submissions.index', [
+            'items' => self::items(),
+            // Conversations with the LAMP Office that IATO Staff started (they show under "LAMP requests")
+            'lampRequests' => collect(\App\Support\LampRequests::sample())
+                ->filter(fn ($t) => ($t['messages'][0]['role'] ?? null) === 'IATO Staff')
+                ->values()
+                ->all(),
+        ]);
     }
 
     public static function items(): array
@@ -25,9 +32,11 @@ class SubmissionsController extends Controller
         return collect(ReviewQueueController::items())
             ->where('role', 'IATO Staff')
             // The queue is written from the Super Admin's side ("by you"); here it's the other way round
-            ->map(fn ($item) => isset($item['reviewed'])
-                ? array_merge($item, ['reviewed' => str_replace('by you', 'by Renegado, Randolph', $item['reviewed'])])
-                : $item)
+            ->map(fn ($item) => array_merge($item, [
+                // e.g. "Nov 8, 2026 · 10:14 AM"
+                'when' => \Illuminate\Support\Carbon::parse($item['at'])->format('M j, Y · g:i A'),
+                'reviewed' => isset($item['reviewed']) ? str_replace('by you', 'by Renegado, Randolph', $item['reviewed']) : null,
+            ]))
             ->values()
             ->all();
     }

@@ -88,7 +88,13 @@
                         <div class="card border-0 shadow-sm rounded-4">
                             <div class="card-body p-4">
                                 <h2 class="fs-6 fw-bold mb-0">Your access</h2>
-                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.@if (auth()->user()->isLamp()) Your corrections to scholar records go to the IATO Review Queue before other users see them.@endif</p>
+                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.
+                                    @if (auth()->user()->isLamp())
+                                        Your corrections to scholar records go to the IATO Review Queue before other users see them.
+                                    @elseif (auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
+                                        Your edits and imports go to the Review Queue before other users see them.
+                                    @endif
+                                </p>
                                 <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-2">
                                     @foreach ($access as $label => $value)
                                         <div class="col">

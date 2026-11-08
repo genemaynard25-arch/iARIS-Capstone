@@ -15,7 +15,9 @@
         'graduate_school' => ['Graduate Programs', "Master's and doctoral applicants", 'bi-journal-bookmark'],
         'eteeap' => ['ETEEAP', 'Working adults applying through ETEEAP', 'bi-briefcase'],
     ];
-    $steps = ['Upload File', 'Check Columns', 'Preview & Validate', 'Import'];
+    // IATO Staff (not a Temporary Admin): imports go to the Review Queue (front end only for now, see the script)
+    $staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin();
+    $steps = ['Upload File', 'Check Columns', 'Preview & Validate', $staffReview ? 'Submit for Review' : 'Import'];
 @endphp
 
 @section('content')
@@ -46,11 +48,15 @@
                 </div>
 
                 {{-- Steps: the script moves the highlight along --}}
-                {{-- IATO Staff: in the finished system their imports wait in the Review Queue --}}
-                @if (auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
-                    <div class="alert alert-light border small d-flex gap-2 rounded-3 mb-4">
-                        <i class="bi bi-clipboard-check text-primary"></i>
-                        <div>Staff imports are meant to wait in the Review Queue until the Super Admin approves them. The Review Queue isn't connected yet, so for now your import is saved right away.</div>
+                {{-- IATO Staff: shown after "Submit for review" (the script fills in the numbers) --}}
+                @if ($staffReview)
+                    <div class="alert alert-success d-none d-flex gap-3 rounded-4 mb-4" id="reviewBanner" role="status">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                        <div class="small">
+                            <b id="reviewBannerTitle"></b> Other users see them after the Super Admin approves.
+                            <a href="{{ url('/submissions') }}" class="fw-bold alert-link">Track it in My Submissions →</a>
+                            <div class="text-body-secondary mt-1">Demo only: nothing was saved. Staff imports need the Review Queue backend first.</div>
+                        </div>
                     </div>
                 @endif
                 <ol class="list-unstyled d-flex align-items-center gap-2 mb-4" id="importSteps" aria-label="Import steps">
@@ -252,6 +258,7 @@
         const toKey = header => String(header).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         const formatSize = bytes => bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1) + ' KB' : (bytes / 1024 / 1024).toFixed(1) + ' MB';
         const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        let rowCount = 0;   // data rows in the chosen file (for the staff "Submit for review" button)
         const show = (el, display = 'block') => { el.classList.remove('d-none'); el.classList.add('d-' + display); };
         const hide = el => { el.classList.add('d-none'); el.classList.remove('d-flex', 'd-block'); };
 
@@ -277,6 +284,8 @@
             form.reset();
             document.getElementById('importTarget').value = target;   // keep the chosen target
             [fileRow, readError, previewCard, checkCard].forEach(hide);
+            const banner = document.getElementById('reviewBanner');   // IATO Staff only
+            if (banner) hide(banner);
             show(dropzone);
             importButton.disabled = true;
             lastFile = lastRows = null;
@@ -347,6 +356,7 @@
             lastRows = rows;
             const headers = (rows[0] || []).map(h => String(h).trim());
             const dataRows = rows.slice(1).filter(r => r.some(cell => String(cell).trim() !== ''));
+            rowCount = dataRows.length;
             if (!headers.length || !dataRows.length) {
                 return fail(`"${file.name}" has no data rows under the header row.`);
             }
@@ -489,13 +499,32 @@
             }
             show(checkCard);
             setStep(missingRequired.length ? 2 : 3);
+            // IATO Staff: the button says how many records go for review
+            if (STAFF_REVIEW) importButton.innerHTML = `<i class="bi bi-send me-1"></i> Submit for review (${plural(rowCount, 'record')})`;
         }
 
         // Changing the Import Target re-checks the file that's already chosen
         document.getElementById('importTarget').addEventListener('change', () => { if (lastFile) render(lastFile, lastRows); });
 
+        // IATO Staff: the file goes to the Review Queue instead of being imported (front end only).
+        // TODO (backend): save the batch as a pending Review Queue item; the Super Admin's Approve imports it.
+        const STAFF_REVIEW = @json($staffReview);
+        let nextReviewNumber = 413;   // made-up Review Queue numbers
+
         // Show progress while the server imports (the page reloads when it's done)
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', e => {
+            if (STAFF_REVIEW) {
+                e.preventDefault();
+                const rq = 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
+                document.getElementById('reviewBannerTitle').textContent = `${plural(rowCount, 'record')} sent to the Review Queue as ${rq}.`;
+                setStep(4);
+                hide(document.getElementById('previewCard'));
+                hide(document.getElementById('checkCard'));
+                const banner = document.getElementById('reviewBanner');
+                show(banner, 'flex');
+                banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
             setStep(4);
             importButton.disabled = true;
             importButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Importing…';
