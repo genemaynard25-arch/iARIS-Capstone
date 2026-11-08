@@ -111,6 +111,10 @@ class User extends Authenticatable
     // "Cherrie Villafuerte" -> "Villafuerte, Cherrie"; "Edmundo L. Fernandez FSC" -> "Fernandez, Edmundo L. FSC"
     public function displayName(): string
     {
+        // A team account ("TOIC Support Team") is shown as written
+        if ($this->isToic()) {
+            return $this->name;
+        }
         [$first, $last, $suffix] = $this->nameParts();
 
         return $first === '' ? $last : trim("{$last}, {$first} {$suffix}");
@@ -119,9 +123,18 @@ class User extends Authenticatable
     // "Cherrie Villafuerte" -> "CV"; "Edmundo L. Fernandez FSC" -> "EF"
     public function initials(): string
     {
+        if ($this->isToic()) {
+            return "TO";
+        }
         [$first, $last] = $this->nameParts();
 
         return mb_strtoupper(mb_substr($first !== '' ? $first : $last, 0, 1) . ($first !== '' ? mb_substr($last, 0, 1) : ''));
+    }
+
+    // TOIC (system support): sees how iARIS runs (uptime, backups, security, issues), never applicant data. Pages at /toic.
+    public function isToic(): bool
+    {
+        return $this->role === "toic";
     }
 
     // Executive Office: the President, the Chancellor, Vice Presidents and Vice Chancellors.
@@ -202,6 +215,7 @@ class User extends Authenticatable
             "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],
+            "toic" => ["TOIC", "System Support", "bi-tools"],
             "president" => ["President", "Executive Office", "bi-bank"],
             "vice_president" => ["Vice President", "Executive Office", "bi-bank"],
             "chancellor" => ["Chancellor", "Executive Office", "bi-bank"],

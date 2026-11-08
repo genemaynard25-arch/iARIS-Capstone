@@ -32,7 +32,9 @@
     <div class="small text-body-secondary d-flex flex-wrap gap-3">
         <span>Other ways to get answers:</span>
         <a href="{{ ($base ?? url('/executive')) . '/reports' }}" class="text-decoration-none fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> Ask about a report</a>
+        @unless ($noAi ?? false)
         <a href="{{ $base ?? url('/executive') }}" class="text-decoration-none fw-semibold"><i class="bi bi-stars me-1"></i> Ask iARIS on your Briefing</a>
+        @endunless
     </div>
 
     {{-- New message --}}

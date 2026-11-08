@@ -31,6 +31,7 @@
 
         {{-- Footer (always visible) --}}
         <div class="nav nav-pills flex-column px-3 py-3 border-top border-white border-opacity-25">
+            @include('partials.report-problem-link')
             <a href="{{ url('/settings') }}" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}"><i class="bi bi-gear"></i> Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf

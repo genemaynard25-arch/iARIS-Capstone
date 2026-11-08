@@ -28,6 +28,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CollegeController;
+use App\Http\Controllers\ToicController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -139,6 +140,17 @@ Route::get('/college/reports', [CollegeController::class, 'reports'])->middlewar
 Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware('auth')->name('college.messages');
 
 // Integrated School Principal: the same pages as a Dean, by level (their own sidebar: see layouts/app.blade.php)
+// TOIC (system support): how iARIS runs, never applicant data (their own sidebar: see layouts/app.blade.php)
+Route::middleware('auth')->prefix('toic')->name('toic.')->group(function () {
+    Route::get('/', [ToicController::class, 'dashboard'])->name('dashboard');
+    Route::get('/issues', [ToicController::class, 'issuesPage'])->name('issues');
+    Route::get('/security', [ToicController::class, 'security'])->name('security');
+    Route::get('/docs', [ToicController::class, 'docs'])->name('docs');
+    Route::get('/budget', [ToicController::class, 'budget'])->name('budget');
+    Route::get('/reports', [ToicController::class, 'reports'])->name('reports');
+    Route::get('/messages', [ToicController::class, 'messages'])->name('messages');
+});
+
 Route::middleware('auth')->prefix('principal')->name('principal.')->group(function () {
     Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
     Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');

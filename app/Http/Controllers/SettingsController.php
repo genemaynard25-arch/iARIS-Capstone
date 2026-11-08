@@ -25,7 +25,7 @@ class SettingsController extends Controller
 
         // Every role gets these; the Executive Office also gets report and display preferences
         // (The LAMP Office and Registrars have no AI button, so no AI section either.)
-        $sections = $user->isLamp() || $user->role === 'registrar'
+        $sections = $user->isLamp() || $user->role === 'registrar' || $user->isToic()
             ? ['profile', 'security', 'notifications']
             : ['profile', 'security', 'notifications', 'ai'];
         // (Vice Presidents and Vice Chancellors are view only, so no Report Preferences.)
@@ -50,6 +50,7 @@ class SettingsController extends Controller
             'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
+            'toic' => ['TOIC', 'TOIC Support', 'System Support', 'System Overview, Issues, Security, Documentation, Budget & Maintenance, Reports'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
             'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
             'vice_president' => ['Vice President', 'Vice President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
@@ -100,6 +101,7 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->isToic() => 'System settings and health; no applicant data',
                     $user->isVice() => 'View only',
                     $user->isExecutive() || $collegeView => 'View · can generate reports',
                     $user->role === 'registrar' => 'View only; can ask IATO about a record',
@@ -109,6 +111,7 @@ class SettingsController extends Controller
                 },
                 'Data scope' => match (true) {
                     $user->isLamp() => 'Scholarships only',
+                    $user->isToic() => 'System data only',
                     $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
                     $user->role === 'iato_staff' => 'All units',
                     $user->role === 'dean' => CollegeController::college()['code'] . ' only',

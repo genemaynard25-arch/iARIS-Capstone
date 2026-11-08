@@ -100,6 +100,16 @@ class DatabaseSeeder extends Seeder
         ]);
     }
 
+    // TOIC (system support): System Overview, Issues, Security, Documentation, Budget, Reports at /toic. A team account, as in the mockup.
+    \App\Models\User::updateOrCreate(['email' => 'toic@gmail.com'], [
+        'name' => 'TOIC Support Team',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'toic',
+        'access_type' => 'viewer',
+    ]);
+    // TOIC opens /home (which sends them to /toic), so it needs the dashboard permission. Only that one: no applicant data.
+    \App\Models\RolePermission::updateOrCreate(['role' => 'toic', 'module' => 'dashboard'], ['enabled' => true]);
+
     // Integrated School Principal: the Dean pages by level, at /principal (Kindergarten to Senior High). Named as in the mockup.
     \App\Models\User::updateOrCreate(['email' => 'principal@gmail.com'], [
         'name' => 'Kristine Anne Dimaculangan',

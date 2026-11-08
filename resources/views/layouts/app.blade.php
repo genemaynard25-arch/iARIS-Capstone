@@ -12,7 +12,9 @@
         {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /executive and /college pages use theirs too,
              so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)
              TODO (RBAC): keep these users out of the admin pages. --}}
-        @if (request()->is('lamp*') || auth()->user()->isLamp())
+        @if (request()->is('toic*') || auth()->user()->isToic())
+            @include('layouts.partials.sidebar-toic')
+        @elseif (request()->is('lamp*') || auth()->user()->isLamp())
             @include('layouts.partials.sidebar-lamp')
         @elseif (request()->is('shs*') || auth()->user()->isShsPrincipal())
             @include('layouts.partials.sidebar-shs')
@@ -27,6 +29,8 @@
         @endif
 
         <main class="flex-grow-1 p-3 p-sm-4 p-lg-5" style="min-width: 0;">
+            {{-- Maintenance notice for everyone (TOIC turns it on in System Overview) --}}
+            @include('partials.maintenance-banner')
             @include('layouts.partials.topbar')
 
             @yield('content')
@@ -46,12 +50,18 @@
             el.firstChild.src = IARIS_SETTINGS.photo;
         });
     </script>
+    {{-- Problems reported to TOIC and the maintenance notice: before the page scripts, which use it --}}
+    @include('partials.issues-store')
     @yield('scripts')
-    {{-- The AI button: not for the LAMP Office or Registrars (their mockups have none; Settings has no AI section for them) --}}
-    @unless (auth()->user()->isLamp() || auth()->user()->role === 'registrar')
+    {{-- The AI button: not for the LAMP Office, Registrars or TOIC (their mockups have none; Settings has no AI section for them) --}}
+    @unless (auth()->user()->isLamp() || auth()->user()->role === 'registrar' || auth()->user()->isToic())
         @include('partials.ai-widget')
     @endunless
     @include('partials.mfa-reminder')
+    {{-- "Report a problem" (everyone except TOIC) --}}
+    @unless (auth()->user()->isToic())
+        @include('partials.report-problem')
+    @endunless
     <script>
         // "Show the AI button on every page" off
         if (IARIS_SETTINGS.ai?.button === false) document.getElementById('aiWidget')?.classList.add('d-none');

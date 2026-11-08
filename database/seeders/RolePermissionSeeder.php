@@ -13,12 +13,13 @@ class RolePermissionSeeder extends Seeder
 
         $roles = [
             'iato_staff', 'program_chair', 'dean', 'principal', 'registrar',
-            'lamp', 'president', 'vice_president', 'chancellor', 'vice_chancellor',
+            'lamp', 'president', 'vice_president', 'chancellor', 'vice_chancellor', 'toic',
         ];
 
         // module key => roles that have it on
         $modules = [
-            'dashboard' => ['iato_staff', 'program_chair', 'dean', 'principal', 'registrar', 'lamp', 'president', 'vice_president', 'chancellor', 'vice_chancellor'],
+            // TOIC: only the dashboard (it sends them to /toic); no applicant modules
+            'dashboard' => ['iato_staff', 'program_chair', 'dean', 'principal', 'registrar', 'lamp', 'president', 'vice_president', 'chancellor', 'vice_chancellor', 'toic'],
             'applicants' => ['iato_staff', 'program_chair', 'dean', 'principal', 'registrar'],
             'reports' => ['iato_staff', 'program_chair', 'dean', 'principal', 'registrar', 'lamp', 'president', 'vice_president', 'chancellor', 'vice_chancellor'],
             'analytics' => ['iato_staff', 'program_chair', 'dean', 'principal', 'president', 'vice_president', 'chancellor', 'vice_chancellor'],
