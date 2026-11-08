@@ -20,60 +20,61 @@ class ChancellorController extends Controller
      * and the funnel percentages are all worked out in the view from these numbers,
      * so they always add up.
      */
+    /**
+     * Briefing (the President / Chancellor home page): a short, read-only summary of the
+     * same placeholder numbers as Analytics (self::units()), with "Needs your attention"
+     * items and a card per unit. Everything on the page is worked out from these numbers
+     * in the view, so it always agrees with Analytics.
+     */
     public function dashboard()
     {
-        // "Key Takeaways": the AI insights the Analytics page already saved
-        // (its "Re-analyze" button), or these examples until someone runs it.
-        $takeaways = CachedInsight::where('key', 'analytics')->first()?->payload ?? [
-            ['icon' => 'bi-graph-up-arrow', 'tone' => 'primary', 'title' => 'Adult-learner programs are growing fastest',
-                'body' => 'iPACE (+23.8%) and ETEEAP (+20.5%) lead growth, though together they are still only 12.4% of all applicants.'],
-            ['icon' => 'bi-funnel', 'tone' => 'warning', 'title' => 'Conversion slipped slightly',
-                'body' => 'Applicants grew 9.2% but enrollment grew 6.9%, so applied-to-enrolled conversion moved from 26.1% to 25.6%.'],
-            ['icon' => 'bi-mortarboard', 'tone' => 'info', 'title' => 'CITE is the largest college',
-                'body' => 'CITE has 512 applicants, about 30.5% of all College applicants.'],
-        ];
-
         return view('chancellor.dashboard', [
             'academicYear' => '2025–2026',
-
-            // Whole university, one entry per academic year (oldest first; the last is this year)
-            'years' => [
-                ['label' => 'AY 2022–23', 'applicants' => 2610, 'paid' => 801, 'enrolled' => 640],
-                ['label' => 'AY 2023–24', 'applicants' => 2820, 'paid' => 878, 'enrolled' => 722],
-                ['label' => 'AY 2024–25', 'applicants' => 3016, 'paid' => 949, 'enrolled' => 788],
-                ['label' => 'AY 2025–26', 'applicants' => 3294, 'paid' => 1019, 'enrolled' => 842],
-            ],
-
-            // Applicants per unit: last AY and this AY
-            'units' => [
-                ['name' => 'College', 'previous' => 1562, 'current' => 1676],
-                ['name' => 'Integrated School', 'previous' => 694, 'current' => 742],
-                ['name' => 'Graduate Programs', 'previous' => 262, 'current' => 284],
-                ['name' => 'College of Law', 'previous' => 168, 'current' => 186],
-                ['name' => 'iPACE', 'previous' => 252, 'current' => 312],
-                ['name' => 'ETEEAP', 'previous' => 78, 'current' => 94],
-            ],
-
-            // This AY, from application to enrollment
-            'funnel' => [
-                'Applied' => 3294,
-                'Took exam' => 2486,
-                'Passed' => 2094,
-                'Paid' => 1019,
-                'Enrolled' => 842,
-            ],
-
-            // College applicants this AY, per college
-            'colleges' => ['CITE' => 512, 'CBEAM' => 398, 'CEAS' => 296, 'CON' => 268, 'CIHTM' => 202],
-
-            'takeaways' => $takeaways,
-
+            'years' => self::YEARS,
+            'units' => self::units(),
+            // Paid reservations, all units, one per entry in YEARS (the last two match the units' paidPrevious / paid)
+            'paidByYear' => [801, 878, 949, 1019],
             // The 3 newest reports the IATO sent to this office (all of them are on the Reports page)
             'reports' => array_slice(self::received(), 0, 3),
-
-            // Who else sees this page
-            'executives' => self::executives(),
         ]);
+    }
+
+    /**
+     * Messages with IATO: this office's own conversations (questions, report requests).
+     * Placeholder conversations, front end only. 'status':
+     *   waiting   waiting for IATO        answered  IATO answered (needs you)        resolved  closed
+     * TODO (backend): a messages table shared with IATO (one inbox on IATO's side for every office).
+     */
+    public function messages()
+    {
+        return view('chancellor.messages', ['threads' => self::threads()]);
+    }
+
+    /** Conversations IATO answered (the number on the sidebar's Messages link). */
+    public static function answeredMessages(): int
+    {
+        return collect(self::threads())->where('status', 'answered')->count();
+    }
+
+    private static function threads(): array
+    {
+        $iato = fn ($at, $text) => ['from' => 'iato', 'name' => 'Renegado, Randolph', 'role' => 'Super Admin', 'at' => $at, 'text' => $text];
+        $me = fn ($at, $text) => ['from' => 'me', 'at' => $at, 'text' => $text];
+
+        return [
+                ['id' => 'MSG-0108', 'topic' => 'Question about the data', 'subject' => 'Why did conversion drop this year?', 'status' => 'answered', 'messages' => [
+                    $me('Jun 11, 2026 · 9:15 AM', 'The Briefing says applied-to-enrolled conversion slipped to 25.6%. Which units are driving that?'),
+                    $iato('Jun 11, 2026 · 2:40 PM', 'Mostly College and iPACE: their applicants grew faster than enrollment. The biggest loss is passers who have not paid yet. We will add a unit breakdown to the June report.'),
+                ]],
+                ['id' => 'MSG-0105', 'topic' => 'Request a report', 'subject' => 'Applicants by unit for the Board meeting', 'status' => 'waiting', 'messages' => [
+                    $me('Jun 12, 2026 · 8:20 AM', 'Please prepare applicants by unit, this AY against last AY, for the Board meeting on Jun 18.'),
+                ]],
+                ['id' => 'MSG-0101', 'topic' => 'Something looks wrong', 'subject' => 'ETEEAP numbers in the May report', 'status' => 'resolved', 'messages' => [
+                    $me('May 31, 2026 · 10:05 AM', 'The May report shows 91 ETEEAP applicants, but the Briefing showed 94. Which is right?'),
+                    $iato('May 31, 2026 · 11:30 AM', 'The report was a May 30 snapshot (91). Three more applied on May 31, so 94 is the current count.'),
+                    $me('May 31, 2026 · 11:45 AM', 'Thank you, that explains it.'),
+                ]],
+        ];
     }
 
     /**
@@ -112,12 +113,15 @@ class ChancellorController extends Controller
         return view('reports.inbox', [
             'labels' => [
                 'office' => 'President / Chancellor',
-                'subtitle' => 'Reports from IATO, and reports you can generate yourself from the data in iARIS',
+                'subtitle' => 'Reports from IATO, and reports you can generate yourself. Questions about a report go to Messages.',
+                // No reply thread: questions about a report go to Messages
+                'askUrl' => url('/chancellor/messages'),
                 'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
                 'role' => 'President / Chancellor', 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
                 'sharedTitle' => 'Shared with the Executive Office', 'locked' => null,
             ],
-            'received' => self::received(),
+            // Replies now live in Messages, so a report is just unread or read
+            'received' => array_map(fn ($r) => $r['status'] === 'replied' ? ['status' => 'read'] + $r : $r, self::received()),
             'years' => self::YEARS,
             'units' => self::units(),
             'insights' => self::insights(),

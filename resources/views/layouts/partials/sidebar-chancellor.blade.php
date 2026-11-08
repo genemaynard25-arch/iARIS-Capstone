@@ -10,7 +10,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">President / Chancellor</div>
+                    <div class="small text-white-50">Executive View</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
@@ -20,17 +20,36 @@
             {{-- Who is signed in --}}
             @include('layouts.partials.signed-in')
 
-            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
-            <nav class="nav nav-pills flex-column">
-                <a href="{{ url('/chancellor') }}" class="nav-link {{ request()->is('chancellor') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                <a href="{{ url('/chancellor/analytics') }}" class="nav-link {{ request()->is('chancellor/analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
-                {{-- The badge counts unread reports (the Reports page updates it as you open them) --}}
-                @php
-                    $unread = collect(\App\Http\Controllers\ChancellorController::received())->where('status', 'new')->count();
-                @endphp
-                <a href="{{ url('/chancellor/reports') }}" class="nav-link {{ request()->is('chancellor/reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports
-                    <span class="badge rounded-pill bg-danger ms-auto {{ $unread ? '' : 'd-none' }}" id="reportsBadge">{{ $unread }}</span></a>
-            </nav>
+            @php
+                // Badges: unread reports (red; the Reports page updates it) and conversations IATO answered (amber)
+                $unread = collect(\App\Http\Controllers\ChancellorController::received())->where('status', 'new')->count();
+                $answered = \App\Http\Controllers\ChancellorController::answeredMessages();
+                // [label, what it's for, icon, url, active pattern, badge html]
+                $menu = [
+                    'MENU' => [
+                        ['Briefing', 'Summary and alerts', 'bi-compass', '/chancellor', 'chancellor', ''],
+                        ['Analytics', 'Trends, funnel, insights', 'bi-bar-chart-line', '/chancellor/analytics', 'chancellor/analytics*', ''],
+                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/chancellor/reports', 'chancellor/reports*',
+                            '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
+                    ],
+                    'HELP' => [
+                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/chancellor/messages', 'chancellor/messages*',
+                            '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>'],
+                    ],
+                ];
+            @endphp
+            @foreach ($menu as $title => $links)
+                <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">{{ $title }}</div>
+                <nav class="nav nav-pills flex-column mb-3">
+                    @foreach ($links as [$label, $hint, $icon, $url, $match, $badge])
+                        <a href="{{ url($url) }}" class="nav-link {{ request()->is($match) ? 'active' : '' }}" @if (request()->is($match)) aria-current="page" @endif>
+                            <i class="bi {{ $icon }}"></i>
+                            <span class="d-flex flex-column lh-sm"><span>{{ $label }}</span><small class="fw-normal text-white-50">{{ $hint }}</small></span>
+                            {!! $badge !!}
+                        </a>
+                    @endforeach
+                </nav>
+            @endforeach
         </div>
 
         {{-- Footer (always visible) --}}

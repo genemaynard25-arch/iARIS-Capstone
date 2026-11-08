@@ -118,6 +118,7 @@ Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->nam
 Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
 Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
 Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
+Route::get('/chancellor/messages', [ChancellorController::class, 'messages'])->middleware('auth')->name('chancellor.messages');
 
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');

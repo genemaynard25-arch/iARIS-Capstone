@@ -6,7 +6,8 @@
        total       the name of the total row ("All units")     wide      "institution-wide" / "across CITE"
        role        your title in the reply thread              scope     [value, note] for the Insights report
        sharedTitle heading above $people in the report drawer (null = don't show them)
-       locked      a program chair's program: the only scope they can pick (null = any) --}}
+       locked      a program chair's program: the only scope they can pick (null = any)
+       askUrl      (optional) the Messages page: questions about a report go there instead of a reply thread --}}
 @extends('layouts.app')
 
 @section('title', 'iARIS — ' . $labels['office'] . ' Reports')
@@ -14,6 +15,8 @@
 @section('page-subtitle', $labels['subtitle'])
 
 @php
+    // President: no reply thread; "Question about this report?" goes to Messages
+    $ask = $labels['askUrl'] ?? null;
     // "Send a copy to": the IATO plus the other people in $people (not you)
     $recipients = collect($people)
         ->reject(fn ($person) => str_contains($person['name'], auth()->user()->name))
@@ -42,7 +45,7 @@
         <div class="tab-pane fade show active" id="receivedView" role="tabpanel">
             {{-- Stat cards (filled in by the script, so they change as you read and reply) --}}
             <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
-                @foreach ([['total', 'Total Reports', 'Received from IATO', 'primary'], ['new', 'Unread', 'Waiting for you', 'danger'], ['replied', 'Replied', 'You responded', 'info'], ['latest', 'Latest Report', '', 'dark']] as [$key, $label, $sub, $tone])
+                @foreach ([['total', 'Total Reports', 'Received from IATO', 'primary'], ['new', 'Unread', 'Waiting for you', 'danger'], $ask ? ['read', 'Read', 'Opened', 'info'] : ['replied', 'Replied', 'You responded', 'info'], ['latest', 'Latest Report', '', 'dark']] as [$key, $label, $sub, $tone])
                     <div class="col">
                         <div class="card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
                             <div class="card-body">
@@ -82,7 +85,7 @@
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom" id="statusPills">
                     <span class="small fw-bold text-body-secondary me-1">Status:</span>
-                    @foreach (['' => 'All', 'new' => 'Unread', 'replied' => 'Replied', 'read' => 'Read'] as $status => $label)
+                    @foreach ($ask ? ['' => 'All', 'new' => 'Unread', 'read' => 'Read'] : ['' => 'All', 'new' => 'Unread', 'replied' => 'Replied', 'read' => 'Read'] as $status => $label)
                         <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold {{ $status === '' ? 'btn-primary' : 'btn-outline-secondary' }}" data-status="{{ $status }}">{{ $label }}</button>
                     @endforeach
                 </div>
@@ -177,10 +180,12 @@
             </div>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
+        @unless ($ask)
         <ul class="nav nav-underline px-4 border-bottom" role="tablist">
             <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#previewPane" type="button" role="tab" id="previewTab">Report Preview</button></li>
             <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#threadPane" type="button" role="tab" id="threadTab">Reply Thread</button></li>
         </ul>
+        @endunless
         <div class="offcanvas-body tab-content p-4">
             <div class="tab-pane fade show active" id="previewPane" role="tabpanel">
                 <div id="drawerBody"></div>
@@ -205,6 +210,14 @@
                 <div class="d-flex flex-column gap-3" id="thread"></div>
             </div>
         </div>
+        @if ($ask)
+            {{-- President: questions go to Messages --}}
+            {{-- Button on the left, so the floating AI button doesn't cover it --}}
+            <div class="border-top p-3 d-flex flex-wrap align-items-center gap-3">
+                <a class="btn btn-sm btn-primary fw-semibold" id="askLink" href="{{ $ask }}"><i class="bi bi-chat-dots me-1"></i> Ask IATO</a>
+                <div><div class="fw-bold small">Question about this report?</div><div class="small text-body-secondary">Ask IATO in Messages.</div></div>
+            </div>
+        @else
         {{-- Reply box (always visible at the bottom) --}}
         <form class="border-top p-3" id="replyForm">
             <label for="replyText" class="visually-hidden">Reply to IATO</label>
@@ -215,6 +228,7 @@
                 <button type="button" class="btn btn-sm btn-light border" onclick="document.getElementById('replyText').value = ''">Clear</button>
             </div>
         </form>
+        @endif
     </div>
 
     {{-- Generate a report: options --}}
@@ -416,13 +430,14 @@
         // ---------- RECEIVED FROM IATO ----------
         const filters = { search: '', type: '', year: '', sort: 'new', status: '' };
         let openReport = null;
+        const ASK_URL = @json($ask);   // President: questions go to Messages
 
         function renderStats() {
             const count = status => RECEIVED.filter(r => r.status === status).length;
             const latest = [...RECEIVED].sort((a, b) => b.sent.localeCompare(a.sent))[0];
             document.querySelector('[data-stat="total"]').textContent = RECEIVED.length;
             document.querySelector('[data-stat="new"]').textContent = count('new');
-            document.querySelector('[data-stat="replied"]').textContent = count('replied');
+            ['replied', 'read'].forEach(k => { const el = document.querySelector(`[data-stat="${k}"]`); if (el) el.textContent = count(k); });
             document.querySelector('[data-stat="latest"]').textContent = formatDate(latest.sent, false);
             document.querySelector('[data-stat-sub="latest"]').textContent = latest.typeLabel;
             // The sidebar badge
@@ -458,7 +473,8 @@
                     <div class="d-flex align-items-center gap-2 ms-auto">
                         <span class="badge bg-${statusTone}-subtle text-${statusTone}-emphasis">${statusLabel}</span>
                         <button type="button" class="btn btn-sm btn-light border" data-action="download" title="Download PDF"><i class="bi bi-download"></i></button>
-                        <button type="button" class="btn btn-sm btn-primary text-nowrap" data-action="reply"><i class="bi bi-reply me-1"></i>${r.status === 'replied' ? 'View Thread' : 'Reply'}</button>
+                        ${ASK_URL ? '<button type="button" class="btn btn-sm btn-primary text-nowrap" data-action="open"><i class="bi bi-eye me-1"></i>Open</button>'
+                            : `<button type="button" class="btn btn-sm btn-primary text-nowrap" data-action="reply"><i class="bi bi-reply me-1"></i>${r.status === 'replied' ? 'View Thread' : 'Reply'}</button>`}
                     </div>`;
                 li.querySelector('[data-title]').textContent = r.title;
                 li.querySelector('b').textContent = SENDER.name;
@@ -497,7 +513,8 @@
             $('drawerSub').textContent = `From ${SENDER.name} · ${SENDER.role} · ${formatDate(r.sent)}`;
             $('drawerBody').replaceChildren(reportBody(r));
             renderThread(r);
-            bootstrap.Tab.getOrCreateInstance($(pane === 'thread' ? 'threadTab' : 'previewTab')).show();
+            if (ASK_URL) $('askLink').href = `${ASK_URL}?new=1&subject=${encodeURIComponent('About: ' + r.title)}`;
+            else bootstrap.Tab.getOrCreateInstance($(pane === 'thread' ? 'threadTab' : 'previewTab')).show();
             drawer.show();
             renderStats();
             renderList();
@@ -509,7 +526,7 @@
         }));
 
         // Reply (kept in the page for now; the backend would save it and notify the IATO)
-        $('replyForm').addEventListener('submit', e => {
+        $('replyForm')?.addEventListener('submit', e => {
             e.preventDefault();
             const text = $('replyText').value.trim();
             if (!text || !openReport) return;
@@ -522,7 +539,7 @@
             renderList();
             toast('Reply sent to IATO');
         });
-        $('replyText').addEventListener('keydown', e => {
+        $('replyText')?.addEventListener('keydown', e => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('replyForm').requestSubmit();
         });
 

@@ -9,6 +9,7 @@
         'profile' => ['Profile', 'bi-person'],
         'security' => ['Security', 'bi-lock'],
         'notifications' => ['Notifications', 'bi-bell'],
+        'briefing' => ['Briefing', 'bi-compass'],
         'reports' => ['Report Preferences', 'bi-file-earmark-text'],
         'ai' => ['AI Assistant', 'bi-stars'],
         'display' => ['Display', 'bi-sliders'],
@@ -247,6 +248,38 @@
                 @endif
 
                 {{-- ========== REPORT PREFERENCES (President / Chancellor) ========== --}}
+                {{-- ========== BRIEFING (President / Chancellor) ========== --}}
+                @if (in_array('briefing', $sections))
+                    <div class="tab-pane fade {{ $openSection === 'briefing' ? 'show active' : '' }}" id="section-briefing" role="tabpanel">
+                        <form class="card border-0 shadow-sm rounded-4" data-preferences="briefing">
+                            <div class="card-body p-4">
+                                <h2 class="fs-6 fw-bold mb-0">Briefing</h2>
+                                <p class="small text-body-secondary">Choose what your Briefing page shows.</p>
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-3">Needs your attention</div>
+                                @include('settings.partials.switch', ['name' => 'conversion', 'label' => 'Conversion changes', 'description' => 'Flag when applied-to-enrolled conversion moves by 0.5 points or more.', 'checked' => true])
+                                @include('settings.partials.switch', ['name' => 'dropoff', 'label' => 'Funnel drop-offs', 'description' => "Flag the step where the most applicants are lost, such as passers who haven't paid.", 'checked' => true])
+                                @include('settings.partials.switch', ['name' => 'growth', 'label' => 'Fast growth or decline', 'description' => 'Flag units whose applicants change by 15% or more from last year.', 'checked' => true])
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4 mb-2">Units at a glance</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach ($units as $i => $unit)
+                                        <input type="checkbox" class="btn-check" name="unit:{{ $unit }}" id="briefUnit{{ $i }}" checked autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-primary rounded-pill px-3" for="briefUnit{{ $i }}">{{ $unit }}</label>
+                                    @endforeach
+                                </div>
+                                <div class="form-text">Unchecked units are hidden from your Briefing. They still appear in Analytics.</div>
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4 mb-2">Compare with</div>
+                                @foreach (['last' => 'Last academic year', 'week' => 'Same week last year (coming soon)', 'average' => 'Average of the last three years (coming soon)'] as $value => $label)
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="compare" id="compare-{{ $value }}" value="{{ $value }}" @checked($value === 'last') @disabled($value !== 'last')>
+                                        <label class="form-check-label small" for="compare-{{ $value }}">{{ $label }}</label>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @include('settings.partials.save-footer')
+                        </form>
+                    </div>
+                @endif
+
                 @if (in_array('reports', $sections))
                     <div class="tab-pane fade {{ $openSection === 'reports' ? 'show active' : '' }}" id="section-reports" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="reports">

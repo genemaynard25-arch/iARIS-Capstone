@@ -29,7 +29,7 @@ class SettingsController extends Controller
             ? ['profile', 'security', 'notifications']
             : ['profile', 'security', 'notifications', 'ai'];
         if ($user->isChancellor()) {
-            array_splice($sections, 3, 0, ['reports']);
+            array_splice($sections, 3, 0, ['briefing', 'reports']);
             $sections[] = 'display';
         }
 
@@ -48,7 +48,7 @@ class SettingsController extends Controller
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
-            'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Dashboard, Analytics, Reports'],
+            'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
         ];
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
         $roleKey = $user->isShsPrincipal() ? 'principal' : $user->role;
@@ -82,6 +82,7 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->isChancellor() => 'View · can generate reports',
                     $user->role === 'registrar' => 'View only; can ask IATO about a record',
                     $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
                     $user->access_type === 'editor' => 'Can view and edit',
@@ -134,6 +135,18 @@ class SettingsController extends Controller
                 'Reports' => [
                     ['reply', 'Reply on a report', 'The Chancellor, a Dean, LAMP, or another office replied to a report you sent.', true],
                     ['weekly', 'Weekly admissions summary', 'Every Monday: applicants, paid reservations, and pending items for the week.', false],
+                ],
+            ];
+        }
+        if ($user->isChancellor()) {
+            return [
+                'Reports' => [
+                    ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to the Executive Office.', true],
+                    ['reply', 'Reply from IATO', 'Get an email when IATO answers one of your messages.', true],
+                ],
+                'Briefing' => [
+                    ['attention', 'New "Needs your attention" item', 'Email me when the Briefing flags something new, such as a drop in conversion or a unit growing fast.', true],
+                    ['weekly', 'Weekly enrollment summary', 'A short email every Monday with applicants, paid reservations, and enrollment compared with last year.', false],
                 ],
             ];
         }
