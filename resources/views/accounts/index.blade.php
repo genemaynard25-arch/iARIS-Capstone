@@ -380,7 +380,7 @@
             cell('activity').textContent = activityText;
             cell('activity').classList.add(activityClass);
             cell('lastLogin').textContent = u.lastLogin ? formatDate(u.lastLogin, true) : '';
-            cell('joined').textContent = formatDate(u.joined);
+            cell('joined').textContent = (u.joined) ? formatDate(u.joined) : '-';
 
             const check = row.querySelector('.row-check');
             check.setAttribute('aria-label', `Select ${fullName(u)}`);

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(["name", "email", "password", "department", "status"])]
+#[Fillable(["name", "email", "password", "department", "status", "role", "assigned_college"])]
 #[Hidden(["password", "remember_token"])]
 class User extends Authenticatable
 {
@@ -58,9 +58,14 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->access_type !== 'editor') {
+            return false;
+        }
+
         return \App\Models\RolePermission::where("role", $this->role)
             ->where("module", $module)
             ->where("enabled", true)
+            ->where("can_edit", true)
             ->exists();
     }
     // Grants temporary admin privileges to a user. Returns the TempAdmin model if the user has an active grant, or null otherwise.

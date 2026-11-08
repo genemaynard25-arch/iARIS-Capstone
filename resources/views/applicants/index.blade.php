@@ -26,8 +26,11 @@
     $databaseStatuses = ['Pending', 'For Exam', 'Passed', 'Not Qualified', 'Paid'];
     // Pages that read the database: they get an "imported" empty message
     $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap']);
-    // Add / Edit / Remove: only roles with the 'edit' permission (Access Control). Front end only for now.
-    $canEdit = auth()->user()->canAccess('edit');
+    // Add / Edit / Remove: only roles with the 'edit' permission (Access Control).
+    $canEdit = match ($scope) {
+    'college', 'is', 'scholars' => auth()->user()->canEdit($scope),
+    default => auth()->user()->canAccess('edit'),
+};
 
     $defaults = [
         'extras' => [], 'labels' => null, 'groupBadge' => false, 'programBadges' => [],

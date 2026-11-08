@@ -193,9 +193,29 @@ class AccessControlController extends Controller
             ]
             : null;
 
+        $editableModules = collect([
+            ["key" => "applicants", "name" => "Applicants"],
+            ["key" => "college", "name" => "College Records"],
+            ["key" => "is", "name" => "Integrated School Records"],
+            ["key" => "scholars", "name" => "Scholars Records"],
+            ["key" => "import", "name" => "Import Data"],
+            ["key" => "reports", "name" => "Reports"],
+        ])
+            ->map(function ($m) {
+                $m["can_edit"] = (bool) \App\Models\RolePermission::where(
+                    "role",
+                    "iato_staff",
+                )
+                    ->where("module", $m["key"])
+                    ->value("can_edit");
+                return $m;
+            })
+            ->all();
+
         return view("access-control.index", [
             "roles" => $roles,
             "modules" => $modules,
+            "editableModules" => $editableModules,
 
             "permanentAdmin" => [
                 "name" => auth()->user()->name,
@@ -322,17 +342,24 @@ class AccessControlController extends Controller
 
     public function savePermissions(\Illuminate\Http\Request $request)
     {
+
         $validated = $request->validate([
-            "changes" => "required|array",
-            "changes.*.role" => "required|string",
-            "changes.*.module" => "required|string",
-            "changes.*.enabled" => "required|boolean",
+            'changes' => 'required|array',
+            'changes.*.role' => 'required|string',
+            'changes.*.module' => 'required|string',
+            'changes.*.enabled' => 'sometimes|boolean',
+            'changes.*.can_edit' => 'sometimes|boolean',
         ]);
 
         foreach ($validated["changes"] as $change) {
+            $fields = array_intersect_key($change, array_flip(['enabled', 'can_edit']));
+            if (empty($fields)) {
+                    continue;
+            }
+
             \App\Models\RolePermission::updateOrCreate(
                 ["role" => $change["role"], "module" => $change["module"]],
-                ["enabled" => $change["enabled"]],
+                $fields,
             );
         }
 

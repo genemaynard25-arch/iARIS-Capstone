@@ -47,6 +47,15 @@ class AccountController extends Controller
         "Office of the President",
     ];
 
+    protected array $colleges = [
+        "CITE",
+        "CBEAM",
+        "CEAS",
+        "CIHTM",
+        "CON",
+        "CCJE",
+    ];
+
     public function index()
     {
         $users = User::orderBy("name")
@@ -62,6 +71,7 @@ class AccountController extends Controller
             "statuses" => $this->statuses,
             "departments" => $this->departments,
             "users" => $users,
+            "assignedCollege" => $user->assigned_college,
         ]);
     }
 
@@ -82,6 +92,7 @@ class AccountController extends Controller
                 Rule::in(array_diff(array_keys($this->roles), ["admin"])),
             ],
             "department" => ["required", Rule::in($this->departments)],
+            "assigned_college" => ["nullable", Rule::in($this->colleges)],
         ]);
 
         $tempPassword = Str::password(12);
@@ -93,6 +104,7 @@ class AccountController extends Controller
             "role" => $validated["role"],
             "department" => $validated["department"],
             "status" => "Pending",
+            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
         ]);
 
         return response()->json([
@@ -117,6 +129,7 @@ class AccountController extends Controller
             ],
             "department" => ["required", Rule::in($this->departments)],
             "status" => ["required", Rule::in(array_keys($this->statuses))],
+            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
         ]);
 
         $user->update([
@@ -192,7 +205,7 @@ class AccountController extends Controller
             "status" => $user->status,
             "mfa" => $user->two_factor_confirmed_at !== null,
             "lastLogin" => $user->last_login_at?->toIso8601String(),
-            "joined" => $user->created_at->toDateString(),
+            "joined" => $user->created_at?->toDateString(),
             "permanent" => $user->role === "admin",
         ];
     }

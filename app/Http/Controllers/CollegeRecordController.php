@@ -13,15 +13,26 @@ class CollegeRecordController extends Controller
      */
     public function index()
     {
-        $students = collect(ApplicantRecords::forLevel('college'))
-            ->map(fn ($a) => $a + ['year' => '—'])
+        $user = auth()->user();
+
+        $students = collect(ApplicantRecords::forLevel("college"))
+            ->map(fn($a) => $a + ["year" => "—"])
+            ->when(
+                in_array($user->role, ["dean", "program_chair"]) &&
+                    $user->assigned_college,
+                fn($rows) => $rows
+                    ->filter(
+                        fn($a) => $a["college"] === $user->assigned_college,
+                    )
+                    ->values(),
+            )
             ->all();
 
-        return view('applicants.index', [
-            'scope' => 'college',
-            'academicYear' => ApplicantRecords::academicYear(),
-            'periodLabel' => now()->format('F Y'),
-            'applicants' => $students,
+        return view("applicants.index", [
+            "scope" => "college",
+            "academicYear" => ApplicantRecords::academicYear(),
+            "periodLabel" => now()->format("F Y"),
+            "applicants" => $students,
         ]);
     }
 }
