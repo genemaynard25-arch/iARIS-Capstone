@@ -101,6 +101,10 @@ class User extends Authenticatable
     // Used by the sidebar's "Signed in as" card and the two-factor setup page.
     public function roleInfo(): array
     {
+        // Registrars: one for College (and Graduate, Law, iPACE, ETEEAP), one for the Integrated School
+        if ($this->role === "registrar") {
+            return [$this->assigned_level === "is" ? "IS Registrar" : "College Registrar", "Registrar's Office", "bi-person-vcard"];
+        }
         if ($this->isShsPrincipal()) {
             return ["SHS Principal", "Senior High School", "bi-building"];
         }

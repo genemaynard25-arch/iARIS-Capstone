@@ -92,6 +92,18 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
+    // College Registrar: Registrar pages at /registrar (records are view only)
+    \App\Models\User::firstOrCreate(
+        ['email' => 'registrar@gmail.com'],
+        [
+            'name' => 'Remian Santos',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'registrar',
+            'access_type' => 'viewer',
+            'assigned_level' => 'college',
+        ]
+    );
+
     // LAMP Office: scholar cross-check pages at /lamp
     \App\Models\User::firstOrCreate(
         ['email' => 'lamp@gmail.com'],

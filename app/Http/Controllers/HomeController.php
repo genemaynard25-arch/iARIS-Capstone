@@ -26,6 +26,9 @@ class HomeController extends Controller
         if (auth()->user()->isLamp()) {
             return redirect()->route('lamp.dashboard');
         }
+        if (auth()->user()->role === 'registrar') {
+            return redirect()->route('registrar.dashboard');
+        }
         if (auth()->user()->isShsPrincipal()) {
             return redirect()->route('shs.dashboard');
         }

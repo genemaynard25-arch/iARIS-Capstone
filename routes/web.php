@@ -20,6 +20,7 @@ use App\Http\Controllers\SuccessionController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
+use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
@@ -97,6 +98,15 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
     Route::get('/', [LampController::class, 'dashboard'])->name('dashboard');
     Route::get('/scholars', [LampController::class, 'scholars'])->name('scholars');
     Route::get('/reports', [LampController::class, 'reports'])->name('reports');
+});
+
+// College Registrar pages (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to users whose role is 'registrar', plus IATO admins
+Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(function () {
+    Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard');
+    Route::get('/enrollment', [RegistrarController::class, 'enrollment'])->name('enrollment');
+    Route::get('/reports', [RegistrarController::class, 'reports'])->name('reports');
+    Route::get('/questions', [RegistrarController::class, 'questions'])->name('questions');
 });
 
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)

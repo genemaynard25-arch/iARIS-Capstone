@@ -18,6 +18,8 @@
             @include('layouts.partials.sidebar-shs')
         @elseif (request()->is('chancellor*') || auth()->user()->isChancellor())
             @include('layouts.partials.sidebar-chancellor')
+        @elseif (request()->is('registrar*') || auth()->user()->role === 'registrar')
+            @include('layouts.partials.sidebar-registrar')
         @elseif (request()->is('college*') || auth()->user()->isDeanOrChair())
             @include('layouts.partials.sidebar-college')
         @else

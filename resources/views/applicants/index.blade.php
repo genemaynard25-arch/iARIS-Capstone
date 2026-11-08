@@ -27,6 +27,8 @@
     // Pages that read the database: they get an "imported" empty message
     $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap']);
     // Add / Edit / Remove: only roles with the 'edit' permission (Access Control). Front end only for now.
+    // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
+    $isRegistrar = auth()->user()->role === 'registrar';
     $canEdit = auth()->user()->canAccess('edit');
 
     $defaults = [
@@ -140,7 +142,7 @@
 
 @section('title', 'iARIS — ' . $page['title'])
 @section('page-title', $page['title'])
-@section('page-subtitle', $page['subtitle'])
+@section('page-subtitle', $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -366,6 +368,8 @@
         </ul>
 
         <div class="offcanvas-body tab-content p-4">
+            {{-- Registrars: "Ask IATO about this record" (applicants/partials/ask-iato) --}}
+            <div id="askIatoBox"></div>
             {{-- Personal info --}}
             <div class="tab-pane fade show active" id="tabInfo" role="tabpanel">
                 @if ($page['guardian'])
@@ -449,6 +453,9 @@
 
     @if ($canEdit)
         @include('applicants.partials.record-modals')
+    @endif
+    @if ($isRegistrar)
+        @include('applicants.partials.ask-iato')
     @endif
 @endsection
 
@@ -638,6 +645,7 @@
             document.getElementById('drawerPayStatus').textContent = a.paid ? 'Confirmed' : 'Pending';
 
             renderTimeline(a);
+            window.onApplicantDrawer?.(a);   // Registrars: Ask IATO box (applicants/partials/ask-iato)
             bootstrap.Tab.getOrCreateInstance(drawerEl.querySelector('[data-bs-target="#tabInfo"]')).show();
             drawer.show();
         }
