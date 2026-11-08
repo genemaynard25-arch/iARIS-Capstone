@@ -24,8 +24,10 @@ class SettingsController extends Controller
         $user = auth()->user();
 
         // Every role gets these; the President / Chancellor office also gets report and display preferences
-        // (The LAMP Office has no AI Assistant, so no AI section either.)
-        $sections = $user->isLamp() ? ['profile', 'security', 'notifications'] : ['profile', 'security', 'notifications', 'ai'];
+        // (The LAMP Office and Registrars have no AI button, so no AI section either.)
+        $sections = $user->isLamp() || $user->role === 'registrar'
+            ? ['profile', 'security', 'notifications']
+            : ['profile', 'security', 'notifications', 'ai'];
         if ($user->isChancellor()) {
             array_splice($sections, 3, 0, ['reports']);
             $sections[] = 'display';
@@ -44,7 +46,7 @@ class SettingsController extends Controller
             'dean' => ['Dean', 'Dean', 'College of Information Technology and Engineering', 'Dashboard, Applicants, Analytics, Reports'],
             'program_chair' => ['Program Chair', 'Program Chair', 'BS Computer Science · CITE', 'Dashboard, Applicants, Analytics, Reports'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
-            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Applicants, Reports'],
+            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
             'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Dashboard, Analytics, Reports'],
         ];
@@ -76,12 +78,14 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->role === 'registrar' => 'View only; can ask IATO about a record',
                     $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
                     $user->access_type === 'editor' => 'Can view and edit',
                     default => 'Read-only',
                 },
                 'Data scope' => match (true) {
                     $user->isLamp() => 'Scholarships only',
+                    $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
                     $user->role === 'iato_staff' => 'All units',
                     default => $scope,
                 },

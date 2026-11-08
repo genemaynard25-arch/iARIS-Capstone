@@ -47,7 +47,10 @@
         });
     </script>
     @yield('scripts')
-    @include('partials.ai-widget')
+    {{-- The AI button: not for the LAMP Office or Registrars (their mockups have none; Settings has no AI section for them) --}}
+    @unless (auth()->user()->isLamp() || auth()->user()->role === 'registrar')
+        @include('partials.ai-widget')
+    @endunless
     @include('partials.mfa-reminder')
     <script>
         // "Show the AI button on every page" off

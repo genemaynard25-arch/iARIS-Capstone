@@ -48,7 +48,10 @@ class RegistrarController extends Controller
 
     public function questions()
     {
-        return view('registrar.questions', $this->shared());
+        return view('registrar.questions', $this->shared() + [
+            // For "New question": every record the Registrar can view
+            'records' => collect(RegistrarData::rows())->map(fn ($r) => collect($r)->only(['id', 'name', 'unit', 'dept', 'program', 'url']))->values()->all(),
+        ]);
     }
 
     // What every Registrar page (and the Registrar sidebar) needs
