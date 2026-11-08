@@ -205,11 +205,38 @@ class ToicController extends Controller
         return view('toic.issues');
     }
 
-    // Messages with IATO: the same page as the Executive Office's
+    // Messages with IATO: the same page as the Executive Office's, about support, maintenance and costs
     public function messages()
     {
         $this->guard();
 
-        return view('executive.messages', ['threads' => [], 'base' => url('/toic'), 'noAi' => true]);
+        return view('executive.messages', [
+            'threads' => self::threads(),
+            'base' => url('/toic'),
+            // Instead of "Other ways to get answers"
+            'note' => ['TOIC talks with IATO here about support, maintenance, and costs. Applicant data is never shared in Messages with TOIC.', 'System Overview'],
+        ]);
+    }
+
+    /** Conversations IATO answered or started (the number on the sidebar's Messages link). */
+    public static function answeredMessages(): int
+    {
+        return collect(self::threads())->where('status', 'answered')->count();
+    }
+
+    // TOIC's conversations with IATO (as in the mockup). IATO can start one too.
+    private static function threads(): array
+    {
+        $iato = fn ($at, $text) => ['from' => 'iato', 'name' => 'Renegado, Randolph', 'role' => 'Super Admin', 'at' => $at, 'text' => $text];
+
+        return [
+            ['id' => 'MSG-0118', 'topic' => 'Something looks wrong', 'subject' => 'Large Excel imports are slow', 'status' => 'answered', 'messages' => [
+                $iato('Jun 12, 2026 · 9:40 AM', 'Importing Excel files over 2,000 rows takes more than 2 minutes and sometimes times out. Can TOIC check the server before the June 15 batch?'),
+            ]],
+            ['id' => 'MSG-0117', 'topic' => 'Other', 'subject' => 'Maintenance on Saturday, Jun 20', 'status' => 'resolved', 'messages' => [
+                ['from' => 'me', 'at' => 'Jun 10, 2026 · 3:00 PM', 'text' => 'Heads-up: iARIS will be read-only on Saturday, Jun 20, 10 PM to 12 AM for security updates and database tuning.'],
+                $iato('Jun 10, 2026 · 3:25 PM', 'Noted, thank you. We will tell the deans and the Registrars.'),
+            ]],
+        ];
     }
 }

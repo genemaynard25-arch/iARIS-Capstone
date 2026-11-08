@@ -19,7 +19,9 @@
             @include('layouts.partials.signed-in')
 
             @php
-                // The Issues badge counts problems that need work (filled in by partials/issues-store)
+                // The Issues badge counts problems that need work (filled in by partials/issues-store);
+                // the Messages badge counts conversations waiting on TOIC
+                $answered = \App\Http\Controllers\ToicController::answeredMessages();
                 // [label, what it's for, icon, url, active pattern, badge html]
                 $menu = [
                     'MENU' => [
@@ -32,7 +34,8 @@
                         ['Reports', 'System reports', 'bi-file-earmark-text', '/toic/reports', 'toic/reports*', ''],
                     ],
                     'HELP' => [
-                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/toic/messages', 'toic/messages*', ''],
+                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/toic/messages', 'toic/messages*',
+                            '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO wrote">' . $answered . '</span>'],
                     ],
                 ];
             @endphp

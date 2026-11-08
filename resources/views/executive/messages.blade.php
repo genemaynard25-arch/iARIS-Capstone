@@ -29,13 +29,19 @@
         </div>
     </div>
 
+    {{-- $note (optional): [text, link label] shown instead of "Other ways to get answers" (TOIC) --}}
+    @isset($note)
+    <div class="small text-body-secondary d-flex flex-wrap gap-3">
+        <span><i class="bi bi-person-lock me-1"></i>{{ $note[0] }}</span>
+        <a href="{{ $base }}" class="text-decoration-none fw-semibold"><i class="bi bi-speedometer2 me-1"></i> {{ $note[1] }}</a>
+    </div>
+    @else
     <div class="small text-body-secondary d-flex flex-wrap gap-3">
         <span>Other ways to get answers:</span>
         <a href="{{ ($base ?? url('/executive')) . '/reports' }}" class="text-decoration-none fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> Ask about a report</a>
-        @unless ($noAi ?? false)
         <a href="{{ $base ?? url('/executive') }}" class="text-decoration-none fw-semibold"><i class="bi bi-stars me-1"></i> Ask iARIS on your Briefing</a>
-        @endunless
     </div>
+    @endisset
 
     {{-- New message --}}
     <div class="modal fade" id="newModal" tabindex="-1" aria-labelledby="newTitle" aria-hidden="true">

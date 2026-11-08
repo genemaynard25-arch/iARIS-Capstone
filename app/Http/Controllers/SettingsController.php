@@ -171,6 +171,17 @@ class SettingsController extends Controller
                 ],
             ];
         }
+        if ($user->isToic()) {
+            return [
+                'Alerts' => [
+                    ['down', 'iARIS is down or slow', 'When uptime checks fail or pages take over 3 seconds.', true],
+                    ['backup', 'Backup failed', "If the nightly backup doesn't complete.", true],
+                    ['signins', 'Many failed sign-ins', '10 or more in an hour.', true],
+                    ['certificate', 'Certificate about to expire', '30 days before the SSL certificate ends.', true],
+                    ['weekly', 'Weekly system summary', 'Every Monday, 8:00 AM.', false],
+                ],
+            ];
+        }
         if ($user->isExecutive() || $user->isDeanOrChair() || $user->isPrincipal()) {
             return [
                 'Reports' => [
