@@ -111,11 +111,21 @@ class FortifyServiceProvider extends ServiceProvider
             return $user;
         });
 
-        \Illuminate\Support\Facades\Event::listen(
-            \Illuminate\Auth\Events\Login::class,
-            function ($event) {
-                $event->user->forceFill(["last_login_at" => now()])->save();
-            },
-        );
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
+            $event->user->forceFill(['last_login_at' => now()])->save();
+
+            \App\Models\AuditLog::record(
+                'login',
+                'System',
+                'User Login',
+                $event->user->two_factor_confirmed_at ? 'Logged in successfully · MFA verified' : 'Logged in successfully',
+            );
+        });
+
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Logout::class, function ($event) {
+            if ($event->user) {
+                \App\Models\AuditLog::record('logout', 'System', 'User Logout', 'Session ended — logged out normally');
+            }
+        });
     }
 }

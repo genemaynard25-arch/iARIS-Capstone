@@ -194,6 +194,7 @@
 
         // IATO Staff: changes wait in the Review Queue. Made-up RQ numbers (RQ-0413, RQ-0414, …).
         const STAFF_REVIEW = @json($staffReview);
+        const REAL_BACKEND = ['college', 'is'].includes(R.scope);
         let nextReviewNumber = 413;
         const nextRq = () => 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
         // Put a "waiting for review" tag under the person's name in their table row
@@ -247,7 +248,8 @@
 
         document.querySelectorAll('[data-record-form]').forEach(btn => btn.addEventListener('click', () => openRecordForm(btn.dataset.recordForm)));
 
-        $('recordForm').addEventListener('submit', e => {
+        // Submit the Add / Edit form. Front end only for now: the toast says nothing was saved.
+        $('recordForm').addEventListener('submit', async e => {
             e.preventDefault();
             const form = e.target;
             form.classList.add('was-validated');
@@ -259,10 +261,45 @@
                 if (editing) tagRow(editing, 'edit', rq);
                 return toast(`Sent to the Review Queue as ${rq}. Others see it after the Super Admin approves. (Demo only — not saved yet.)`);
             }
-            // TODO (backend): send the form, then reload the list
-            toast(editing
-                ? `Changes to ${name} were checked but not saved: saving records comes with the backend.`
-                : `${name} was checked but not added: adding records comes with the backend.`);
+
+            if (!REAL_BACKEND) {
+                return toast(editing
+                    ? `Changes to ${name} were checked but not saved: saving records comes with the backend.`
+                    : `${name} was checked but not added: adding records comes with the backend.`);
+            }
+
+
+            const payload = {
+                scope: R.scope,
+                last: $('recLast').value.trim(),
+                first: $('recFirst').value.trim(),
+                mi: $('recMi').value.trim(),
+                gender: $('recGender').value,
+                email: $('recEmail').value.trim() || null,
+                contact: $('recContact').value.trim() || null,
+                address: $('recAddress').value.trim() || null,
+                group: $('recGroup').value,
+                program: $('recProgram').value,
+                status: $('recStatus').value,
+                applied: $('recApplied').value,
+            };
+
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const url = editing ? `/applicants/${editing.id}` : '/applicants';
+            const method = editing ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error();
+                toast(`${name} ${editing ? 'updated' : 'added'}. Reloading…`);
+                setTimeout(() => location.reload(), 600);
+            } catch (err) {
+                toast('Something went wrong saving this record. Please try again.');
+            }
         });
 
         // ---- Remove ----
@@ -278,8 +315,21 @@
         });
 
         // Undo: put the removed row back where it was
-        $('recordUndo').addEventListener('click', () => {
+        $('recordUndo').addEventListener('click', async () => {
             if (!lastRemoved) return;
+            if (lastRemoved.applicantId) {
+                const csrf = document.querySelector('meta[name="csrf-token"]').content;
+                try {
+                    const res = await fetch(`/applicants/${lastRemoved.applicantId}/restore`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) throw new Error();
+                } catch (err) {
+                    toast('Could not restore this record. Please reload and try again.');
+                    return;
+                }
+            }
             R.rows.splice(lastRemoved.position, 0, lastRemoved.row);
             $(R.tbody).appendChild(lastRemoved.row);
             R.render();
@@ -290,27 +340,56 @@
         // "Other" needs a note
         $('removeReason').addEventListener('change', e => $('removeNote').required = e.target.value === 'Other');
 
-        $('removeForm').addEventListener('submit', e => {
+        $('removeForm').addEventListener('submit', async e => {
             e.preventDefault();
             e.target.classList.add('was-validated');
             if (!e.target.checkValidity()) return;
+            const current = R.current();
+
             if (STAFF_REVIEW) {
                 const rq = nextRq();
-                tagRow(R.current(), 'remove', rq);
+                tagRow(current, 'remove', rq);
                 removeModal.hide();
                 return toast(`Removal sent to the Review Queue as ${rq}. The record stays until the Super Admin approves. (Demo only — not saved yet.)`);
             }
-            // Hide the row on this page only (it comes back on reload until the backend can delete it)
-            const index = R.items.indexOf(R.current());
+
+            if (!REAL_BACKEND) {
+                const index = R.items.indexOf(current);
+                const row = R.rows.find(r => Number(r.dataset.index) === index);
+                if (row) {
+                    lastRemoved = { row, position: R.rows.indexOf(row) };
+                    R.rows.splice(lastRemoved.position, 1);
+                    row.remove();
+                    R.render();
+                }
+                removeModal.hide();
+                return toast(`${current.name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
+            }
+
+
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            try {
+                const res = await fetch(`/applicants/${current.id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                });
+                if (!res.ok) throw new Error();
+            } catch (err) {
+                removeModal.hide();
+                toast('Something went wrong removing this record. Please try again.');
+                return;
+            }
+
+            const index = R.items.indexOf(current);
             const row = R.rows.find(r => Number(r.dataset.index) === index);
             if (row) {
-                lastRemoved = { row, position: R.rows.indexOf(row) };
+                lastRemoved = { row, position: R.rows.indexOf(row), applicantId: current.id };
                 R.rows.splice(lastRemoved.position, 1);
                 row.remove();
                 R.render();
             }
             removeModal.hide();
-            toast(`${R.current().name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
+            toast(`${current.name} was removed.`, true);
         });
     });
 </script>

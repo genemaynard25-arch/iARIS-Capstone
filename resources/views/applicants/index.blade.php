@@ -715,6 +715,7 @@
         window.RECORD_FORM = {
             items: APPLICANTS, rows, tbody: 'applicantRows', render, drawer, current: () => drawerApplicant,
             labels: currentLabels, groupOrder: GROUP_ORDER, statuses: PAGE.statuses, statusLabels: PAGE.statusLabels, noun: PAGE.noun,
+            scope: @json($scope),
             toForm: a => a,   // the rows already use the form's field names
         };
 

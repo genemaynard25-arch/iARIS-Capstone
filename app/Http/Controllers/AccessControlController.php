@@ -330,12 +330,32 @@ class AccessControlController extends Controller
             "expires_at" => $validated["expires_at"],
         ]);
 
+        $targetUser = \App\Models\User::find($validated['user_id']);
+
+        \App\Models\AuditLog::record(
+            'permission',
+            'Access Control',
+            'Temporary Admin Assigned',
+            "Granted admin-level permissions to **{$targetUser?->name}** until **" . \Illuminate\Support\Carbon::parse($validated['expires_at'])->format('M j, Y g:i A') . "**",
+        );
+
         return redirect("/access-control");
     }
 
     public function revokeTempAdmin(\Illuminate\Http\Request $request)
     {
+        $active = \App\Models\TempAdmin::active()->with('user')->get();
+
         \App\Models\TempAdmin::active()->update(["revoked_at" => now()]);
+
+        foreach ($active as $grant) {
+            \App\Models\AuditLog::record(
+                'permission',
+                'Access Control',
+                'Temporary Admin Revoked',
+                "Revoked temporary admin access from **{$grant->user?->name}**",
+            );
+        }
 
         return response()->json(["ok" => true]);
     }
@@ -361,7 +381,36 @@ class AccessControlController extends Controller
                 ["role" => $change["role"], "module" => $change["module"]],
                 $fields,
             );
-        }
+
+            foreach ($validated["changes"] as $change) {
+                $fields = array_intersect_key($change, array_flip(['enabled', 'can_edit']));
+                if (empty($fields)) {
+                    continue;
+                }
+
+                \App\Models\RolePermission::updateOrCreate(
+                    ["role" => $change["role"], "module" => $change["module"]],
+                    $fields,
+                );
+
+                if (array_key_exists('enabled', $fields)) {
+                    \App\Models\AuditLog::record(
+                        'permission',
+                        'Access Control',
+                        'Permission Change',
+                        "Updated **{$change['role']}** role — " . ($fields['enabled'] ? 'enabled' : 'disabled') . " **{$change['module']}** module access",
+                    );
+                }
+                if (array_key_exists('can_edit', $fields)) {
+                    \App\Models\AuditLog::record(
+                        'permission',
+                        'Access Control',
+                        'Editor Permission Change',
+                        "Updated **{$change['role']}** editor access — " . ($fields['can_edit'] ? 'can now edit' : 'view only now') . " on **{$change['module']}**",
+                    );
+                }
+            }
+                    }
 
         return response()->json(["ok" => true]);
     }

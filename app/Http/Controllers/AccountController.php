@@ -65,7 +65,6 @@ class AccountController extends Controller
             ->all();
 
         return view("accounts.index", [
-            // Requests from the login page's Request Access form (placeholder data for now)
             "accessRequests" => \App\Support\AccessRequests::sample(),
             "roles" => $this->roles,
             "statuses" => $this->statuses,
@@ -104,8 +103,15 @@ class AccountController extends Controller
             "role" => $validated["role"],
             "department" => $validated["department"],
             "status" => "Pending",
-            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
+            "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
         ]);
+
+        \App\Models\AuditLog::record(
+            'create',
+            'User Accounts',
+            'User Account Created',
+            "Created account for **{$user->name}** ({$this->roles[$user->role]['name']})",
+        );
 
         return response()->json([
             "ok" => true,
@@ -115,36 +121,46 @@ class AccountController extends Controller
     }
 
     public function update(Request $request, User $user)
-{
-    if ($user->role === "admin") {
-        abort(403, "The permanent administrator cannot be changed here.");
+    {
+        if ($user->role === "admin") {
+            abort(403, "The permanent administrator cannot be changed here.");
+        }
+
+        $validated = $request->validate([
+            "first" => "required|string|max:100",
+            "last" => "required|string|max:100",
+            "role" => [
+                "required",
+                Rule::in(array_diff(array_keys($this->roles), ["admin"])),
+            ],
+            "department" => ["required", Rule::in($this->departments)],
+            "status" => ["required", Rule::in(array_keys($this->statuses))],
+            "assigned_college" => ["nullable", Rule::in($this->colleges)],
+        ]);
+
+        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college']);
+
+        $user->update([
+            "name" => trim($validated["first"] . " " . $validated["last"]),
+            "role" => $validated["role"],
+            "department" => $validated["department"],
+            "status" => $validated["status"],
+            "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
+        ]);
+
+        $diff = collect($before)
+            ->map(fn ($value, $field) => $value != $user->{$field}
+                ? ['field' => ucfirst(str_replace('_', ' ', $field)), 'before' => $value ?? '—', 'after' => $user->{$field} ?? '—']
+                : null)
+            ->filter()->values()->all();
+
+        \App\Models\AuditLog::record('edit', 'User Accounts', 'User Account Edited', "Updated account for **{$user->name}**", null, $diff);
+
+        return response()->json([
+            "ok" => true,
+            "user" => $this->present($user),
+        ]);
     }
-
-    $validated = $request->validate([
-        "first" => "required|string|max:100",
-        "last" => "required|string|max:100",
-        "role" => [
-            "required",
-            Rule::in(array_diff(array_keys($this->roles), ["admin"])),
-        ],
-        "department" => ["required", Rule::in($this->departments)],
-        "status" => ["required", Rule::in(array_keys($this->statuses))],
-        "assigned_college" => ["nullable", Rule::in($this->colleges)],
-    ]);
-
-    $user->update([
-        "name" => trim($validated["first"] . " " . $validated["last"]),
-        "role" => $validated["role"],
-        "department" => $validated["department"],
-        "status" => $validated["status"],
-        "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
-    ]);
-
-    return response()->json([
-        "ok" => true,
-        "user" => $this->present($user),
-    ]);
-}
 
     public function setStatus(Request $request, User $user)
     {
@@ -156,7 +172,22 @@ class AccountController extends Controller
             "status" => ["required", Rule::in(array_keys($this->statuses))],
         ]);
 
+        $before = $user->status;
         $user->update(["status" => $validated["status"]]);
+
+        $titles = [
+            'Suspended' => 'Account Suspended',
+            'Inactive' => 'Account Deactivated',
+            'Active' => 'Account Reactivated',
+            'Pending' => 'Account Status Changed',
+        ];
+
+        \App\Models\AuditLog::record(
+            'edit',
+            'User Accounts',
+            $titles[$validated['status']] ?? 'Account Status Changed',
+            "Changed status of **{$user->name}** from **{$before}** to **{$validated['status']}**",
+        );
 
         return response()->json([
             "ok" => true,
@@ -170,7 +201,10 @@ class AccountController extends Controller
             abort(403, "The permanent administrator cannot be changed here.");
         }
 
+        $name = $user->name;
         $user->delete();
+
+        \App\Models\AuditLog::record('delete', 'User Accounts', 'User Account Deleted', "Deleted the account of **{$name}**");
 
         return response()->json(["ok" => true]);
     }
@@ -183,6 +217,8 @@ class AccountController extends Controller
 
         $tempPassword = Str::password(12);
         $user->update(["password" => Hash::make($tempPassword)]);
+
+        \App\Models\AuditLog::record('edit', 'User Accounts', 'Password Reset Forced', "Forced a password reset for **{$user->name}**");
 
         return response()->json([
             "ok" => true,

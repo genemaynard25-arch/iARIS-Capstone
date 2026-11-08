@@ -21,5 +21,22 @@ class Applicant extends Model
         'admission_test_status',
         'noa_issued',
         'application_status',
+        'email',
+        'contact_number',
+        'address',
+        'date_of_birth',
+        'exam_scheduled_at',
+        'college',
+        'archived_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'noa_issued' => 'boolean',
+            'date_of_birth' => 'date',
+            'exam_scheduled_at' => 'datetime',
+            'archived_at' => 'datetime',
+        ];
+    }
 }

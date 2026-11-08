@@ -33,6 +33,7 @@ class CollegeRecordController extends Controller
             "academicYear" => ApplicantRecords::academicYear(),
             "periodLabel" => now()->format("F Y"),
             "applicants" => $students,
+            'groupOrder' => ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
         ]);
     }
 }

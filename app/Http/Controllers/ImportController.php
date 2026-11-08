@@ -41,6 +41,14 @@ class ImportController extends Controller
 
         $batch->update(['status' => 'completed']);
 
+         $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
+            \App\Models\AuditLog::record(
+                'import',
+                'Import Data',
+                'Data Import',
+                "Imported **{$batch->original_filename}** — **{$rowCount} records** added",
+        );
+
         return redirect("/import/{$batch->id}");
     }
 
