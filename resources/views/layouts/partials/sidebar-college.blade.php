@@ -17,7 +17,7 @@
                 @include('partials.logo-mark', ['size' => 40])
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : ($isDirector ? 'Director View' : 'Dean View')) }}</div>
+                    <div class="small text-white-50">{{ $isChair || auth()->user()->isGradChair() ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : ($isDirector ? 'Director View' : 'Dean View')) }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>

@@ -90,6 +90,21 @@ class CollegeController extends Controller
             'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
                 'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
         ]],
+        // The Graduate Programs (under CBEAM), for their Program Chair. 'level': Master's or Doctoral.
+        // 'middle': what "For Exam" is called here.
+        'GRAD' => ['name' => 'Graduate Programs', 'title' => 'Graduate Programs', 'label' => 'Graduate Programs', 'subtitle' => 'Graduate Programs · under CBEAM',
+            'office' => 'Graduate Programs · under CBEAM', 'scope' => 'the Graduate Programs', 'middle' => 'For Exam / Interview', 'programs' => [
+            'MBA' => ['name' => 'Master of Business Administration', 'level' => "Master's", 'applicants' => [74, 81, 88, 96], 'enrolled' => [17, 19, 21, 22],
+                'funnel' => [96, 77, 63, 33, 22], 'status' => [25, 38, 33], 'paidLastYear' => 30],
+            'MEd' => ['name' => 'Master of Education', 'level' => "Master's", 'applicants' => [61, 64, 68, 72], 'enrolled' => [14, 15, 16, 17],
+                'funnel' => [72, 58, 47, 25, 17], 'status' => [19, 28, 25], 'paidLastYear' => 24],
+            'MIT' => ['name' => 'Master of Information Technology', 'level' => "Master's", 'applicants' => [39, 43, 48, 54], 'enrolled' => [9, 11, 12, 13],
+                'funnel' => [54, 43, 35, 19, 13], 'status' => [14, 21, 19], 'paidLastYear' => 17],
+            'MPA' => ['name' => 'Master of Public Administration', 'level' => "Master's", 'applicants' => [33, 35, 36, 38], 'enrolled' => [8, 8, 8, 9],
+                'funnel' => [38, 31, 25, 13, 9], 'status' => [10, 15, 13], 'paidLastYear' => 13],
+            'PhD' => ['name' => 'PhD in Education', 'level' => 'Doctoral', 'applicants' => [19, 21, 22, 24], 'enrolled' => [4, 5, 5, 5],
+                'funnel' => [24, 19, 16, 8, 5], 'status' => [6, 10, 8], 'paidLastYear' => 7],
+        ]],
         // iPACE and ETEEAP, for the iPACE Director (who heads both). Two units: each program has a 'unit',
         // and the same program can be in both (so the codes start with I- or E-). Unit totals as in the mockup.
         // 'profiles': the Learner profile on the Briefing, per unit: [title, [[group, [[label, count], …]], …], note]
@@ -132,7 +147,7 @@ class CollegeController extends Controller
     private const HONORIFICS = [
         'Cherrie Villafuerte' => 'Engr.', 'Jasmin De Silva' => 'Dr.', 'Gina Dimaano' => 'Dr.',
         'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.', 'Margie Ebreo' => 'Dr.',
-        'Kristine Anne Dimaculangan' => 'Ms.', 'Haidee Angeles' => 'Dr.',
+        'Kristine Anne Dimaculangan' => 'Ms.', 'Haidee Angeles' => 'Dr.', 'Erickson Martinez' => 'Dr.',
     ];
 
     /**
@@ -143,7 +158,7 @@ class CollegeController extends Controller
     public static function college(): array
     {
         $user = auth()->user();
-        $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : null);
+        $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : null));
         $code ??= strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
         $code = isset(self::COLLEGES[$code]) ? $code : 'CITE';
 
@@ -180,6 +195,8 @@ class CollegeController extends Controller
             // What the groups are called ("program" or "level") and what you see ("your college", "your school", "iPACE and ETEEAP")
             'word' => $college['word'] ?? 'program',
             'whole' => $college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college'),
+            // What "For Exam" is called ("For Exam / Interview" in the Graduate Programs)
+            'middle' => $college['middle'] ?? 'For Exam',
             // The Learner profile on the Briefing (iPACE Director only)
             'profiles' => $college['profiles'] ?? [],
             // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
@@ -361,7 +378,7 @@ class CollegeController extends Controller
      * Applicants in the given programs, newest first. Placeholder records (every college); later a query on the
      * applicants table (e.g. Applicant::where('college', 'CITE')->whereIn('program', ...)).
      * paid: date of the reservation payment, or null if not paid yet. year (optional): "Grade 11 · STEM" (default 1st Year).
-     * amount (optional): the reservation fee paid (default ₱2,000.00).
+     * amount (optional): the reservation fee paid (default ₱2,000.00). undergrad (optional): a graduate applicant's degree.
      */
     private static function applicantsIn(array $scope): array
     {
@@ -425,6 +442,13 @@ class CollegeController extends Controller
             ['id' => 'IS-2026-1116', 'name' => 'Cruz, Daniel Matthew S.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'Paid', 'applied' => '2026-05-11', 'updated' => 'Jun 3, 11:57 AM', 'dob' => 'August 22, 2009', 'gender' => 'Male', 'email' => 'cruz.family@gmail.com', 'phone' => '0920 815 2995', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 20, 2026 · 8:00 AM', 'paid' => 'Jun 5, 2026', 'amount' => '₱1,500.00'],
             ['id' => 'IS-2026-1117', 'name' => 'Ocampo, Leah Patricia M.', 'program' => 'JHS', 'year' => 'Grade 9', 'status' => 'For Exam', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 8:04 AM', 'dob' => 'October 15, 2011', 'gender' => 'Female', 'email' => 'ocampo.family@gmail.com', 'phone' => '0917 856 3728', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 21, 2026 · 9:00 AM', 'paid' => null],
             ['id' => 'IS-2026-1118', 'name' => 'Salazar, Marco Antonio G.', 'program' => 'SHS', 'year' => 'Grade 11 · ABM', 'status' => 'Pending', 'applied' => '2026-05-09', 'updated' => 'Jun 5, 9:11 AM', 'dob' => 'April 2, 2009', 'gender' => 'Male', 'email' => 'salazar.family@gmail.com', 'phone' => '0918 897 4461', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
+            // Graduate Programs (as in the Program Chair's mockup). 'undergrad': the degree they hold.
+            ['id' => 'APP-2026-G006', 'name' => 'Villanueva, Rosario Anne B.', 'program' => 'MBA', 'year' => "Master's", 'status' => 'Pending', 'applied' => '2026-05-18', 'updated' => 'May 18, 9:45 AM', 'dob' => 'July 14, 1994', 'gender' => 'Female', 'email' => 'ra.villanueva@dlsl.edu.ph', 'phone' => '0912 400 6666', 'address' => 'Calamba, Laguna', 'undergrad' => 'BS Accountancy — DLSL, 2016', 'exam' => null, 'paid' => null],
+            ['id' => 'APP-2026-G003', 'name' => 'Garcia, Eduardo M.', 'program' => 'MIT', 'year' => "Master's", 'status' => 'Pending', 'applied' => '2026-05-12', 'updated' => 'May 12, 4:15 PM', 'dob' => 'September 11, 1992', 'gender' => 'Male', 'email' => 'e.garcia@dlsl.edu.ph', 'phone' => '0919 700 3333', 'address' => 'Tanauan City, Batangas', 'undergrad' => 'BS Computer Science — DLSL, 2014', 'exam' => null, 'paid' => null],
+            ['id' => 'APP-2026-G002', 'name' => 'Fernandez, Maricel D.', 'program' => 'MEd', 'year' => "Master's", 'status' => 'For Exam', 'applied' => '2026-05-08', 'updated' => 'Jun 3, 2:00 PM', 'dob' => 'March 22, 1988', 'gender' => 'Female', 'email' => 'm.fernandez@dlsl.edu.ph', 'phone' => '0918 900 2222', 'address' => 'Batangas City, Batangas', 'undergrad' => 'Bachelor of Secondary Education — DLSL, 2010', 'exam' => 'Jun 14, 2026 · 10:00 AM', 'paid' => null],
+            ['id' => 'APP-2026-G005', 'name' => 'Torres, Andrei Benedict V.', 'program' => 'PhD', 'year' => 'Doctoral', 'status' => 'For Exam', 'applied' => '2026-05-06', 'updated' => 'Jun 4, 3:30 PM', 'dob' => 'April 28, 1978', 'gender' => 'Male', 'email' => 'ab.torres@dlsl.edu.ph', 'phone' => '0921 500 5555', 'address' => 'Lipa City, Batangas', 'undergrad' => 'Master of Education — DLSL, 2005', 'exam' => 'Jun 16, 2026 · 1:00 PM', 'paid' => null],
+            ['id' => 'APP-2026-G001', 'name' => 'Bautista, Ramon Jose A.', 'program' => 'MBA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 9:00 AM', 'dob' => 'June 15, 1990', 'gender' => 'Male', 'email' => 'rj.bautista@dlsl.edu.ph', 'phone' => '0917 800 1111', 'address' => 'Lipa City, Batangas', 'undergrad' => 'BS Business Administration — DLSL, 2012', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => 'Jun 1, 2026', 'amount' => '₱3,000.00'],
+            ['id' => 'APP-2026-G004', 'name' => 'Mendoza, Luisa Patricia C.', 'program' => 'MPA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 30, 11:00 AM', 'dob' => 'January 5, 1985', 'gender' => 'Female', 'email' => 'lp.mendoza@dlsl.edu.ph', 'phone' => '0920 600 4444', 'address' => 'Santo Tomas, Batangas', 'undergrad' => 'BS Political Science — DLSL, 2007', 'exam' => 'Jun 8, 2026 · 8:00 AM', 'paid' => 'May 30, 2026', 'amount' => '₱3,000.00'],
         ];
 
         return array_values(array_filter($all, fn ($a) => isset($scope[$a['program']])));

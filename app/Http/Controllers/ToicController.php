@@ -20,7 +20,7 @@ class ToicController extends Controller
         'admin' => ['Super Admin', 'Institution-wide'],
         'iato_staff' => ['IATO Staff', 'Institution-wide'],
         'dean' => ['Dean', 'Own college only'],
-        'program_chair' => ['Program Chair', 'Own program only'],
+        'program_chair' => ['Program Chair, Graduate Programs', 'Graduate Programs only'],
         'principal' => ['Integrated School Principal', 'Integrated School'],
         'shs_principal' => ['SHS Principal', 'Senior High School'],
         'registrar' => ['Registrar', 'Assigned unit (College or IS)'],

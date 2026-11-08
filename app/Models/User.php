@@ -172,9 +172,17 @@ class User extends Authenticatable
         return $this->role === "dean" || $this->role === "program_chair";
     }
 
+    // A college's Program Chair, locked to one program (BS Computer Science for now).
+    // The Graduate Programs chair is also a 'program_chair', but assigned to graduate_school: see isGradChair().
     public function isProgramChair(): bool
     {
-        return $this->role === "program_chair";
+        return $this->role === "program_chair" && ! $this->isGradChair();
+    }
+
+    // The Program Chair of the Graduate Programs: the Dean pages for every graduate program
+    public function isGradChair(): bool
+    {
+        return $this->role === "program_chair" && $this->assigned_level === "graduate_school";
     }
 
     // The seeded SHS principal has role 'admin' but is assigned to IS / SHS, so the SHS assignment decides
@@ -218,7 +226,7 @@ class User extends Authenticatable
             "iato_staff" => ["IATO Staff", "IATO", "bi-person-badge"],
             // A dean's college: assigned_college once the backend adds it, the department until then (CITE by default)
             "dean" => ["Dean", strtoupper($this->assigned_college ?? $this->department ?? "CITE"), "bi-mortarboard"],
-            "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
+            "program_chair" => ["Program Chair", $this->isGradChair() ? "Graduate Programs" : "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],
             "toic" => ["TOIC", "System Support", "bi-tools"],

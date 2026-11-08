@@ -7,12 +7,19 @@
       - a table of sample records with search, a program filter and status pills
       - click a row for the applicant's details
     ?program=BSCS picks a program first (the Briefing's "See applicants").
+    Graduate Programs: programs have a 'level' (Master's or Doctoral: a Level column and filter), applicants have an
+    'undergrad' degree (a column), and "For Exam" is shown as $middle ("For Exam / Interview").
     "Download list" saves the rows you see as a CSV file.
 --}}
 
 @section('title', 'iARIS — Applicants')
 @section('page-title', 'Applicants')
 @section('page-subtitle', "{$label} applicants for AY " . \App\Support\ApplicantRecords::academicYear() . ' · View only')
+
+@php
+    $hasLevels = collect($programs)->contains(fn ($p) => isset($p['level']));
+    $hasDegrees = collect($rows)->contains(fn ($r) => isset($r['undergrad']));
+@endphp
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
@@ -38,6 +45,14 @@
                     @endforeach
                 </select>
             @endif
+            @if ($hasLevels)
+                <select class="form-select w-auto" id="levelFilter" aria-label="Level">
+                    <option value="">All levels</option>
+                    @foreach (collect($programs)->pluck('level')->unique() as $level)
+                        <option>{{ $level }}</option>
+                    @endforeach
+                </select>
+            @endif
             <div class="d-flex flex-wrap gap-1 ms-lg-auto" id="statusPills" role="group" aria-label="Status"></div>
         </div>
 
@@ -47,6 +62,12 @@
                     <tr class="small text-uppercase">
                         <th class="ps-4 text-body-secondary fw-bold">Applicant</th>
                         <th class="text-body-secondary fw-bold">{{ ucfirst($word) }}</th>
+                        @if ($hasLevels)
+                            <th class="text-body-secondary fw-bold">Level</th>
+                        @endif
+                        @if ($hasDegrees)
+                            <th class="text-body-secondary fw-bold">Undergraduate degree</th>
+                        @endif
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date applied</th>
                         <th class="text-body-secondary fw-bold">Exam</th>
@@ -85,6 +106,9 @@
         const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const longDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const STATUSES = ['Pending', 'For Exam', 'Paid'];
+        // What "For Exam" is called here, and the extra columns (Graduate Programs)
+        const MIDDLE = @json($middle), HAS_LEVELS = @json($hasLevels), HAS_DEGREES = @json($hasDegrees);
+        const labelOf = s => s === 'For Exam' ? MIDDLE : s;
         const TONES = { Pending: 'danger', 'For Exam': 'warning', Paid: 'primary' };
         let status = 'All';
         ROWS.sort((a, b) => b.applied.localeCompare(a.applied));
@@ -100,7 +124,7 @@
         // ---- Tiles (every applicant in your programs) ----
         (() => {
             const t = totals('');
-            $('tiles').innerHTML = [['Applicants', t.All, 'success'], ['Pending', t.Pending, 'danger'], ['For Exam / Assessment', t['For Exam'], 'warning'], ['Paid', t.Paid, 'primary']]
+            $('tiles').innerHTML = [['Applicants', t.All, 'success'], ['Pending', t.Pending, 'danger'], [MIDDLE === 'For Exam' ? 'For Exam / Assessment' : MIDDLE, t['For Exam'], 'warning'], ['Paid', t.Paid, 'primary']]
                 .map(([label, n, tone]) => `
                 <div class="col">
                     <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -116,23 +140,26 @@
         // ---- Table ----
         function shown() {
             const q = $('search').value.trim().toLowerCase(), p = program();
-            return ROWS.filter(r => (status === 'All' || r.status === status) && (!p || r.program === p)
+            const level = $('levelFilter')?.value || '';
+            return ROWS.filter(r => (status === 'All' || r.status === status) && (!p || r.program === p) && (!level || PROGRAMS[r.program].level === level)
                 && (!q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)));
         }
         function draw() {
-            $('statusPills').innerHTML = ['All', ...STATUSES].map(s => `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${s}</button>`).join('');
+            $('statusPills').innerHTML = ['All', ...STATUSES].map(s => `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${labelOf(s)}</button>`).join('');
             $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; draw(); }));
             const rows = shown();
             $('rows').innerHTML = rows.length ? rows.map(r => `
                 <tr role="button" tabindex="0" data-id="${r.id}">
                     <td class="ps-4"><div class="fw-semibold">${esc(r.name)}</div><div class="small text-body-secondary">${r.id}</div></td>
                     <td class="small">${esc(PROGRAMS[r.program].name)}</td>
-                    <td><span class="badge rounded-pill bg-${TONES[r.status]}-subtle text-${TONES[r.status]}-emphasis">${r.status}</span></td>
+                    ${HAS_LEVELS ? `<td class="small">${esc(PROGRAMS[r.program].level)}</td>` : ''}
+                    ${HAS_DEGREES ? `<td class="small">${esc(r.undergrad || '—')}</td>` : ''}
+                    <td><span class="badge rounded-pill bg-${TONES[r.status]}-subtle text-${TONES[r.status]}-emphasis">${labelOf(r.status)}</span></td>
                     <td class="small text-nowrap">${longDate(r.applied)}</td>
                     <td class="small">${esc(r.exam || 'Not yet scheduled')}</td>
                     <td class="pe-4 text-end text-body-tertiary"><i class="bi bi-chevron-right"></i></td>
                 </tr>`).join('')
-                : '<tr><td colspan="6" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
+                : '<tr><td colspan="8" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
             $('rows').querySelectorAll('tr[data-id]').forEach(tr => {
                 tr.addEventListener('click', () => openApplicant(tr.dataset.id));
                 tr.addEventListener('keydown', e => { if (e.key === 'Enter') openApplicant(tr.dataset.id); });
@@ -149,8 +176,8 @@
             const table = rows => `<table class="table table-sm small mb-0"><tbody>${rows.map(([l, v]) => `<tr><td class="text-body-secondary" style="width: 42%;">${l}</td><td class="fw-semibold">${esc(v || '—')}</td></tr>`).join('')}</tbody></table>`;
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name}`;
-            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? (r.amount || '₱2,000.00') : '—')}</div>`
-                + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
+            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', labelOf(r.status))}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? (r.amount || '₱2,000.00') : '—')}</div>`
+                + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ...(r.undergrad ? [['Undergraduate / graduate degree', r.undergrad]] : []), ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
                 + section('Applicant') + table([['Date of birth', r.dob], ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]])
                 + '<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-lock me-1"></i>View only. IATO manages applicant records.</p>';
             drawer.show();
@@ -159,7 +186,7 @@
         // ---- Download the rows you see ----
         $('downloadButton').addEventListener('click', () => {
             const head = ['Applicant No.', 'Name', 'Unit', WORD[0].toUpperCase() + WORD.slice(1), 'Status', 'Date applied', 'Exam', 'Paid on'];
-            const csv = [head, ...shown().map(r => [r.id, r.name, COLLEGE, PROGRAMS[r.program].name, r.status, longDate(r.applied), r.exam || 'Not yet scheduled', r.paid || '—'])]
+            const csv = [head, ...shown().map(r => [r.id, r.name, COLLEGE, PROGRAMS[r.program].name, labelOf(r.status), longDate(r.applied), r.exam || 'Not yet scheduled', r.paid || '—'])]
                 .map(cols => cols.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
             link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
@@ -170,6 +197,7 @@
 
         $('search').addEventListener('input', draw);
         $('programFilter')?.addEventListener('change', draw);
+        $('levelFilter')?.addEventListener('change', draw);
         draw();
     </script>
 @endsection

@@ -130,17 +130,16 @@ class DatabaseSeeder extends Seeder
         'assigned_level' => 'is',
     ]);
 
-    // Program Chair: the College dashboard at /college, locked to one program (BS Computer Science for now)
-    \App\Models\User::firstOrCreate(
-        ['email' => 'chair@gmail.com'],
-        [
-            'name' => 'Antonio L. Mercado',
-            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-            'role' => 'program_chair',
-            'access_type' => 'viewer',
-            'assigned_level' => 'college',
-        ]
-    );
+    // Program Chair of the Graduate Programs: the Dean pages for every graduate program, at /college. Named as in the mockup.
+    // (A program_chair assigned to graduate_school; one assigned to 'college' would be locked to one program, e.g. BSCS.)
+    // updateOrCreate, so running the seeder again turns the old BSCS placeholder into this account.
+    \App\Models\User::updateOrCreate(['email' => 'chair@gmail.com'], [
+        'name' => 'Erickson Martinez',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'program_chair',
+        'access_type' => 'viewer',
+        'assigned_level' => 'graduate_school',
+    ]);
 
     // College Registrar: Registrar pages at /registrar (records are view only)
     \App\Models\User::firstOrCreate(
