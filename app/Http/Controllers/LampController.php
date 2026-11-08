@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\LampRequests;
+
 class LampController extends Controller
 {
     /**
@@ -40,48 +42,12 @@ class LampController extends Controller
     public function scholars()
     {
         return view('lamp.scholars', $this->shared() + [
-            'iatoRequests' => self::iatoRequests(),
+            'iatoRequests' => LampRequests::sample(),
             // What LAMP can tell IATO the right type is
             'correctTypes' => [...array_keys(ScholarController::TYPES), 'Not a scholar'],
         ]);
     }
 
-    /**
-     * "Requests from IATO": scholars whose IATO record doesn't match LAMP's, where IATO
-     * asked LAMP to check. Each has a short message thread.
-     *   waiting  IATO asked, LAMP hasn't answered yet (the amber number on the sidebar)
-     *   replied  LAMP answered, IATO hasn't closed it yet
-     * Placeholder data, front end only. Later: a table of requests and their messages.
-     */
-    private static function iatoRequests(): array
-    {
-        $scholars = ScholarController::sample()->keyBy('id');
-        $request = fn ($id, $reason, $status, $messages) => [
-            'id' => $id,
-            'name' => $scholars[$id]['name'],
-            'program' => $scholars[$id]['program'],
-            'iato' => $scholars[$id]['type'],
-            'lamp' => $scholars[$id]['lamp_record'],
-            'reason' => $reason,
-            'status' => $status,
-            'messages' => $messages,
-        ];
-        $iato = fn ($name, $role, $at, $text) => ['from' => 'iato', 'name' => $name, 'role' => $role, 'at' => $at, 'text' => $text];
-        $lamp = fn ($at, $text) => ['from' => 'lamp', 'name' => 'LAMP Office', 'role' => 'LAMP Office', 'at' => $at, 'text' => $text];
-
-        return [
-            $request('APP-2026-0383', 'Not in LAMP records', 'waiting', [
-                $iato('Renegado, Randolph', 'Super Admin', 'Jun 12, 2026 · 9:20 AM', 'Her folder has a DLSL Scholarship award letter dated May 20, 2026, but she isn\'t in LAMP records. Can you check?'),
-            ]),
-            $request('APP-IS-2026-0101', 'Scholarship type doesn\'t match', 'waiting', [
-                $iato('Cruz, Jasmine', 'IATO Staff', 'Jun 11, 2026 · 1:45 PM', 'We have him as an Academic Scholar, but your record says Athletic Scholar. Which one is correct?'),
-            ]),
-            $request('APP-2026-0389', 'Scholarship type doesn\'t match', 'replied', [
-                $iato('Cruz, Jasmine', 'IATO Staff', 'Jun 11, 2026 · 3:10 PM', 'Our record says CHED Scholar, but LAMP shows DLSL Scholar. Which one is correct?'),
-                $lamp('Jun 11, 2026 · 4:02 PM', 'She moved from CHED to the DLSL Scholarship this semester. We\'ll send a correction to your Review Queue.'),
-            ]),
-        ];
-    }
 
     public function reports()
     {
@@ -122,7 +88,7 @@ class LampController extends Controller
             // Numbers on the sidebar
             'navCounts' => [
                 // Amber: requests from IATO that are waiting for LAMP's answer
-                'requests' => collect(self::iatoRequests())->where('status', 'waiting')->count(),
+                'requests' => LampRequests::waitingCount(),
                 'reports' => collect($this->reportList())->where('status', 'Unread')->count(),
             ],
         ];

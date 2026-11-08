@@ -34,11 +34,20 @@ class ScholarController extends Controller
 
     public function index()
     {
+        $user = auth()->user();
+
         return view('scholars.index', [
             'academicYear' => '2025–2026',
             // Add / Edit / Remove (front end only): roles with the 'edit' permission
-            'canEdit' => auth()->user()->canAccess('edit'),
+            'canEdit' => $user->canAccess('edit'),
             'scholars' => self::sample(),
+
+            // Conversations with the LAMP Office about mismatched records (front end only)
+            'lampThreads' => \App\Support\LampRequests::byScholar(),
+            // Only IATO (admins and staff) can ask LAMP or reply; others can read the conversation
+            'canMessageLamp' => $user->isAdmin() || $user->role === 'iato_staff',
+            // How your messages are signed, e.g. "Cruz, Jasmine · IATO Staff"
+            'me' => ['name' => self::lastFirst($user->name), 'role' => $user->roleInfo()[0]],
 
             // Bootstrap colours (and icons) for each kind of badge
             'typeTones' => ['DLSL' => 'primary', 'Merit' => 'info', 'Government' => 'warning'],
@@ -51,6 +60,15 @@ class ScholarController extends Controller
             'statusTones' => ['Pending' => 'danger', 'For Exam' => 'warning', 'Paid' => 'info', 'Enrolled' => 'primary'],
             'types' => array_keys(self::TYPES),
         ]);
+    }
+
+    // "Jasmine Cruz" -> "Cruz, Jasmine" (same as the "Signed in as" card)
+    private static function lastFirst(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name));
+        $last = array_pop($parts);
+
+        return $parts ? $last . ', ' . implode(' ', $parts) : $last;
     }
 
     public static function sample(): Collection
