@@ -7,7 +7,8 @@
        role        your title in the reply thread              scope     [value, note] for the Insights report
        sharedTitle heading above $people in the report drawer (null = don't show them)
        locked      a program chair's program: the only scope they can pick (null = any)
-       askUrl      (optional) the Messages page: questions about a report go there instead of a reply thread --}}
+       askUrl      (optional) the Messages page: questions about a report go there instead of a reply thread
+       canGenerate (optional, default true) false = no "Generate a Report" tab (Vice Presidents and Vice Chancellors) --}}
 @extends('layouts.app')
 
 @section('title', 'iARIS — ' . $labels['office'] . ' Reports')
@@ -26,8 +27,9 @@
 @endphp
 
 @section('content')
-    {{-- Two views: reports the IATO sent, and generating your own --}}
-    <ul class="nav nav-pills gap-2 mb-4" role="tablist">
+    {{-- Two views: reports the IATO sent, and generating your own.
+         Without the tabs (canGenerate false) only "Received from IATO" shows. --}}
+    <ul class="nav nav-pills gap-2 mb-4 {{ ($labels['canGenerate'] ?? true) ? '' : 'd-none' }}" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#receivedView" type="button" role="tab">
                 <i class="bi bi-inbox me-1"></i> Received from IATO <span class="badge rounded-pill bg-body-secondary text-body-secondary ms-1">{{ count($received) }}</span>

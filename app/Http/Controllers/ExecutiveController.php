@@ -120,6 +120,8 @@ class ExecutiveController extends Controller
                     : 'Reports from IATO, and reports you can generate yourself. Questions about a report go to Messages.',
                 // No reply thread: questions about a report go to Messages
                 'askUrl' => url('/executive/messages'),
+                // Vice Presidents and Vice Chancellors read reports but don't generate them
+                'canGenerate' => ! auth()->user()->isVice(),
                 'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
                 'role' => auth()->user()->roleInfo()[0], 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
                 'sharedTitle' => 'Shared with the Executive Office', 'locked' => null,
