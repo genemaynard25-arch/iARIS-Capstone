@@ -230,6 +230,19 @@
                             </select>
                             <div class="invalid-feedback">Choose a department.</div>
                         </div>
+
+                        {{-- Assigned College Field --}}
+                        <div class="col-12 d-none" id="userCollegeField">
+                            <label for="userCollege" class="form-label small fw-bold text-uppercase text-body-secondary">Assigned College</label>
+                            <select class="form-select" id="userCollege">
+                                <option value="">Not assigned yet</option>
+                                @foreach ($colleges as $college)
+                                    <option>{{ $college }}</option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">Scopes this account's College Records to just this college.</div>
+                        </div>
+
                         {{-- Edit only --}}
                         <div class="col-12" id="userStatusField">
                             <label for="userStatus" class="form-label small fw-bold text-uppercase text-body-secondary">Account status</label>
@@ -699,9 +712,16 @@
                 field('userRole').value = user.role;
                 field('userDepartment').value = user.department;
                 field('userStatus').value = user.status;
+                field('userCollege').value = user.assignedCollege || '';
             }
+            updateCollegeFieldVisibility();
             userModal.show();
         }
+
+                   function updateCollegeFieldVisibility() {
+                field('userCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes(field('userRole').value));
+            }
+                field('userRole').addEventListener('change', updateCollegeFieldVisibility);
 
         document.getElementById('addUserButton').addEventListener('click', () => openUserForm());
 
@@ -728,6 +748,7 @@
                 last: field('userLast').value.trim(),
                 role: field('userRole').value,
                 department: field('userDepartment').value,
+                assigned_college: ['dean', 'program_chair'].includes(field('userRole').value) ? (field('userCollege').value || null) : null,
             };
 
             try {

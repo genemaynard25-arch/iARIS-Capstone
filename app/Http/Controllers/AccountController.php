@@ -71,7 +71,7 @@ class AccountController extends Controller
             "statuses" => $this->statuses,
             "departments" => $this->departments,
             "users" => $users,
-            "assignedCollege" => $user->assigned_college,
+            "colleges" => $this->colleges,
         ]);
     }
 
@@ -115,35 +115,36 @@ class AccountController extends Controller
     }
 
     public function update(Request $request, User $user)
-    {
-        if ($user->role === "admin") {
-            abort(403, "The permanent administrator cannot be changed here.");
-        }
-
-        $validated = $request->validate([
-            "first" => "required|string|max:100",
-            "last" => "required|string|max:100",
-            "role" => [
-                "required",
-                Rule::in(array_diff(array_keys($this->roles), ["admin"])),
-            ],
-            "department" => ["required", Rule::in($this->departments)],
-            "status" => ["required", Rule::in(array_keys($this->statuses))],
-            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
-        ]);
-
-        $user->update([
-            "name" => trim($validated["first"] . " " . $validated["last"]),
-            "role" => $validated["role"],
-            "department" => $validated["department"],
-            "status" => $validated["status"],
-        ]);
-
-        return response()->json([
-            "ok" => true,
-            "user" => $this->present($user),
-        ]);
+{
+    if ($user->role === "admin") {
+        abort(403, "The permanent administrator cannot be changed here.");
     }
+
+    $validated = $request->validate([
+        "first" => "required|string|max:100",
+        "last" => "required|string|max:100",
+        "role" => [
+            "required",
+            Rule::in(array_diff(array_keys($this->roles), ["admin"])),
+        ],
+        "department" => ["required", Rule::in($this->departments)],
+        "status" => ["required", Rule::in(array_keys($this->statuses))],
+        "assigned_college" => ["nullable", Rule::in($this->colleges)],
+    ]);
+
+    $user->update([
+        "name" => trim($validated["first"] . " " . $validated["last"]),
+        "role" => $validated["role"],
+        "department" => $validated["department"],
+        "status" => $validated["status"],
+        "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
+    ]);
+
+    return response()->json([
+        "ok" => true,
+        "user" => $this->present($user),
+    ]);
+}
 
     public function setStatus(Request $request, User $user)
     {

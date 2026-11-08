@@ -36,3 +36,4 @@ class CollegeRecordController extends Controller
         ]);
     }
 }
+
