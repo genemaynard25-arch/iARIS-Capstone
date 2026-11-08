@@ -15,9 +15,7 @@
             {{-- Left panel --}}
             <section class="col-lg-6 bg-iaris bg-iaris-circles text-white d-flex flex-column justify-content-between gap-5 p-4 p-md-5">
                 <div class="d-flex align-items-center gap-3 position-relative">
-                    <div class="d-flex p-3 rounded-4 bg-white bg-opacity-10 border border-white border-opacity-25">
-                        @include('partials.logo-mark', ['size' => 28])
-                    </div>
+                    @include('partials.logo-mark', ['size' => 60])
                     <div>
                         <div class="fs-3 fw-bold font-brand lh-1">iARIS</div>
                         <div class="small fw-semibold text-white-50 mt-1">IATO · De La Salle Lipa</div>

@@ -6,8 +6,8 @@
 @section('content')
     <noscript><meta http-equiv="refresh" content="0;url={{ $next }}"></noscript>
 
-    <div class="d-inline-flex p-4 mb-4 rounded-4 bg-white bg-opacity-10 border border-white border-opacity-25 shadow-lg">
-        @include('partials.logo-mark', ['size' => 54])
+    <div class="d-inline-flex mb-4 rounded-4 shadow-lg">
+        @include('partials.logo-mark', ['size' => 96])
     </div>
 
     <h1 class="display-3 fw-bold font-brand mb-1">iARIS</h1>
