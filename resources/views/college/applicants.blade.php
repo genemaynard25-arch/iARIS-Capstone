@@ -19,6 +19,7 @@
 @php
     $hasLevels = collect($programs)->contains(fn ($p) => isset($p['level']));
     $hasDegrees = collect($rows)->contains(fn ($r) => isset($r['undergrad']));
+    $hasBar = collect($rows)->contains(fn ($r) => isset($r['bar']));
 @endphp
 
 @section('content')
@@ -68,6 +69,9 @@
                         @if ($hasDegrees)
                             <th class="text-body-secondary fw-bold">Undergraduate degree</th>
                         @endif
+                        @if ($hasBar)
+                            <th class="text-body-secondary fw-bold">Bar exam passer</th>
+                        @endif
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date applied</th>
                         <th class="text-body-secondary fw-bold">Exam</th>
@@ -107,7 +111,7 @@
         const longDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const STATUSES = ['Pending', 'For Exam', 'Paid'];
         // What "For Exam" is called here, and the extra columns (Graduate Programs)
-        const MIDDLE = @json($middle), HAS_LEVELS = @json($hasLevels), HAS_DEGREES = @json($hasDegrees);
+        const MIDDLE = @json($middle), HAS_LEVELS = @json($hasLevels), HAS_DEGREES = @json($hasDegrees), HAS_BAR = @json($hasBar);
         const labelOf = s => s === 'For Exam' ? MIDDLE : s;
         const TONES = { Pending: 'danger', 'For Exam': 'warning', Paid: 'primary' };
         let status = 'All';
@@ -154,12 +158,13 @@
                     <td class="small">${esc(PROGRAMS[r.program].name)}</td>
                     ${HAS_LEVELS ? `<td class="small">${esc(PROGRAMS[r.program].level)}</td>` : ''}
                     ${HAS_DEGREES ? `<td class="small">${esc(r.undergrad || '—')}</td>` : ''}
+                    ${HAS_BAR ? `<td class="small">${esc(r.bar || '—')}</td>` : ''}
                     <td><span class="badge rounded-pill bg-${TONES[r.status]}-subtle text-${TONES[r.status]}-emphasis">${labelOf(r.status)}</span></td>
                     <td class="small text-nowrap">${longDate(r.applied)}</td>
                     <td class="small">${esc(r.exam || 'Not yet scheduled')}</td>
                     <td class="pe-4 text-end text-body-tertiary"><i class="bi bi-chevron-right"></i></td>
                 </tr>`).join('')
-                : '<tr><td colspan="8" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
+                : '<tr><td colspan="9" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
             $('rows').querySelectorAll('tr[data-id]').forEach(tr => {
                 tr.addEventListener('click', () => openApplicant(tr.dataset.id));
                 tr.addEventListener('keydown', e => { if (e.key === 'Enter') openApplicant(tr.dataset.id); });
@@ -177,7 +182,7 @@
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name}`;
             $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', labelOf(r.status))}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? (r.amount || '₱2,000.00') : '—')}</div>`
-                + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ...(r.undergrad ? [['Undergraduate / graduate degree', r.undergrad]] : []), ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
+                + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ...(r.undergrad ? [['Undergraduate / graduate degree', r.undergrad]] : []), ...(r.bar ? [['Bar exam passer', r.bar]] : []), ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
                 + section('Applicant') + table([['Date of birth', r.dob], ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]])
                 + '<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-lock me-1"></i>View only. IATO manages applicant records.</p>';
             drawer.show();

@@ -115,7 +115,7 @@ class SettingsController extends Controller
                     $user->isToic() => 'System data only',
                     $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
                     $user->role === 'iato_staff' => 'All units',
-                    $user->role === 'dean' => CollegeController::college()['code'] . ' only',
+                    $user->role === 'dean' => (CollegeController::college()['label'] ?? CollegeController::college()['code']) . ' only',
                     $user->isPrincipal() => 'Integrated School only',
                     $user->isDirector() => 'iPACE + ETEEAP only',
                     $user->isGradChair() => 'Graduate Programs only',
@@ -139,7 +139,8 @@ class SettingsController extends Controller
                 : ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
             'unitWord' => $user->isPrincipal() ? 'level' : ($collegeView ? 'program' : 'unit'),
             // "Send a copy to": the IATO and the rest of the Executive Office (not you)
-            'recipients' => $user->isDirector() || $user->isGradChair() ? [
+            // The iPACE Director, Graduate Programs and College of Law send copies to IATO and the VC for Academics only
+            'recipients' => $user->isDirector() || $user->isGradChair() || ($user->role === 'dean' && CollegeController::college()['code'] === 'LAW') ? [
                 ['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'],
                 ['initials' => 'TP', 'name' => 'Dr. Tessie Palma (VC for Academics)'],
             ] : ($collegeView ? [

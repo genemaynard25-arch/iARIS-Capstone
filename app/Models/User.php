@@ -225,7 +225,7 @@ class User extends Authenticatable
             "admin" => ["Super Admin", "IATO", "bi-star-fill"],
             "iato_staff" => ["IATO Staff", "IATO", "bi-person-badge"],
             // A dean's college: assigned_college once the backend adds it, the department until then (CITE by default)
-            "dean" => ["Dean", strtoupper($this->assigned_college ?? $this->department ?? "CITE"), "bi-mortarboard"],
+            "dean" => ["Dean", $this->assigned_college ?? $this->department ?? "CITE", "bi-mortarboard"],
             "program_chair" => ["Program Chair", $this->isGradChair() ? "Graduate Programs" : "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],

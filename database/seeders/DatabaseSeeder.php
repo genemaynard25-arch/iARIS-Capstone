@@ -35,6 +35,8 @@ class DatabaseSeeder extends Seeder
         ['deancihtm@gmail.com', 'Evangeline Necio', 'CIHTM'],
         ['deanccje@gmail.com', 'Aristotle Balba', 'CCJE'],
         ['deancon@gmail.com', 'Margie Ebreo', 'CON'],
+        // Account Management's department name for the College of Law
+        ['deanlaw@gmail.com', 'Ma. Isabel Romero', 'College of Law'],
     ] as [$email, $name, $college]) {
         \App\Models\User::updateOrCreate(['email' => $email], [
             'name' => $name,

@@ -78,6 +78,16 @@ class CollegeController extends Controller
             'BSN' => ['name' => 'BS Nursing', 'applicants' => [123, 129, 135, 142], 'enrolled' => [36, 37, 39, 39],
                 'funnel' => [142, 105, 89, 44, 39], 'status' => [40, 58, 44], 'paidLastYear' => 43],
         ]],
+        // The College of Law (Account Management stores it as the department "College of Law"). Its applicants
+        // show their degree and whether they passed the Bar.
+        'LAW' => ['name' => 'College of Law', 'title' => 'College of Law', 'label' => 'College of Law', 'middle' => 'For Exam / Interview', 'programs' => [
+            'JD' => ['name' => 'Juris Doctor', 'applicants' => [118, 129, 138, 152], 'enrolled' => [30, 33, 35, 38],
+                'funnel' => [152, 124, 98, 46, 38], 'status' => [34, 72, 46], 'paidLastYear' => 43],
+            'LLM' => ['name' => 'Master of Laws', 'applicants' => [17, 19, 21, 24], 'enrolled' => [5, 6, 6, 7],
+                'funnel' => [24, 20, 16, 8, 7], 'status' => [5, 11, 8], 'paidLastYear' => 7],
+            'JSD' => ['name' => 'Doctor of Juridical Science', 'applicants' => [7, 8, 9, 10], 'enrolled' => [1, 1, 2, 2],
+                'funnel' => [10, 8, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
+        ]],
         // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
         'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Kindergarten to Grade 12',
             'office' => 'Integrated School · Kindergarten to Grade 12', 'word' => 'level', 'programs' => [
@@ -147,7 +157,7 @@ class CollegeController extends Controller
     private const HONORIFICS = [
         'Cherrie Villafuerte' => 'Engr.', 'Jasmin De Silva' => 'Dr.', 'Gina Dimaano' => 'Dr.',
         'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.', 'Margie Ebreo' => 'Dr.',
-        'Kristine Anne Dimaculangan' => 'Ms.', 'Haidee Angeles' => 'Dr.', 'Erickson Martinez' => 'Dr.',
+        'Kristine Anne Dimaculangan' => 'Ms.', 'Haidee Angeles' => 'Dr.', 'Erickson Martinez' => 'Dr.', 'Ma. Isabel Romero' => 'Atty.',
     ];
 
     /**
@@ -160,7 +170,9 @@ class CollegeController extends Controller
         $user = auth()->user();
         $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : null));
         $code ??= strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
-        $code = isset(self::COLLEGES[$code]) ? $code : 'CITE';
+        // A college can also be stored by its full name ("College of Law")
+        $code = isset(self::COLLEGES[$code]) ? $code
+            : (collect(self::COLLEGES)->search(fn ($c) => strtoupper($c['name']) === $code) ?: 'CITE');
 
         return ['code' => $code] + self::COLLEGES[$code];
     }
@@ -378,7 +390,7 @@ class CollegeController extends Controller
      * Applicants in the given programs, newest first. Placeholder records (every college); later a query on the
      * applicants table (e.g. Applicant::where('college', 'CITE')->whereIn('program', ...)).
      * paid: date of the reservation payment, or null if not paid yet. year (optional): "Grade 11 · STEM" (default 1st Year).
-     * amount (optional): the reservation fee paid (default ₱2,000.00). undergrad (optional): a graduate applicant's degree.
+     * amount (optional): the reservation fee paid (default ₱2,000.00). undergrad (optional): a graduate applicant's degree. bar (optional): Bar exam result (College of Law).
      */
     private static function applicantsIn(array $scope): array
     {
@@ -449,6 +461,13 @@ class CollegeController extends Controller
             ['id' => 'APP-2026-G005', 'name' => 'Torres, Andrei Benedict V.', 'program' => 'PhD', 'year' => 'Doctoral', 'status' => 'For Exam', 'applied' => '2026-05-06', 'updated' => 'Jun 4, 3:30 PM', 'dob' => 'April 28, 1978', 'gender' => 'Male', 'email' => 'ab.torres@dlsl.edu.ph', 'phone' => '0921 500 5555', 'address' => 'Lipa City, Batangas', 'undergrad' => 'Master of Education — DLSL, 2005', 'exam' => 'Jun 16, 2026 · 1:00 PM', 'paid' => null],
             ['id' => 'APP-2026-G001', 'name' => 'Bautista, Ramon Jose A.', 'program' => 'MBA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 9:00 AM', 'dob' => 'June 15, 1990', 'gender' => 'Male', 'email' => 'rj.bautista@dlsl.edu.ph', 'phone' => '0917 800 1111', 'address' => 'Lipa City, Batangas', 'undergrad' => 'BS Business Administration — DLSL, 2012', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => 'Jun 1, 2026', 'amount' => '₱3,000.00'],
             ['id' => 'APP-2026-G004', 'name' => 'Mendoza, Luisa Patricia C.', 'program' => 'MPA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 30, 11:00 AM', 'dob' => 'January 5, 1985', 'gender' => 'Female', 'email' => 'lp.mendoza@dlsl.edu.ph', 'phone' => '0920 600 4444', 'address' => 'Santo Tomas, Batangas', 'undergrad' => 'BS Political Science — DLSL, 2007', 'exam' => 'Jun 8, 2026 · 8:00 AM', 'paid' => 'May 30, 2026', 'amount' => '₱3,000.00'],
+            // College of Law (as in the Dean's mockup). 'bar': whether they passed the Bar.
+            ['id' => 'APP-2026-L006', 'name' => 'Mendoza, Clarissa Joy T.', 'program' => 'JD', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'May 20, 8:45 AM', 'dob' => 'September 19, 2000', 'gender' => 'Female', 'email' => 'cj.mendoza@dlsl.edu.ph', 'phone' => '0912 666 7777', 'address' => 'Calamba, Laguna', 'undergrad' => 'BS Psychology — DLSL, 2022', 'bar' => 'N/A (Pre-Law)', 'exam' => null, 'paid' => null],
+            ['id' => 'APP-2026-L004', 'name' => 'Dela Torre, Maria Josefa P.', 'program' => 'JD', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'May 14, 3:00 PM', 'dob' => 'November 22, 1999', 'gender' => 'Female', 'email' => 'mj.delatorre@dlsl.edu.ph', 'phone' => '0920 444 5555', 'address' => 'Tanauan City, Batangas', 'undergrad' => 'BS Criminology — PLM, 2021', 'bar' => 'N/A (Pre-Law)', 'exam' => null, 'paid' => null],
+            ['id' => 'APP-2026-L005', 'name' => 'Cruz, Benigno Antonio R.', 'program' => 'JSD', 'status' => 'For Exam', 'applied' => '2026-05-07', 'updated' => 'Jun 5, 11:00 AM', 'dob' => 'January 8, 1982', 'gender' => 'Male', 'email' => 'ba.cruz@dlsl.edu.ph', 'phone' => '0921 555 6666', 'address' => 'Lipa City, Batangas', 'undergrad' => 'Master of Laws — DLSL, 2010', 'bar' => 'Passed — 2006 Bar Examinations', 'exam' => 'Jun 14, 2026 · 1:00 PM', 'paid' => null],
+            ['id' => 'APP-2026-L002', 'name' => 'Reyes, Carmela Diaz S.', 'program' => 'JD', 'status' => 'For Exam', 'applied' => '2026-05-06', 'updated' => 'Jun 4, 2:00 PM', 'dob' => 'August 3, 1997', 'gender' => 'Female', 'email' => 'cd.reyes@dlsl.edu.ph', 'phone' => '0918 222 3333', 'address' => 'Batangas City, Batangas', 'undergrad' => 'AB Philosophy — DLSL, 2019', 'bar' => 'N/A (Pre-Law)', 'exam' => 'Jun 12, 2026 · 10:00 AM', 'paid' => null],
+            ['id' => 'APP-2026-L001', 'name' => 'Aquino, Rafael Miguel B.', 'program' => 'JD', 'status' => 'Paid', 'applied' => '2026-05-04', 'updated' => 'May 28, 10:00 AM', 'dob' => 'May 10, 1998', 'gender' => 'Male', 'email' => 'rm.aquino@dlsl.edu.ph', 'phone' => '0917 111 2222', 'address' => 'Lipa City, Batangas', 'undergrad' => 'BS Political Science — DLSL, 2020', 'bar' => 'N/A (Pre-Law)', 'exam' => 'Jun 8, 2026 · 9:00 AM', 'paid' => 'May 28, 2026', 'amount' => '₱3,500.00'],
+            ['id' => 'APP-2026-L003', 'name' => 'Santos, Victorino L.', 'program' => 'LLM', 'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 25, 9:00 AM', 'dob' => 'March 15, 1990', 'gender' => 'Male', 'email' => 'v.santos@dlsl.edu.ph', 'phone' => '0919 333 4444', 'address' => 'San Jose, Batangas', 'undergrad' => 'Juris Doctor — DLSL, 2016', 'bar' => 'Passed — 2017 Bar Examinations', 'exam' => 'Jun 6, 2026 · 8:00 AM', 'paid' => 'May 25, 2026', 'amount' => '₱3,500.00'],
         ];
 
         return array_values(array_filter($all, fn ($a) => isset($scope[$a['program']])));
