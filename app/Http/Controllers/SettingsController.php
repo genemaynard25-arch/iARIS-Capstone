@@ -23,11 +23,16 @@ class SettingsController extends Controller
     {
         $user = auth()->user();
 
-        // Every role gets these; the President / Chancellor office also gets report and display preferences
-        // (The LAMP Office has no AI Assistant, so no AI section either.)
-        $sections = $user->isLamp() ? ['profile', 'security', 'notifications'] : ['profile', 'security', 'notifications', 'ai'];
-        if ($user->isChancellor()) {
-            array_splice($sections, 3, 0, ['reports']);
+        // Every role gets these; the Executive Office also gets report and display preferences
+        // (The LAMP Office and Registrars have no AI button, so no AI section either.)
+        $sections = $user->isLamp() || $user->role === 'registrar'
+            ? ['profile', 'security', 'notifications']
+            : ['profile', 'security', 'notifications', 'ai'];
+        // (Vice Presidents and Vice Chancellors are view only, so no Report Preferences.)
+        // Deans, Program Chairs and the IS Principal have the same Briefing, Reports and Analytics, so the same preferences.
+        $collegeView = $user->isDeanOrChair() || $user->isPrincipal();
+        if ($user->isExecutive() || $collegeView) {
+            array_splice($sections, 3, 0, $user->isVice() ? ['briefing'] : ['briefing', 'reports']);
             $sections[] = 'display';
         }
 
@@ -40,20 +45,39 @@ class SettingsController extends Controller
         // Role key => [label, title, office, modules]. Same role keys as Access Control.
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
-            'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Records, Reports, Analytics, Import'],
-            'dean' => ['Dean', 'Dean', 'College of Information Technology and Engineering', 'Dashboard, Applicants, Analytics, Reports'],
-            'program_chair' => ['Program Chair', 'Program Chair', 'BS Computer Science · CITE', 'Dashboard, Applicants, Analytics, Reports'],
+            'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Analytics & Reports, all records, Import Data, My Submissions, Audit Logs (view)'],
+            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
+            'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
-            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Applicants, Reports'],
+            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
-            'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Dashboard, Analytics, Reports'],
+            'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
+            'vice_president' => ['Vice President', 'Vice President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
+            'chancellor' => ['Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
+            'vice_chancellor' => ['Vice Chancellor', 'Vice Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
         ];
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
         $roleKey = $user->isShsPrincipal() ? 'principal' : $user->role;
         [$roleLabel, $title, $office, $modules] = $roles[$roleKey] ?? [ucwords(str_replace('_', ' ', $user->role ?? 'User')), '—', '—', '—'];
+        // Deans: "Dean, CBEAM" and their college's full name. The IS Principal: "Principal, Integrated School".
+        if ($user->role === 'dean' || $user->isPrincipal()) {
+            $college = CollegeController::college();
+            $roleLabel = $title = ($user->isPrincipal() ? 'Principal, ' : 'Dean, ') . ($college['title'] ?? $college['code']);
+            $office = $college['office'] ?? $college['name'];
+            $modules = 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant';
+        }
+        // Registrars: "College Registrar" or "IS Registrar"
+        if ($user->role === 'registrar') {
+            $roleLabel = $title = $user->roleInfo()[0];
+        }
+        // Vice Presidents and Vice Chancellors: "Vice President for Finance", "Office of the VP for Finance"
+        if ($user->isVice() && $user->department) {
+            $roleLabel = $title = $user->executiveTitle();
+            $office = 'Office of the ' . ($user->role === 'vice_chancellor' ? 'VC' : 'VP') . " for {$user->department}";
+        }
 
         $scopes = ['college' => 'College', 'is' => 'Integrated School'];
-        $scope = $user->isChancellor() || ($user->isAdmin() && ! $user->assigned_level)
+        $scope = $user->isExecutive() || ($user->isAdmin() && ! $user->assigned_level)
             ? 'All units, institution-wide'
             : trim(($scopes[$user->assigned_level] ?? 'All units') . ($user->assigned_sub_level === 'shs' ? ' · Senior High' : ''));
 
@@ -69,17 +93,29 @@ class SettingsController extends Controller
                 'email' => $user->email,
                 'title' => $title,
                 'office' => $office,
-                // First and last name, e.g. "Merlin Teodosia C. Suarez" -> MS
-                'initials' => mb_strtoupper(mb_substr(Str::before($user->name, ' '), 0, 1) . mb_substr(Str::afterLast($user->name, ' '), 0, 1)),
+                // First and last name, e.g. "Teodosia Merlin Suarez" -> TS (a suffix like FSC is skipped)
+                'initials' => $user->initials(),
             ],
             'access' => [
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->isVice() => 'View only',
+                    $user->isExecutive() || $collegeView => 'View · can generate reports',
+                    $user->role === 'registrar' => 'View only; can ask IATO about a record',
+                    $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
                     $user->access_type === 'editor' => 'Can view and edit',
                     default => 'Read-only',
                 },
-                'Data scope' => $user->isLamp() ? 'Scholarships only' : $scope,
+                'Data scope' => match (true) {
+                    $user->isLamp() => 'Scholarships only',
+                    $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
+                    $user->role === 'iato_staff' => 'All units',
+                    $user->role === 'dean' => CollegeController::college()['code'] . ' only',
+                    $user->isPrincipal() => 'Integrated School only',
+                    $user->isProgramChair() => 'BS Computer Science only',
+                    default => $scope,
+                },
                 'Modules' => $modules,
                 'Account status' => 'Active',
                 'Member since' => $user->created_at?->format('M j, Y') ?? '—',
@@ -89,16 +125,24 @@ class SettingsController extends Controller
             'signIns' => $this->signIns($user->id),
             'notificationGroups' => $this->notificationGroups($user),
 
-            // For the President / Chancellor's report and display preferences
-            'years' => ChancellorController::YEARS,
-            'units' => ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
-            'recipients' => $user->isChancellor() ? [
+            // For the Executive Office's report and display preferences
+            'years' => ExecutiveController::YEARS,
+            // (for a Dean or Program Chair: their programs, and the words change to "program")
+            'units' => $collegeView
+                ? ($user->isProgramChair() ? ['BS Computer Science'] : CollegeController::programNames())
+                : ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
+            'unitWord' => $user->isPrincipal() ? 'level' : ($collegeView ? 'program' : 'unit'),
+            // "Send a copy to": the IATO and the rest of the Executive Office (not you)
+            'recipients' => $collegeView ? [
                 ['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'],
-                ['initials' => 'EF', 'name' => 'Br. Edmundo L. Fernandez FSC'],
-                ['initials' => 'TP', 'name' => 'Dr. Tessie Palma'],
-                ['initials' => 'SM', 'name' => 'Dr. Sheila Maloles'],
-                ['initials' => 'WA', 'name' => 'Mr. Wenifredo Angeles'],
-            ] : [],
+                ['initials' => 'NL', 'name' => 'Dr. Nerissa Lucasia (AVC, Colleges)'],
+                ['initials' => 'TP', 'name' => 'Dr. Tessie Palma (VC for Academics)'],
+            ] : ($user->isExecutive()
+                ? collect(ExecutiveController::executives())
+                    ->reject(fn ($person) => str_contains($person['name'], $user->name))
+                    ->prepend(['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'])
+                    ->values()->all()
+                : []),
         ]);
     }
 
@@ -108,6 +152,34 @@ class SettingsController extends Controller
      */
     private function notificationGroups($user): array
     {
+        if ($user->role === 'iato_staff') {
+            return [
+                'My submissions' => [
+                    ['sentBack', 'Submission sent back', 'The Super Admin returned an edit or import to you with a reason. Recommended.', true],
+                    ['approved', 'Submission approved', 'Your edit or import is now visible to other users.', false],
+                ],
+                'Data' => [
+                    ['importErrors', 'Import finished with errors', 'A batch import completed but some rows were skipped.', true],
+                    ['lampFlag', 'LAMP Office flagged a scholar discrepancy', 'LAMP confirmed, flagged, or edited a scholar record.', true],
+                ],
+                'Reports' => [
+                    ['reply', 'Reply on a report', 'The Chancellor, a Dean, LAMP, or another office replied to a report you sent.', true],
+                    ['weekly', 'Weekly admissions summary', 'Every Monday: applicants, paid reservations, and pending items for the week.', false],
+                ],
+            ];
+        }
+        if ($user->isExecutive() || $user->isDeanOrChair() || $user->isPrincipal()) {
+            return [
+                'Reports' => [
+                    ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to ' . ($user->isExecutive() ? 'the Executive Office.' : 'your office.'), true],
+                    ['reply', 'Reply from IATO', 'Get an email when IATO answers one of your messages.', true],
+                ],
+                'Briefing' => [
+                    ['attention', 'New "Needs your attention" item', 'Email me when the Briefing flags something new, such as a drop in conversion or a unit growing fast.', true],
+                    ['weekly', 'Weekly enrollment summary', 'A short email every Monday with applicants, paid reservations, and enrollment compared with last year.', false],
+                ],
+            ];
+        }
         if ($user->isLamp()) {
             return [
                 'Requests from IATO' => [

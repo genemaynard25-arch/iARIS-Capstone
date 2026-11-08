@@ -20,11 +20,12 @@ use App\Http\Controllers\SuccessionController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
+use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
-use App\Http\Controllers\ChancellorController;
+use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CollegeController;
 
@@ -99,15 +100,28 @@ Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
     Route::get('/reports', [LampController::class, 'reports'])->name('reports');
 });
 
+// College Registrar pages (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to users whose role is 'registrar', plus IATO admins
+Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(function () {
+    Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard');
+    Route::get('/enrollment', [RegistrarController::class, 'enrollment'])->name('enrollment');
+    Route::get('/reports', [RegistrarController::class, 'reports'])->name('reports');
+    Route::get('/questions', [RegistrarController::class, 'questions'])->name('questions');
+});
+
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
 
-// President / Chancellor dashboard (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to the Chancellor's office, plus IATO admins
-Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
-Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
-Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
+// Executive Office: President, Chancellor, Vice Presidents, Vice Chancellors (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to executive roles, plus IATO admins
+Route::get('/executive', [ExecutiveController::class, 'dashboard'])->middleware('auth')->name('executive.dashboard');
+Route::get('/executive/analytics', [ExecutiveController::class, 'analytics'])->middleware('auth')->name('executive.analytics');
+Route::get('/executive/reports', [ExecutiveController::class, 'reports'])->middleware('auth')->name('executive.reports');
+Route::get('/executive/messages', [ExecutiveController::class, 'messages'])->middleware('auth')->name('executive.messages');
+// The old /chancellor addresses still work
+Route::redirect('/chancellor', '/executive');
+Route::get('/chancellor/{page}', fn ($page) => redirect('/executive/' . $page))->where('page', 'analytics|reports|messages');
 
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');
@@ -118,3 +132,13 @@ Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('aut
 Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');
 Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');
 Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware('auth')->name('college.reports');
+Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware('auth')->name('college.messages');
+
+// Integrated School Principal: the same pages as a Dean, by level (their own sidebar: see layouts/app.blade.php)
+Route::middleware('auth')->prefix('principal')->name('principal.')->group(function () {
+    Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
+    Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
+    Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');
+    Route::get('/reports', [CollegeController::class, 'reports'])->name('reports');
+    Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
+});

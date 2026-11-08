@@ -42,9 +42,7 @@
             {{-- Top strip --}}
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <a href="{{ url('/home') }}" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <span class="d-flex align-items-center justify-content-center rounded-3 bg-iaris icon-circle">
-                        @include('partials.logo-mark', ['size' => 20])
-                    </span>
+                    @include('partials.logo-mark', ['size' => 40])
                     <span>
                         <span class="d-block fw-bold fs-5 font-brand text-primary lh-1">iARIS</span>
                         <span class="small text-body-secondary">De La Salle Lipa · IATO</span>

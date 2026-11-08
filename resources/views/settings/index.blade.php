@@ -9,6 +9,7 @@
         'profile' => ['Profile', 'bi-person'],
         'security' => ['Security', 'bi-lock'],
         'notifications' => ['Notifications', 'bi-bell'],
+        'briefing' => ['Briefing', 'bi-compass'],
         'reports' => ['Report Preferences', 'bi-file-earmark-text'],
         'ai' => ['AI Assistant', 'bi-stars'],
         'display' => ['Display', 'bi-sliders'],
@@ -88,7 +89,13 @@
                         <div class="card border-0 shadow-sm rounded-4">
                             <div class="card-body p-4">
                                 <h2 class="fs-6 fw-bold mb-0">Your access</h2>
-                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.@if (auth()->user()->isLamp()) Your corrections to scholar records go to the IATO Review Queue before other users see them.@endif</p>
+                                <p class="small text-body-secondary">Set by the IATO Admin in Access Control. Contact IATO if something needs to change.
+                                    @if (auth()->user()->isLamp())
+                                        Your corrections to scholar records go to the IATO Review Queue before other users see them.
+                                    @elseif (auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
+                                        Your edits and imports go to the Review Queue before other users see them.
+                                    @endif
+                                </p>
                                 <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-2">
                                     @foreach ($access as $label => $value)
                                         <div class="col">
@@ -240,7 +247,44 @@
                     </div>
                 @endif
 
-                {{-- ========== REPORT PREFERENCES (President / Chancellor) ========== --}}
+                {{-- ========== REPORT PREFERENCES (Executive Office, Deans, Program Chairs) ========== --}}
+                {{-- ========== BRIEFING (Executive Office, Deans, Program Chairs) ========== --}}
+                @if (in_array('briefing', $sections))
+                    <div class="tab-pane fade {{ $openSection === 'briefing' ? 'show active' : '' }}" id="section-briefing" role="tabpanel">
+                        <form class="card border-0 shadow-sm rounded-4" data-preferences="briefing">
+                            <div class="card-body p-4">
+                                <h2 class="fs-6 fw-bold mb-0">Briefing</h2>
+                                <p class="small text-body-secondary">Choose what your Briefing page shows.</p>
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-3">Needs your attention</div>
+                                @include('settings.partials.switch', ['name' => 'conversion', 'label' => 'Conversion changes', 'description' => 'Flag when applied-to-enrolled conversion moves by 0.5 points or more.', 'checked' => true])
+                                @include('settings.partials.switch', ['name' => 'dropoff', 'label' => 'Funnel drop-offs', 'description' => "Flag the step where the most applicants are lost, such as passers who haven't paid.", 'checked' => true])
+                                {{-- The third card: unit growth (Executive Office), or programs / levels stuck at Pending (Dean, Program Chair, IS Principal) --}}
+                                @if ($unitWord !== 'unit')
+                                    @include('settings.partials.switch', ['name' => 'pending', 'label' => ucfirst($unitWord) . 's stuck at Pending', 'description' => "Flag {$unitWord}s with a high share of applicants still Pending.", 'checked' => true])
+                                @else
+                                    @include('settings.partials.switch', ['name' => 'growth', 'label' => 'Fast growth or decline', 'description' => 'Flag units whose applicants change by 15% or more from last year.', 'checked' => true])
+                                @endif
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4 mb-2">{{ ucfirst($unitWord) }}s at a glance</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach ($units as $i => $unit)
+                                        <input type="checkbox" class="btn-check" name="unit:{{ $unit }}" id="briefUnit{{ $i }}" checked autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-primary rounded-pill px-3" for="briefUnit{{ $i }}">{{ $unit }}</label>
+                                    @endforeach
+                                </div>
+                                <div class="form-text">Unchecked {{ $unitWord }}s are hidden from your Briefing. They still appear in Analytics{{ $unitWord !== 'unit' ? ' and Applicants' : '' }}.</div>
+                                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mt-4 mb-2">Compare with</div>
+                                @foreach (['last' => 'Last academic year', 'week' => 'Same week last year (coming soon)', 'average' => 'Average of the last three years (coming soon)'] as $value => $label)
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="compare" id="compare-{{ $value }}" value="{{ $value }}" @checked($value === 'last') @disabled($value !== 'last')>
+                                        <label class="form-check-label small" for="compare-{{ $value }}">{{ $label }}</label>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @include('settings.partials.save-footer')
+                        </form>
+                    </div>
+                @endif
+
                 @if (in_array('reports', $sections))
                     <div class="tab-pane fade {{ $openSection === 'reports' ? 'show active' : '' }}" id="section-reports" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="reports">
@@ -294,7 +338,7 @@
                     </div>
                 @endif
 
-                {{-- ========== DISPLAY (President / Chancellor) ========== --}}
+                {{-- ========== DISPLAY (Executive Office, Deans, Program Chairs) ========== --}}
                 @if (in_array('display', $sections))
                     <div class="tab-pane fade {{ $openSection === 'display' ? 'show active' : '' }}" id="section-display" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="display">
@@ -303,9 +347,9 @@
                                 <p class="small text-body-secondary">Choose what you see first when you open Analytics.</p>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="displayUnit" class="form-label small fw-bold text-uppercase text-body-secondary">Unit shown first on Analytics</label>
+                                        <label for="displayUnit" class="form-label small fw-bold text-uppercase text-body-secondary">{{ ucfirst($unitWord) }} shown first on Analytics</label>
                                         <select class="form-select" name="unit" id="displayUnit">
-                                            <option value="">All Units</option>
+                                            <option value="">All {{ $unitWord }}s</option>
                                             @foreach ($units as $unit)
                                                 <option>{{ $unit }}</option>
                                             @endforeach

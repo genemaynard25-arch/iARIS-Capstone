@@ -9,16 +9,18 @@
 
 <body>
     <div class="d-flex min-vh-100">
-        {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /chancellor and /college pages use theirs too,
+        {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /executive and /college pages use theirs too,
              so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)
              TODO (RBAC): keep these users out of the admin pages. --}}
         @if (request()->is('lamp*') || auth()->user()->isLamp())
             @include('layouts.partials.sidebar-lamp')
         @elseif (request()->is('shs*') || auth()->user()->isShsPrincipal())
             @include('layouts.partials.sidebar-shs')
-        @elseif (request()->is('chancellor*') || auth()->user()->isChancellor())
-            @include('layouts.partials.sidebar-chancellor')
-        @elseif (request()->is('college*') || auth()->user()->isDeanOrChair())
+        @elseif (request()->is('executive*') || auth()->user()->isExecutive())
+            @include('layouts.partials.sidebar-executive')
+        @elseif (request()->is('registrar*') || auth()->user()->role === 'registrar')
+            @include('layouts.partials.sidebar-registrar')
+        @elseif (request()->is('college*', 'principal*') || auth()->user()->isDeanOrChair() || auth()->user()->isPrincipal())
             @include('layouts.partials.sidebar-college')
         @else
             @include('layouts.partials.sidebar')
@@ -45,7 +47,10 @@
         });
     </script>
     @yield('scripts')
-    @include('partials.ai-widget')
+    {{-- The AI button: not for the LAMP Office or Registrars (their mockups have none; Settings has no AI section for them) --}}
+    @unless (auth()->user()->isLamp() || auth()->user()->role === 'registrar')
+        @include('partials.ai-widget')
+    @endunless
     @include('partials.mfa-reminder')
     <script>
         // "Show the AI button on every page" off

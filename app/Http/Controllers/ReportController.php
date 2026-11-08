@@ -94,9 +94,9 @@ class ReportController extends Controller
                 'description' => 'Enrollment trends and per-program summaries, computed from imported admission data',
                 'reports' => [
                     [
-                        'key' => 'trends', 'title' => 'Enrollment Trends — President / Chancellor', 'icon' => 'bi-graph-up-arrow', 'tone' => 'danger',
+                        'key' => 'trends', 'title' => 'Enrollment Trends — Executive Office', 'icon' => 'bi-graph-up-arrow', 'tone' => 'danger',
                         'description' => 'Year-on-year applicant comparison across all levels/programs: total this SY vs last SY, with % change per level/program.',
-                        'recipient' => 'President / Chancellor',
+                        'recipient' => 'Executive Office',
                         'columns' => ['Level / Program', 'Previous SY', 'Current SY', 'Change', '% Change'],
                         'rows' => $rows->map(function (AdmissionStat $row) {
                             $previous = (int) ($row->overall_total_previous ?? 0);
@@ -135,7 +135,7 @@ class ReportController extends Controller
         ];
 
         $history = [
-            ['report' => 'trends', 'name' => 'Enrollment Trends Report', 'meta' => 'All levels/programs', 'recipient' => 'President / Chancellor', 'period' => 'Current SY', 'format' => 'PDF', 'by' => '—', 'at' => 'Not yet generated'],
+            ['report' => 'trends', 'name' => 'Enrollment Trends Report', 'meta' => 'All levels/programs', 'recipient' => 'Executive Office', 'period' => 'Current SY', 'format' => 'PDF', 'by' => '—', 'at' => 'Not yet generated'],
         ];
 
         return [

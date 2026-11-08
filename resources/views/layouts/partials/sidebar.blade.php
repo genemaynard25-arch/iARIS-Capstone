@@ -92,9 +92,7 @@
         {{-- Logo --}}
         <div class="d-flex align-items-center justify-content-between px-4 py-4 border-bottom border-white border-opacity-25">
             <div class="d-flex align-items-center gap-2">
-                <div class="d-flex align-items-center justify-content-center rounded-3 bg-white bg-opacity-10 border border-white border-opacity-25 icon-circle">
-                    @include('partials.logo-mark', ['size' => 24])
-                </div>
+                @include('partials.logo-mark', ['size' => 40])
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
                     <div class="small text-white-50">{{ $isStaff ? 'Staff · IATO' : 'IATO · De La Salle Lipa' }}</div>

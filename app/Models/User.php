@@ -88,10 +88,62 @@ class User extends Authenticatable
             ->first();
     }
 
-    // President / Chancellor office: a read-only, university-wide dashboard
+    // The Chancellor (one of the Executive Office roles; see isExecutive() below)
     public function isChancellor(): bool
     {
         return $this->role === "chancellor";
+    }
+
+    // Name parts: "Edmundo L. Fernandez FSC" -> [first and middle "Edmundo L.", last "Fernandez", suffix "FSC"]
+    private function nameParts(): array
+    {
+        $parts = preg_split('/\s+/', trim($this->name ?? ''));
+        $suffix = count($parts) > 2 && preg_match('/^(FSC|Jr\.?|Sr\.?|II|III|IV)$/i', end($parts)) ? array_pop($parts) : '';
+        $last = array_pop($parts);
+        // Surname particles stay with the last name: "Jasmin De Silva" -> "De Silva", "Ana Dela Cruz" -> "Dela Cruz"
+        while (count($parts) > 1 && preg_match('/^(De|Del|Dela|Delos|Los|San|Santa|Sta\.|Van|Von)$/i', end($parts))) {
+            $last = array_pop($parts) . ' ' . $last;
+        }
+
+        return [implode(' ', $parts), $last, $suffix];
+    }
+
+    // "Cherrie Villafuerte" -> "Villafuerte, Cherrie"; "Edmundo L. Fernandez FSC" -> "Fernandez, Edmundo L. FSC"
+    public function displayName(): string
+    {
+        [$first, $last, $suffix] = $this->nameParts();
+
+        return $first === '' ? $last : trim("{$last}, {$first} {$suffix}");
+    }
+
+    // "Cherrie Villafuerte" -> "CV"; "Edmundo L. Fernandez FSC" -> "EF"
+    public function initials(): string
+    {
+        [$first, $last] = $this->nameParts();
+
+        return mb_strtoupper(mb_substr($first !== '' ? $first : $last, 0, 1) . ($first !== '' ? mb_substr($last, 0, 1) : ''));
+    }
+
+    // Executive Office: the President, the Chancellor, Vice Presidents and Vice Chancellors.
+    // They share the same read-only, university-wide pages at /executive.
+    public function isExecutive(): bool
+    {
+        return in_array($this->role, ["president", "vice_president", "chancellor", "vice_chancellor"]);
+    }
+
+    // A Vice President or Vice Chancellor: same pages as the President and Chancellor,
+    // but view only (no Report Preferences). Their area is kept in `department`, e.g. "Finance".
+    public function isVice(): bool
+    {
+        return in_array($this->role, ["vice_president", "vice_chancellor"]);
+    }
+
+    // "Vice President for Finance", "Vice Chancellor for Academics", or just the role without a department
+    public function executiveTitle(): string
+    {
+        $title = $this->role === "vice_chancellor" ? "Vice Chancellor" : "Vice President";
+
+        return $this->department ? "{$title} for {$this->department}" : $title;
     }
 
     // Dean of a college, or a Program Chair: a read-only College dashboard at /college.
@@ -106,20 +158,37 @@ class User extends Authenticatable
         return $this->role === "program_chair";
     }
 
-    // The seeded SHS principal has role 'admin' but is assigned to IS / SHS,
-    // so either the 'principal' role or the SHS assignment counts.
+    // The seeded SHS principal has role 'admin' but is assigned to IS / SHS, so the SHS assignment decides
+    // (a 'principal' assigned to SHS also counts). A 'principal' without it is the IS Principal (below).
     public function isShsPrincipal(): bool
     {
-        return $this->role === "principal" ||
-            $this->assigned_sub_level === "shs";
+        return $this->assigned_sub_level === "shs";
+    }
+
+    // The Integrated School Principal: every IS level (Kindergarten to Senior High), view only.
+    // Same pages as a Dean (CollegeController), by level instead of program, at /principal.
+    public function isPrincipal(): bool
+    {
+        return $this->role === "principal" && ! $this->isShsPrincipal();
     }
 
     // How the role is shown to people: [label, office, Bootstrap icon].
     // Used by the sidebar's "Signed in as" card and the two-factor setup page.
     public function roleInfo(): array
     {
+        // Registrars: one for College (and Graduate, Law, iPACE, ETEEAP), one for the Integrated School
+        if ($this->role === "registrar") {
+            return [$this->assigned_level === "is" ? "IS Registrar" : "College Registrar", "Registrar's Office", "bi-person-vcard"];
+        }
+        // Vice Presidents and Vice Chancellors: "VP for Finance", "VC for Academics"
+        if ($this->isVice() && $this->department) {
+            return [($this->role === "vice_chancellor" ? "VC" : "VP") . " for {$this->department}", "Executive Office", "bi-bank"];
+        }
         if ($this->isShsPrincipal()) {
             return ["SHS Principal", "Senior High School", "bi-building"];
+        }
+        if ($this->isPrincipal()) {
+            return ["Principal", "Integrated School", "bi-building"];
         }
         if ($this->role !== "admin" && $this->activeTempAdminGrant()) {
             return ["Temporary Admin", "IATO", "bi-hourglass-split"];
@@ -128,11 +197,15 @@ class User extends Authenticatable
         return match ($this->role) {
             "admin" => ["Super Admin", "IATO", "bi-star-fill"],
             "iato_staff" => ["IATO Staff", "IATO", "bi-person-badge"],
-            "dean" => ["Dean", "CITE", "bi-mortarboard"],
+            // A dean's college: assigned_college once the backend adds it, the department until then (CITE by default)
+            "dean" => ["Dean", strtoupper($this->assigned_college ?? $this->department ?? "CITE"), "bi-mortarboard"],
             "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],
+            "president" => ["President", "Executive Office", "bi-bank"],
+            "vice_president" => ["Vice President", "Executive Office", "bi-bank"],
             "chancellor" => ["Chancellor", "Executive Office", "bi-bank"],
+            "vice_chancellor" => ["Vice Chancellor", "Executive Office", "bi-bank"],
             default => [ucwords(str_replace("_", " ", $this->role ?? "User")), "iARIS", "bi-person"],
         };
     }

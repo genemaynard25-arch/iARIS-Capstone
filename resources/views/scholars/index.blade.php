@@ -22,7 +22,9 @@
     <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                {{-- Clicking the LAMP Discrepancies card does the same as "View Discrepancies" --}}
+                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100"
+                     @if ($stat['label'] === 'LAMP Discrepancies' && $needsReview) data-show-review role="button" tabindex="0" style="cursor: pointer;" title="Show the scholars that don't match LAMP" @endif>
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold text-{{ $stat['tone'] === 'primary' ? 'body' : $stat['tone'] . '-emphasis' }}">{{ $stat['value'] }}</div>
@@ -39,8 +41,11 @@
             <i class="bi bi-exclamation-triangle-fill fs-5"></i>
             <div class="flex-grow-1 small">
                 <strong>{{ $needsReview }} {{ $needsReview === 1 ? 'record doesn\'t' : 'records don\'t' }} match LAMP Office data.</strong>
-                The scholarship type is different, or the scholar is missing from LAMP's list.
-                Coordinate with the LAMP Office before finalizing the report.
+                {{-- The two numbers are kept up to date by the Ask LAMP script --}}
+                <span id="lampThreadCounts"></span>
+                @if ($canMessageLamp)
+                    Open a scholar, go to the Scholarship tab, and use <b>Ask LAMP to check</b>.
+                @endif
             </div>
             <button type="button" class="btn btn-warning btn-sm fw-semibold text-nowrap" id="showReview">
                 <i class="bi bi-eye me-1"></i> View Discrepancies
@@ -133,7 +138,11 @@
                             <td><span class="badge rounded-pill bg-{{ $typeTone }}-subtle text-{{ $typeTone }}-emphasis">{{ $s['type'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $scholarshipTones[$s['scholarship_status']] }}-subtle text-{{ $scholarshipTones[$s['scholarship_status']] }}-emphasis"><i class="bi bi-circle-fill me-1" style="font-size: 0.45rem; vertical-align: middle;"></i>{{ $s['scholarship_status'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $statusTones[$s['status']] }}-subtle text-{{ $statusTones[$s['status']] }}-emphasis">{{ $s['status'] }}</span></td>
-                            <td><span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1"></i>{{ $s['lamp'] }}</span></td>
+                            <td>
+                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1"></i>{{ $s['lamp'] }}</span>
+                                {{-- "Waiting for LAMP" / "LAMP replied" / "Resolved" (filled in by the Ask LAMP script) --}}
+                                <div data-thread-tag></div>
+                            </td>
                             <td class="small text-body-secondary text-nowrap">{{ $s['updated_label'] }}</td>
                             <td class="pe-4 text-end text-nowrap">
                                 @if ($canEdit)
@@ -218,6 +227,8 @@
                         <tbody><tr><td class="bg-transparent">Scholarship Type</td><td class="bg-transparent fw-semibold" data-field="type"></td><td class="bg-transparent fw-semibold" data-field="lamp_record" id="lampRecord"></td></tr></tbody>
                     </table>
                 </div>
+                {{-- Ask LAMP to check, or the conversation with LAMP (scholars/partials/ask-lamp) --}}
+                <div id="lampAsk"></div>
             </div>
 
             {{-- Application --}}
@@ -257,6 +268,9 @@
     @if ($canEdit)
         @include('applicants.partials.record-modals', ['scholarFields' => ['types' => array_keys(\App\Http\Controllers\ScholarController::TYPES), 'statuses' => array_keys($scholarshipTones)]])
     @endif
+
+    {{-- Ask LAMP to check, and the conversations with LAMP --}}
+    @include('scholars.partials.ask-lamp')
 @endsection
 
 @section('scripts')
@@ -345,11 +359,14 @@
         }));
 
         // "View Discrepancies" in the notice: show only records that need review
-        document.getElementById('showReview')?.addEventListener('click', () => {
+        function showReview() {
             document.getElementById('lampFilter').value = 'review';
             setFilter('lamp', 'review');
             document.getElementById('scholarRows').closest('.card').scrollIntoView({ behavior: 'smooth' });
-        });
+        }
+        document.getElementById('showReview')?.addEventListener('click', showReview);
+        document.querySelector('[data-show-review]')?.addEventListener('click', showReview);
+        document.querySelector('[data-show-review]')?.addEventListener('keydown', e => { if (e.key === 'Enter') showReview(); });
 
         // ---- Export: the filtered rows as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
@@ -403,6 +420,7 @@
             document.getElementById('lampRecord').className = `bg-transparent fw-semibold ${card.record}`;
 
             renderTimeline(s);
+            window.onScholarDrawer?.(s);   // Ask LAMP box (scholars/partials/ask-lamp)
             bootstrap.Tab.getOrCreateInstance(drawerEl.querySelector('[data-bs-target="#tabInfo"]')).show();
             drawer.show();
         }

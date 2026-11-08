@@ -211,10 +211,12 @@ body:has(.report-tray.show) main { padding-bottom: 6rem; }
 /* 9. "Export PDF" on the Chancellor pages and College Analytics: print the whole page, without the sidebar and buttons.
       (Section 4 hides everything else when printing, so this shows the page again.) */
 @media print {
-    body:has(#chancellorReport, #collegeReport) * { visibility: visible; }
-    body:has(#chancellorReport, #collegeReport) .sidebar,
-    body:has(#chancellorReport, #collegeReport) #aiWidget,
-    body:has(#chancellorReport, #collegeReport) .no-print { display: none !important; }
+    body:has(#executiveReport, #collegeReport) * { visibility: visible; }
+    body:has(#executiveReport, #collegeReport) .sidebar,
+    body:has(#executiveReport, #collegeReport) #aiWidget,
+    body:has(#executiveReport, #collegeReport) .no-print { display: none !important; }
+    /* Analytics tabs: print every tab, not only the open one */
+    #executiveReport .tab-content > .tab-pane { display: block !important; opacity: 1 !important; }
 }
 
 /* 10. Password boxes: hide Microsoft Edge's built-in "show password" eye,

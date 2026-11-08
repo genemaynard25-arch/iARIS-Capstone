@@ -26,11 +26,17 @@ class HomeController extends Controller
         if (auth()->user()->isLamp()) {
             return redirect()->route('lamp.dashboard');
         }
+        if (auth()->user()->role === 'registrar') {
+            return redirect()->route('registrar.dashboard');
+        }
         if (auth()->user()->isShsPrincipal()) {
             return redirect()->route('shs.dashboard');
         }
-        if (auth()->user()->isChancellor()) {
-            return redirect()->route('chancellor.dashboard');
+        if (auth()->user()->isExecutive()) {
+            return redirect()->route('executive.dashboard');
+        }
+        if (auth()->user()->isPrincipal()) {
+            return redirect()->route('principal.dashboard');
         }
         if (auth()->user()->isDeanOrChair()) {
             return redirect()->route('college.dashboard');

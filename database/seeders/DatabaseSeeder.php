@@ -25,16 +25,26 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
-    \App\Models\User::firstOrCreate(
-        ['email' => 'dean@gmail.com'],
-        [
-            'name' => 'Test Dean',
+    // Deans: the Dean pages at /college, each for their own college. Named as in the mockups.
+    // The college code goes in `department` (as in Account Management) until users.assigned_college exists.
+    // updateOrCreate, so running the seeder again renames the old "Test Dean".
+    foreach ([
+        ['dean@gmail.com', 'Cherrie Villafuerte', 'CITE'],
+        ['deancbeam@gmail.com', 'Jasmin De Silva', 'CBEAM'],
+        ['deanceas@gmail.com', 'Gina Dimaano', 'CEAS'],
+        ['deancihtm@gmail.com', 'Evangeline Necio', 'CIHTM'],
+        ['deanccje@gmail.com', 'Aristotle Balba', 'CCJE'],
+        ['deancon@gmail.com', 'Margie Ebreo', 'CON'],
+    ] as [$email, $name, $college]) {
+        \App\Models\User::updateOrCreate(['email' => $email], [
+            'name' => $name,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'role' => 'dean',
             'access_type' => 'viewer',
             'assigned_level' => 'college',
-        ]
-    );
+            'department' => $college,
+        ]);
+    }
 
     \App\Models\User::firstOrCreate(
         ['email' => 'staff@gmail.com'],
@@ -68,17 +78,36 @@ class DatabaseSeeder extends Seeder
         ]
         );
 
-    // President / Chancellor office: read-only dashboard at /chancellor.
-    // Named after the Chancellor in the Executive Office card, so the "You" tag shows.
-    \App\Models\User::firstOrCreate(
-        ['email' => 'chancellor@gmail.com'],
-        [
-            'name' => 'Merlin Teodosia C. Suarez',
+    // Executive Office (President, Chancellor, Vice Presidents, Vice Chancellors): read-only pages at /executive.
+    // Named as in the mockups (and the Executive Office card, so the "You" tag shows). A VP's or VC's area
+    // goes in `department` ("Vice President for Finance"). updateOrCreate, so running the seeder again fixes older names.
+    foreach ([
+        ['president@gmail.com', 'Edmundo L. Fernandez FSC', 'president', null],
+        ['chancellor@gmail.com', 'Teodosia Merlin Suarez', 'chancellor', null],
+        ['vp@gmail.com', 'Luz Magpantay', 'vice_president', 'Finance'],
+        ['vpadmin@gmail.com', 'Cyrill Kino Escolano FSC', 'vice_president', 'Administration'],
+        ['vpadv@gmail.com', 'Agustin Boquer FSC', 'vice_president', 'Advancement'],
+        ['vc@gmail.com', 'Tessie Palma', 'vice_chancellor', 'Academics'],
+        ['vcrii@gmail.com', 'Sheila Maloles', 'vice_chancellor', 'Research, Innovation & Internationalization'],
+        ['vcmission@gmail.com', 'Wenifredo Angeles', 'vice_chancellor', 'Mission'],
+    ] as [$email, $name, $role, $department]) {
+        \App\Models\User::updateOrCreate(['email' => $email], [
+            'name' => $name,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-            'role' => 'chancellor',
+            'role' => $role,
             'access_type' => 'viewer',
-        ]
-    );
+            'department' => $department,
+        ]);
+    }
+
+    // Integrated School Principal: the Dean pages by level, at /principal (Kindergarten to Senior High). Named as in the mockup.
+    \App\Models\User::updateOrCreate(['email' => 'principal@gmail.com'], [
+        'name' => 'Kristine Anne Dimaculangan',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'principal',
+        'access_type' => 'viewer',
+        'assigned_level' => 'is',
+    ]);
 
     // Program Chair: the College dashboard at /college, locked to one program (BS Computer Science for now)
     \App\Models\User::firstOrCreate(
@@ -89,6 +118,30 @@ class DatabaseSeeder extends Seeder
             'role' => 'program_chair',
             'access_type' => 'viewer',
             'assigned_level' => 'college',
+        ]
+    );
+
+    // College Registrar: Registrar pages at /registrar (records are view only)
+    \App\Models\User::firstOrCreate(
+        ['email' => 'registrar@gmail.com'],
+        [
+            'name' => 'Remian Santos',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'registrar',
+            'access_type' => 'viewer',
+            'assigned_level' => 'college',
+        ]
+    );
+
+    // IS Registrar: the same Registrar pages, for Integrated School records only
+    \App\Models\User::firstOrCreate(
+        ['email' => 'isregistrar@gmail.com'],
+        [
+            'name' => 'Michelle Reyes',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'registrar',
+            'access_type' => 'viewer',
+            'assigned_level' => 'is',
         ]
     );
 

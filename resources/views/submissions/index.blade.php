@@ -1,144 +1,126 @@
 @extends('layouts.app')
 
 {{--
-    My Submissions (SubmissionsController): the staff member's edits and imports and what the
-    Super Admin did with them. FRONT END ONLY: Resend and Withdraw change this page until reload.
+    My Submissions (SubmissionsController): the staff member's edits, new records, removals and imports,
+    and what the Super Admin did with them. LAMP requests (conversations they started from Scholarships)
+    show here too. Everything below the "How to submit" card is drawn by the script.
+    FRONT END ONLY: Fix and resubmit / Withdraw change this page until reload.
 --}}
 
 @section('title', 'iARIS — My Submissions')
 @section('page-title', 'My Submissions')
-@section('page-subtitle', 'Your edits and imports, and where each one is in the Review Queue')
-
-@php
-    // status => [label, Bootstrap colour, icon]
-    $statuses = [
-        'sent' => ['Sent back', 'danger', 'bi-arrow-return-left'],
-        'waiting' => ['Waiting for review', 'warning', 'bi-hourglass-split'],
-        'approved' => ['Approved', 'primary', 'bi-check-circle-fill'],
-    ];
-    // Sent back first: those need you
-    $order = array_keys($statuses);
-    $items = collect($items)->sortBy(fn ($i) => array_search($i['status'], $order))->values();
-@endphp
+@section('page-subtitle', 'Edits, new records, removals, and imports you sent to the Review Queue')
 
 @section('content')
-    <div class="alert alert-light border d-flex align-items-start gap-2 rounded-4 small mb-4">
-        <i class="bi bi-info-circle text-primary mt-1"></i>
-        <div>Your edits and imports wait in the Review Queue until the Super Admin approves them. Until then, Deans, the Registrar, LAMP, and leadership still see the old data.</div>
+    {{-- How a submission moves --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-2 small mx-0">
+            @foreach ([
+                ['1', 'You submit', 'Edits, new applicants, removals, imports', 'primary'],
+                ['2', 'Super Admin reviews', 'Only you and the Super Admin see it until then', 'primary'],
+                ['bi-check-lg', 'Approved', 'Visible to every user', 'success'],
+                ['bi-arrow-counterclockwise', 'Sent back', 'Read the reason, fix, and resubmit', 'danger'],
+            ] as [$mark, $title, $text, $tone])
+                <div class="col"><div class="d-flex align-items-center gap-2 rounded-3 bg-body-tertiary border px-3 py-2 h-100">
+                    <span class="rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width: 26px; height: 26px;">
+                        @if (str_starts_with($mark, 'bi-'))<i class="bi {{ $mark }}"></i>@else{{ $mark }}@endif
+                    </span>
+                    <div class="lh-sm"><div class="fw-bold">{{ $title }}</div><div class="text-body-secondary">{{ $text }}</div></div>
+                </div></div>
+            @endforeach
+        </div>
     </div>
 
-    {{-- Counts (the script keeps them up to date) --}}
-    <div class="row row-cols-1 row-cols-sm-3 g-3 mb-4">
-        @foreach ($statuses as $key => [$label, $tone])
-            <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $label }}</div>
-                        <div class="fs-3 fw-bold text-{{ $tone }}-emphasis" data-count="{{ $key }}">0</div>
+    {{-- How to submit --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-question-circle me-1 text-primary"></i> How to submit</h2>
+            <p class="small text-body-secondary mb-3">There is no separate form. Every change you make in iARIS is sent here automatically when you press <b>Submit for review</b>.</p>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
+                @foreach ([
+                    ['bi-pencil', 'primary', 'Edit a record', 'Open a records page, press the pen icon on a row (or <b>Edit Record</b> in its details), change the fields, then <b>Submit for review</b>.', '/records/college', 'Open College records'],
+                    ['bi-person-plus', 'info', 'Add an applicant', 'Press <b>Add Applicant</b>, choose the division, fill in the form, then <b>Submit for review</b>.', '/applicants', 'Add applicant'],
+                    ['bi-trash', 'danger', 'Remove an applicant', 'Open the applicant, press <b>Remove</b>, choose a reason, then <b>Request removal</b>. The record stays until approved.', '/records/is', 'Open IS records'],
+                    ['bi-cloud-arrow-up', 'warning', 'Import a file', 'Upload an Excel or CSV file, check the preview, then press <b>Submit for review</b> on the last step.', '/import', 'Import data'],
+                ] as [$icon, $tone, $title, $text, $url, $link])
+                    <div class="col">
+                        <div class="border rounded-4 p-3 h-100 d-flex flex-column">
+                            <span class="rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center mb-2" style="width: 36px; height: 36px;"><i class="bi {{ $icon }}"></i></span>
+                            <div class="fw-bold">{{ $title }}</div>
+                            <div class="small text-body-secondary mb-3">{!! $text !!}</div>
+                            <a href="{{ url($url) }}" class="btn btn-sm btn-light border fw-semibold mt-auto align-self-start">{{ $link }} <i class="bi bi-arrow-right ms-1"></i></a>
+                        </div>
                     </div>
-                </div>
+                @endforeach
             </div>
-        @endforeach
+            <div class="small text-body-secondary bg-body-tertiary rounded-3 px-3 py-2 mt-3">
+                <i class="bi bi-chat-dots me-1"></i> Messages you send to the LAMP Office from Scholarships also show here, under <b>LAMP requests</b>. They don't need approval because they don't change any data.
+            </div>
+        </div>
     </div>
+
+    {{-- Counts; clicking one filters the list --}}
+    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
-        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom" id="statusPills" role="group" aria-label="Filter by status">
-            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-filter="">All</button>
-            @foreach ($statuses as $key => [$label])
-                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-filter="{{ $key }}">{{ $label }} <span class="ms-1" data-count="{{ $key }}"></span></button>
-            @endforeach
+        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
+            <div class="d-flex flex-wrap gap-2 me-auto" id="statusPills" role="group" aria-label="Filter by status"></div>
+            <div class="input-group" style="max-width: 320px;">
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" id="search" placeholder="Search applicant, file, or RQ number…" aria-label="Search submissions">
+            </div>
         </div>
-
-        <div class="list-group list-group-flush rounded-bottom-4" id="submissionList">
-            @foreach ($items as $item)
-                @php([$label, $tone, $icon] = $statuses[$item['status']])
-                <div class="list-group-item px-4 py-3" data-id="{{ $item['id'] }}" data-status="{{ $item['status'] }}">
-                    <div class="d-flex flex-wrap align-items-start gap-3">
-                        <div class="rounded-3 bg-body-tertiary text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
-                            <i class="bi {{ $item['type'] === 'import' ? 'bi-cloud-arrow-up' : 'bi-pencil' }} fs-5"></i>
-                        </div>
-                        <div class="flex-grow-1" style="min-width: 220px;">
-                            <div class="fw-bold">{{ $item['title'] }} · {{ $item['subject'] }}</div>
-                            <div class="small text-body-secondary">
-                                {{ $item['id'] }} · {{ $item['ref'] }} · {{ $item['unit'] }} · Sent {{ \Illuminate\Support\Carbon::parse($item['at'])->format('M j, g:i A') }}
-                            </div>
-                        </div>
-                        <span class="badge rounded-pill bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis" data-badge><i class="bi {{ $icon }} me-1"></i>{{ $label }}</span>
-                    </div>
-
-                    <div class="ms-lg-5 ps-lg-3 mt-3">
-                        {{-- What was sent --}}
-                        @if ($item['type'] === 'import')
-                            <div class="d-flex flex-wrap gap-2 small mb-2">
-                                @foreach (['total' => 'rows', 'new' => 'new', 'updated' => 'updated', 'errors' => 'with errors (skipped)'] as $key => $word)
-                                    <span class="rounded-pill bg-body-tertiary border px-3 py-1"><b>{{ $item['summary'][$key] }}</b> {{ $word }}</span>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table table-sm small mb-2" style="max-width: 560px;">
-                                    <thead><tr class="text-body-secondary"><th class="fw-semibold">Field</th><th class="fw-semibold">Before</th><th class="fw-semibold">Your change</th></tr></thead>
-                                    <tbody>
-                                        @foreach ($item['changes'] as [$field, $before, $after])
-                                            <tr><td>{{ $field }}</td><td class="text-body-secondary">{{ $before }}</td><td class="fw-semibold">{{ $after }}</td></tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-
-                        @if ($item['note'] ?? '')
-                            <div class="small text-body-secondary mb-2"><i class="bi bi-chat-left-text me-1"></i> Your note: {{ $item['note'] }}</div>
-                        @endif
-
-                        {{-- What happened to it --}}
-                        <div data-outcome>
-                            @if ($item['status'] === 'sent')
-                                <div class="alert alert-danger small py-2 px-3 mb-2">
-                                    <div class="fw-bold"><i class="bi bi-arrow-return-left me-1"></i> {{ $item['reviewed'] }}</div>
-                                    {{ $item['reason'] }}
-                                </div>
-                                <button type="button" class="btn btn-sm btn-primary fw-semibold" data-action="resend"><i class="bi bi-send me-1"></i> Fix and resend</button>
-                            @elseif ($item['status'] === 'approved')
-                                <div class="small text-primary-emphasis"><i class="bi bi-check-circle-fill me-1"></i> {{ $item['reviewed'] }}. Everyone can see it now.</div>
-                            @else
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <span class="small text-body-secondary"><i class="bi bi-eye-slash me-1"></i> Not visible to other users yet.</span>
-                                    <button type="button" class="btn btn-sm btn-light border fw-semibold" data-action="withdraw"><i class="bi bi-x-lg me-1"></i> Withdraw</button>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-        <div class="text-center text-body-secondary py-5 d-none" id="noResults">
-            <i class="bi bi-inbox fs-3 d-block mb-2"></i> Nothing here.
-        </div>
+        <div class="list-group list-group-flush rounded-bottom-4" id="submissionList"></div>
     </div>
 
-    {{-- Fix and resend --}}
-    <div class="modal fade" id="resendModal" tabindex="-1" aria-labelledby="resendTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form class="modal-content border-0 rounded-4 overflow-hidden" id="resendForm" novalidate>
+    {{-- Fix and resubmit --}}
+    <div class="modal fade" id="fixModal" tabindex="-1" aria-labelledby="fixTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <form class="modal-content border-0 rounded-4 overflow-hidden" id="fixForm" novalidate>
                 <div class="modal-header bg-iaris text-white border-0 p-4">
                     <div>
-                        <h3 class="modal-title fs-5 fw-bold" id="resendTitle">Fix and resend</h3>
-                        <p class="small text-white-50 mb-0" id="resendSubtitle"></p>
+                        <h3 class="modal-title fs-5 fw-bold" id="fixTitle">Fix and resubmit</h3>
+                        <p class="small text-white-50 mb-0" id="fixSubtitle"></p>
                     </div>
                     <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="alert alert-danger small py-2 px-3" id="resendReason"></div>
-                    <label for="resendNote" class="form-label small fw-bold text-uppercase text-body-secondary">What did you fix?</label>
-                    <textarea class="form-control" id="resendNote" rows="3" placeholder="e.g. Changed the amount to ₱1,500.00 after checking the receipt." required></textarea>
-                    <div class="invalid-feedback">Say what you changed, so the Super Admin can check it quickly.</div>
+                    <div class="alert alert-danger small py-2 px-3">
+                        <div class="fw-bold" id="fixBy"></div>
+                        <div id="fixReason"></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle small">
+                            <thead><tr class="text-body-secondary"><th class="fw-semibold">Field</th><th class="fw-semibold">Current</th><th class="fw-semibold">Your new value</th></tr></thead>
+                            <tbody id="fixRows"></tbody>
+                        </table>
+                    </div>
+                    <label for="fixNote" class="form-label small fw-bold text-uppercase text-body-secondary">Note for the Super Admin</label>
+                    <textarea class="form-control" id="fixNote" rows="3" required placeholder="e.g. Checked the receipt again. The correct amount is ₱1,500.00."></textarea>
+                    <div class="invalid-feedback">Add a short note about what you fixed.</div>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
-                    <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-semibold flex-fill"><i class="bi bi-send me-1"></i> Resend for review</button>
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-send me-1"></i> Resubmit for review</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- Withdraw --}}
+    <div class="modal fade" id="withdrawModal" tabindex="-1" aria-labelledby="withdrawTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-body p-4">
+                    <h3 class="fs-5 fw-bold mb-1" id="withdrawTitle">Withdraw this submission?</h3>
+                    <p class="small text-body-secondary mb-2" id="withdrawSubtitle"></p>
+                    <p class="small mb-0">It leaves the Review Queue and the record stays as it is now. You can submit the change again later.</p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Keep it</button>
+                    <button type="button" class="btn btn-danger fw-semibold" id="withdrawConfirm"><i class="bi bi-arrow-counterclockwise me-1"></i> Withdraw</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -154,92 +136,252 @@
 
 @section('scripts')
     <script>
-        const STATUSES = @json($statuses);
-        const list = document.getElementById('submissionList');
-        let filter = '';
-        let resending = null;   // the item in the Fix and resend pop-up
+        const $ = id => document.getElementById(id);
 
-        function toast(text) {
-            document.getElementById('submissionToastText').textContent = text;
-            bootstrap.Toast.getOrCreateInstance(document.getElementById('submissionToast')).show();
-        }
-
-        // Counts on the cards, the pills and the sidebar; then show only the chosen status
-        function refresh() {
-            const items = [...list.children];
-            Object.keys(STATUSES).forEach(key => document.querySelectorAll(`[data-count="${key}"]`)
-                .forEach(el => el.textContent = items.filter(i => i.dataset.status === key).length));
-            const nav = document.getElementById('nav-count-my-submissions');
-            if (nav) {
-                const sent = items.filter(i => i.dataset.status === 'sent').length;
-                nav.textContent = sent;
-                nav.classList.toggle('d-none', sent === 0);
-            }
-            let shown = 0;
-            items.forEach(i => {
-                const show = !filter || i.dataset.status === filter;
-                i.classList.toggle('d-none', !show);
-                shown += show;
-            });
-            document.getElementById('noResults').classList.toggle('d-none', shown > 0);
-        }
-
-        document.querySelectorAll('#statusPills [data-filter]').forEach(pill => pill.addEventListener('click', () => {
-            document.querySelectorAll('#statusPills [data-filter]').forEach(p => {
-                p.classList.toggle('btn-primary', p === pill);
-                p.classList.toggle('btn-outline-secondary', p !== pill);
-            });
-            filter = pill.dataset.filter;
-            refresh();
+        // Review Queue items, newest first, plus the LAMP conversations you started
+        const ITEMS = @json($items).sort((a, b) => b.at.localeCompare(a.at));
+        @json($lampRequests).forEach(t => ITEMS.push({
+            id: t.id, type: 'lamp', title: 'Asked LAMP to check', subject: t.name, ref: t.reason, unit: 'Scholarships',
+            when: t.messages[t.messages.length - 1].at, status: 'lt_' + t.status, thread: t,
         }));
 
-        // Put an item in a new status: new badge and a one-line outcome
-        function setStatus(item, status, outcome) {
-            const [label, tone, icon] = STATUSES[status];
-            item.dataset.status = status;
-            const badge = item.querySelector('[data-badge]');
-            badge.className = `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`;
-            badge.innerHTML = `<i class="bi ${icon} me-1"></i>`;
-            badge.append(label);
-            const box = item.querySelector('[data-outcome]');
-            box.replaceChildren();
-            const line = document.createElement('div');
-            line.className = 'small text-body-secondary';
-            line.textContent = outcome;
-            box.appendChild(line);
-            refresh();
+        // status => [label, Bootstrap colour, icon]
+        const STATUS = {
+            waiting: ['Waiting for review', 'warning', 'bi-hourglass-split'],
+            sent: ['Sent back', 'danger', 'bi-arrow-counterclockwise'],
+            approved: ['Approved', 'success', 'bi-check-circle-fill'],
+            withdrawn: ['Withdrawn', 'secondary', 'bi-arrow-counterclockwise'],
+            resubmitted: ['Resubmitted', 'secondary', 'bi-send'],
+            lt_waiting: ['Waiting for LAMP', 'warning', 'bi-hourglass-split'],
+            lt_replied: ['LAMP replied', 'info', 'bi-reply-fill'],
+            lt_resolved: ['Resolved', 'success', 'bi-check-circle-fill'],
+        };
+        // type => [icon, colour]
+        const TYPES = { edit: ['bi-pencil', 'primary'], add: ['bi-person-plus', 'info'], remove: ['bi-trash', 'danger'], import: ['bi-cloud-arrow-up', 'warning'], lamp: ['bi-chat-dots', 'info'] };
+
+        let filter = 'all';
+        const open = new Set(ITEMS.filter(x => x.status === 'sent').map(x => x.id));   // sent back starts open
+        let current = null;           // the item in the Fix / Withdraw pop-up
+        let nextReviewNumber = 413;   // made-up Review Queue numbers
+
+        const el = (tag, className, text) => {
+            const e = document.createElement(tag);
+            if (className) e.className = className;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        };
+        const badge = status => {
+            const [label, tone, icon] = STATUS[status];
+            const b = el('span', `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`);
+            b.innerHTML = `<i class="bi ${icon} me-1"></i>`;
+            b.append(label);
+            return b;
+        };
+        const toast = text => {
+            $('submissionToastText').textContent = text;
+            bootstrap.Toast.getOrCreateInstance($('submissionToast')).show();
+        };
+        const nowLabel = () => {
+            const d = new Date();
+            return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+        };
+        const count = status => ITEMS.filter(x => x.status === status).length;
+        const matchesFilter = x => filter === 'all' || x.status === filter || (filter === 'lamp' && x.type === 'lamp')
+            || (filter === 'withdrawn' && x.status === 'resubmitted');
+
+        function draw() {
+            // Stat cards
+            $('statCards').replaceChildren(...[
+                ['waiting', 'Waiting', 'warning', 'Only you and the Super Admin see these'],
+                ['sent', 'Sent back', 'danger', 'Needs your fix'],
+                ['approved', 'Approved', 'success', 'Visible to every user'],
+                ['withdrawn', 'Withdrawn', 'secondary', 'Taken back by you'],
+            ].map(([key, label, tone, sub]) => {
+                const col = el('div', 'col');
+                const card = el('button', `card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100 w-100 text-start ${filter === key ? 'bg-body-tertiary' : ''}`);
+                card.type = 'button';
+                card.innerHTML = `<div class="card-body"><div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2"></div><div class="fs-3 fw-bold text-${tone}-emphasis"></div><div class="small text-body-secondary"></div></div>`;
+                const [l, v, s] = card.querySelectorAll('.card-body > div');
+                l.textContent = label; v.textContent = count(key); s.textContent = sub;
+                card.addEventListener('click', () => { filter = key; draw(); });
+                col.appendChild(card);
+                return col;
+            }));
+
+            // Pills
+            $('statusPills').replaceChildren(...[
+                ['all', 'All', ITEMS.length], ['waiting', 'Waiting', count('waiting')], ['sent', 'Sent back', count('sent')],
+                ['approved', 'Approved', count('approved')], ['withdrawn', 'Withdrawn', count('withdrawn') + count('resubmitted')],
+                ['lamp', 'LAMP requests', ITEMS.filter(x => x.type === 'lamp').length],
+            ].map(([key, label, n]) => {
+                const pill = el('button', `btn btn-sm rounded-pill px-3 fw-semibold ${filter === key ? 'btn-primary' : 'btn-outline-secondary'}`);
+                pill.type = 'button';
+                pill.append(label, el('span', 'ms-2 opacity-75', String(n)));
+                pill.addEventListener('click', () => { filter = key; draw(); });
+                return pill;
+            }));
+
+            // The list
+            const q = $('search').value.trim().toLowerCase();
+            const list = ITEMS.filter(x => matchesFilter(x) && (!q || [x.id, x.subject, x.ref, x.title].join(' ').toLowerCase().includes(q)));
+            $('submissionList').replaceChildren(...(list.length ? list.map(item) : [el('div', 'text-center text-body-secondary py-5', 'No submissions here.')]));
+
+            // The amber number on the sidebar: sent back to you
+            const nav = $('nav-count-my-submissions');
+            if (nav) { nav.textContent = count('sent'); nav.classList.toggle('d-none', count('sent') === 0); }
         }
 
-        list.addEventListener('click', e => {
-            const button = e.target.closest('[data-action]');
-            if (!button) return;
-            const item = button.closest('[data-id]');
-            if (button.dataset.action === 'withdraw') {
-                if (!confirm('Withdraw this submission? It leaves the Review Queue and nothing changes.')) return;
-                item.remove();
-                refresh();
-                toast(`${item.dataset.id} withdrawn. (Demo only — not saved yet.)`);
-            } else {
-                resending = item;
-                document.getElementById('resendSubtitle').textContent = item.querySelector('.fw-bold').textContent;
-                document.getElementById('resendReason').textContent = item.querySelector('.alert').textContent.trim().replace(/\s+/g, ' ');
-                document.getElementById('resendForm').reset();
-                document.getElementById('resendNote').classList.remove('is-invalid');
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('resendModal')).show();
+        // One submission: a header row that opens and closes its details
+        function item(x) {
+            const wrap = el('div', `list-group-item p-0 ${x.status === 'sent' ? 'border-start border-4 border-danger' : ''}`);
+            const head = el('button', 'btn w-100 text-start d-flex flex-wrap align-items-center gap-3 px-4 py-3 border-0 rounded-0');
+            head.type = 'button';
+            head.setAttribute('aria-expanded', open.has(x.id));
+            const [icon, tone] = TYPES[x.type] || TYPES.edit;
+            const ic = el('span', `rounded-3 bg-${tone}-subtle text-${tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0`);
+            ic.style.width = ic.style.height = '40px';
+            ic.innerHTML = `<i class="bi ${icon}"></i>`;
+            const text = el('div', 'flex-grow-1');
+            text.style.minWidth = '220px';
+            const title = el('div', 'fw-bold', x.title);
+            title.appendChild(el('span', 'small fw-normal text-body-secondary font-monospace ms-2', x.id));
+            text.append(title, el('div', 'small text-body-secondary', `${x.subject} · ${x.ref} · ${x.unit}`));
+            const when = el('span', 'small text-body-secondary text-nowrap', x.when);
+            const chev = el('i', `bi bi-chevron-${open.has(x.id) ? 'down' : 'right'} text-body-secondary`);
+            head.append(ic, text, badge(x.status), when, chev);
+            head.addEventListener('click', () => { open.has(x.id) ? open.delete(x.id) : open.add(x.id); draw(); });
+            wrap.appendChild(head);
+            if (!open.has(x.id)) return wrap;
+
+            const body = el('div', 'px-4 pb-3 ms-lg-5 ps-lg-4');
+            if (x.status === 'sent') {
+                const r = el('div', 'alert alert-danger small py-2 px-3 mb-2');
+                r.append(el('div', 'fw-bold', x.reviewed || 'Sent back by the Super Admin'), el('div', '', x.reason || ''));
+                body.appendChild(r);
             }
-        });
+            if (x.status === 'approved') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-success-subtle text-success-emphasis fw-semibold', `${x.reviewed || 'Approved'}. It is now visible to every user.`));
+            if (x.status === 'resubmitted') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-body-tertiary', `Fixed and resubmitted as ${x.resubmittedAs}.`));
+            if (x.status === 'withdrawn') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-body-tertiary', `You withdrew this on ${x.withdrawnAt}. The record was not changed.`));
+            if (x.note) {
+                const n = el('div', 'small mb-2');
+                n.append(el('span', 'text-body-secondary', 'Your note: '), x.note);
+                body.appendChild(n);
+            }
+            if (x.summary) {
+                const sum = el('div', 'd-flex flex-wrap gap-2 small mb-2');
+                [['Rows in file', x.summary.total], ['New applicants', x.summary.new], ['Updated', x.summary.updated], ['Rows with errors', x.summary.errors]].forEach(([l, v], i) => {
+                    const c = el('div', 'rounded-3 bg-body-tertiary border px-3 py-2');
+                    c.append(el('div', 'text-body-secondary', l), el('div', `fw-bold ${i === 3 && v ? 'text-danger' : ''}`, String(v)));
+                    sum.appendChild(c);
+                });
+                body.appendChild(sum);
+            }
+            if (x.changes?.length) {
+                const tbl = el('table', 'table table-sm small mb-2');
+                tbl.style.maxWidth = '600px';
+                tbl.innerHTML = '<thead><tr class="text-body-secondary"><th class="fw-semibold">Field</th><th class="fw-semibold">Before</th><th class="fw-semibold">Your change</th></tr></thead>';
+                const tb = el('tbody');
+                x.changes.forEach(([f, before, after]) => {
+                    const tr = el('tr');
+                    tr.append(el('td', '', f), el('td', 'text-body-secondary', before), el('td', 'fw-semibold', after));
+                    tb.appendChild(tr);
+                });
+                tbl.appendChild(tb);
+                body.appendChild(el('div', 'table-responsive')).appendChild(tbl);
+            }
+            if (x.type === 'lamp') {
+                const thread = el('div', 'vstack gap-2 mb-2');
+                x.thread.messages.forEach(m => {
+                    const b = el('div', `rounded-3 px-3 py-2 small ${m.from === 'iato' ? 'bg-primary-subtle align-self-end' : 'bg-body-tertiary align-self-start'}`);
+                    b.style.maxWidth = '92%';
+                    const who = el('div', 'fw-bold', m.name);
+                    who.appendChild(el('span', 'fw-normal text-body-secondary', ` · ${m.role} · ${m.at}`));
+                    b.append(who, el('div', '', m.text));
+                    thread.appendChild(b);
+                });
+                body.appendChild(thread);
+                const link = el('a', `btn btn-sm fw-semibold ${x.status === 'lt_replied' ? 'btn-primary' : 'btn-light border'}`);
+                link.href = '{{ url('/records/scholars') }}';
+                link.innerHTML = '<i class="bi bi-award me-1"></i>';
+                link.append(x.status === 'lt_replied' ? 'Read and reply in Scholarships' : 'Open in Scholarships');
+                body.appendChild(link);
+            }
 
-        document.getElementById('resendForm').addEventListener('submit', e => {
+            // Actions
+            const acts = el('div', 'd-flex flex-wrap gap-2');
+            if (x.status === 'sent' && x.changes) {
+                const fix = el('button', 'btn btn-sm btn-primary fw-semibold');
+                fix.type = 'button';
+                fix.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Fix and resubmit';
+                fix.addEventListener('click', () => openFix(x));
+                acts.appendChild(fix);
+            }
+            if (x.status === 'waiting') {
+                const wd = el('button', 'btn btn-sm btn-outline-danger fw-semibold');
+                wd.type = 'button';
+                wd.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Withdraw';
+                wd.addEventListener('click', () => openWithdraw(x));
+                acts.appendChild(wd);
+            }
+            if (acts.children.length) body.appendChild(acts);
+            wrap.appendChild(body);
+            return wrap;
+        }
+
+        // ---- Fix and resubmit: change the values, add a note, and it goes back to the queue as a new RQ ----
+        const fixModal = bootstrap.Modal.getOrCreateInstance($('fixModal'));
+        function openFix(x) {
+            current = x;
+            $('fixSubtitle').textContent = `${x.id} · ${x.subject} · ${x.ref}`;
+            $('fixBy').textContent = x.reviewed || 'Sent back';
+            $('fixReason').textContent = x.reason || '';
+            $('fixRows').replaceChildren(...x.changes.map(([f, before, after], i) => {
+                const tr = el('tr');
+                const input = el('input', 'form-control form-control-sm');
+                input.value = after;
+                input.dataset.i = i;
+                input.setAttribute('aria-label', `New value for ${f}`);
+                const td = el('td');
+                td.appendChild(input);
+                tr.append(el('td', '', f), el('td', 'text-body-secondary', before), td);
+                return tr;
+            }));
+            $('fixForm').reset();
+            $('fixForm').classList.remove('was-validated');
+            fixModal.show();
+        }
+        $('fixForm').addEventListener('submit', e => {
             e.preventDefault();
-            const note = document.getElementById('resendNote');
-            note.classList.toggle('is-invalid', !note.value.trim());
-            if (!note.value.trim()) return note.focus();
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('resendModal')).hide();
-            setStatus(resending, 'waiting', `Resent just now. Your fix: ${note.value.trim()}`);
-            toast(`${resending.dataset.id} is back in the Review Queue. (Demo only — not saved yet.)`);
+            e.target.classList.add('was-validated');
+            if (!e.target.checkValidity()) return $('fixNote').focus();
+            const x = current;
+            const id = 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
+            const changes = x.changes.map(([f, before, after], i) => [f, before, $('fixRows').querySelector(`[data-i="${i}"]`).value.trim() || after]);
+            ITEMS.unshift({ ...x, id, title: `${x.title} (resubmitted)`, when: nowLabel(), status: 'waiting', note: $('fixNote').value.trim(), changes, reviewed: null, reason: null });
+            Object.assign(x, { status: 'resubmitted', resubmittedAs: id });
+            open.delete(x.id);
+            open.add(id);
+            filter = 'all';
+            fixModal.hide();
+            draw();
+            toast(`Resubmitted as ${id}. The Super Admin will review it again. (Demo only — not saved yet.)`);
         });
-        document.getElementById('resendNote').addEventListener('input', e => e.target.classList.remove('is-invalid'));
 
-        refresh();
+        // ---- Withdraw ----
+        const withdrawModal = bootstrap.Modal.getOrCreateInstance($('withdrawModal'));
+        function openWithdraw(x) {
+            current = x;
+            $('withdrawSubtitle').textContent = `${x.id} · ${x.title} · ${x.subject}`;
+            withdrawModal.show();
+        }
+        $('withdrawConfirm').addEventListener('click', () => {
+            Object.assign(current, { status: 'withdrawn', withdrawnAt: nowLabel() });
+            withdrawModal.hide();
+            draw();
+            toast(`${current.id} withdrawn. The record was not changed. (Demo only — not saved yet.)`);
+        });
+
+        $('search').addEventListener('input', draw);
+        draw();
     </script>
 @endsection

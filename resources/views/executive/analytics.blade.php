@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — President / Chancellor Analytics')
+@section('title', 'iARIS — Executive Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', 'Institution-wide admissions and enrollment analysis, with AI-generated insights')
 
@@ -22,7 +22,7 @@
 
 @section('content')
     {{-- Same id as the dashboard, so "Export PDF" prints this page the same way (iaris.css section 9) --}}
-    <div id="chancellorReport">
+    <div id="executiveReport">
         {{-- Toolbar: read-only notice, academic year, export --}}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2">
@@ -47,6 +47,15 @@
             </div>
         </div>
 
+        {{-- Four tabs, as in the mockup. "Export PDF" prints all of them (iaris.css section 9). --}}
+        <ul class="nav nav-pills gap-2 mb-4 no-print" role="tablist" id="analyticsTabs">
+            <li class="nav-item" role="presentation"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tabOverview" type="button" role="tab" data-hash="overview"><i class="bi bi-graph-up me-1"></i> Overview <span class="small fw-normal opacity-75 d-none d-md-inline">· trend, funnel, units</span></button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabCompare" type="button" role="tab" data-hash="compare"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights <span class="badge rounded-pill bg-body-secondary text-body-secondary ms-1">{{ count($insights) }}</span></button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabEstimate" type="button" role="tab" data-hash="estimate"><i class="bi bi-magic me-1"></i> Next AY estimate</button></li>
+        </ul>
+        <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabOverview" role="tabpanel">
         {{-- Stat cards (numbers filled in by the script) --}}
         <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
             @foreach ([['applicants', 'Total Applicants', 'primary'], ['paid', 'Paid Reservations', 'info'], ['enrolled', 'Enrolled', 'dark'], ['conversion', 'Applied → Enrolled', 'warning']] as [$key, $label, $tone])
@@ -80,7 +89,7 @@
                                 <button type="button" class="btn btn-sm btn-light border" data-export="trendChart"><i class="bi bi-download me-1"></i>Export</button>
                             </div>
                         </div>
-                        @include('chancellor.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
+                        @include('executive.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
                         <div class="chart-box flex-grow-1">
                             <canvas id="trendChart" role="img" aria-label="Applicants and enrolled per academic year"></canvas>
                         </div>
@@ -119,7 +128,7 @@
                             </div>
                             <button type="button" class="btn btn-sm btn-light border no-print" data-export="unitChart"><i class="bi bi-download me-1"></i>Export</button>
                         </div>
-                        @include('chancellor.partials.legend', ['items' => [$years[count($years) - 2] => '#7FC4AB', $years[count($years) - 1] => '#00674F']])
+                        @include('executive.partials.legend', ['items' => [$years[count($years) - 2] => '#7FC4AB', $years[count($years) - 1] => '#00674F']])
                         <div class="chart-box">
                             <canvas id="unitChart" role="img" aria-label="Applicants per unit, last academic year and this academic year"></canvas>
                         </div>
@@ -146,6 +155,8 @@
             </div>
         </div>
 
+        </div>
+        <div class="tab-pane fade" id="tabCompare" role="tabpanel">
         {{-- Compare up to 3 academic years --}}
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
@@ -176,6 +187,8 @@
             </div>
         </div>
 
+        </div>
+        <div class="tab-pane fade" id="tabInsights" role="tabpanel">
         {{-- AI insights (data-ai-content: hidden when "Show AI-written takeaways" is off in Settings) --}}
         <div data-ai-content>
         <div class="d-flex align-items-center gap-3 mt-2 mb-3">
@@ -212,6 +225,8 @@
         </div>
         </div>
 
+        </div>
+        <div class="tab-pane fade" id="tabEstimate" role="tabpanel">
         {{-- Next AY estimate --}}
         <div class="card border-0 shadow-sm rounded-4 mb-3">
             <div class="card-body p-4 pb-2 d-flex flex-wrap align-items-start justify-content-between gap-2">
@@ -261,6 +276,8 @@
                     <span>These insights and estimates are generated automatically from historical iARIS data. They describe past patterns and are not guarantees. All decisions remain with university leadership.</span>
                 </div>
             </div>
+        </div>
+        </div>
         </div>
     </div>
 @endsection
@@ -472,5 +489,14 @@
         renderFiltered();
         renderColleges();
         renderCompare();
+
+        // Tabs follow the address (#overview, #compare, #insights, #estimate); #unit=College picks that unit
+        document.querySelectorAll('#analyticsTabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => history.replaceState(null, '', '#' + b.dataset.hash)));
+        (() => {
+            const hash = decodeURIComponent(location.hash.slice(1));
+            if (hash.startsWith('unit=')) document.querySelector(`#unitPills [data-unit="${CSS.escape(hash.slice(5))}"]`)?.click();
+            const tab = document.querySelector(`#analyticsTabs [data-hash="${hash}"]`);
+            if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+        })();
     </script>
 @endsection

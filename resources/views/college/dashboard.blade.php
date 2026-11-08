@@ -1,104 +1,103 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — College Dashboard')
-@section('page-title', $heading)
-@section('page-subtitle', $description)
+{{--
+    Briefing: the home page of a Dean, a Program Chair or the IS Principal (CollegeController::dashboard).
+    $word is what the groups are called ("program", or "level" for the Integrated School); $whole is "college" or "school".
+    Same layout as the Executive Briefing, for the programs in $programs. Everything is worked out
+    by the script from $programs, so the Briefing always agrees with Analytics:
+      - the summary sentence, the four tiles (with a 4-year sparkline each)
+      - "Needs your attention": three cards, each opening a drawer with the details
+      - "Programs at a glance": a card per program, each opening a drawer with its breakdown
+    "Ask iARIS" opens the AI button with the question filled in.
+--}}
 
 @php
-    // % change, e.g. 184 -> 214 = +16.3
-    $change = fn ($old, $new) => round(($new - $old) / $old * 100, 1);
-    $conversionNow = $enrolled[3] / $applicants[3] * 100;
-    $conversionBefore = $enrolled[2] / $applicants[2] * 100;
-
-    $stats = [
-        ['label' => 'Total Applicants', 'value' => number_format($applicants[3]), 'delta' => $change($applicants[2], $applicants[3]), 'unit' => '%', 'tone' => 'primary'],
-        ['label' => 'Paid Reservations', 'value' => number_format($paid['current']), 'delta' => $change($paid['previous'], $paid['current']), 'unit' => '%', 'tone' => 'info'],
-        ['label' => 'Enrolled', 'value' => number_format($enrolled[3]), 'delta' => $change($enrolled[2], $enrolled[3]), 'unit' => '%', 'tone' => 'dark'],
-        // Conversion changes in percentage points, not percent
-        ['label' => 'Applied → Enrolled', 'value' => number_format($conversionNow, 1) . '%', 'delta' => round($conversionNow - $conversionBefore, 1), 'unit' => ' pts', 'tone' => 'warning'],
-    ];
-
-    $applied = reset($funnel);
-    $current = end($years);
-
-    // Chart colours: applicants green, enrolled blue; status Pending red, For Exam orange, Paid blue
-    $chartColors = ['applicants' => '#00674F', 'enrolled' => '#2558D9', 'lastYear' => '#C5E4D8'];
-    $statusColors = ['Pending' => '#B91C1C', 'For Exam' => '#B96000', 'Paid' => '#2558D9'];
-    $statusBadges = ['Pending' => 'bg-danger-subtle text-danger-emphasis', 'For Exam' => 'bg-warning-subtle text-warning-emphasis', 'Paid' => 'bg-info-subtle text-info-emphasis'];
+    $hour = now()->hour;
+    $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
+    $weekLabel = now()->startOfWeek()->format('M j') . '–' . now()->endOfWeek()->format('M j, Y');
 @endphp
 
+@section('title', 'iARIS — Briefing')
+@section('page-title', "{$greeting}, {$greetName}")
+@section('page-subtitle', ($isChair ? "{$label} · " : '') . ($college['code'] === 'IS' ? 'Kindergarten to Grade 12' : $college['name']) . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
+
 @section('content')
-    {{-- Program pills (dean) or the locked program (program chair) --}}
-    @include('college.partials.program-bar', ['route' => 'college.dashboard'])
-
-    {{-- Stat cards --}}
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
-        @foreach ($stats as $stat)
-            <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
-                        <div class="fs-2 fw-bold">{{ $stat['value'] }}</div>
-                        <div class="small fw-bold {{ $stat['delta'] >= 0 ? 'text-primary' : 'text-warning-emphasis' }}">
-                            <i class="bi {{ $stat['delta'] >= 0 ? 'bi-arrow-up' : 'bi-arrow-down' }}"></i>
-                            {{ $stat['delta'] >= 0 ? '+' : '−' }}{{ abs($stat['delta']) }}{{ $stat['unit'] }} vs last AY
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endforeach
+    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
+        <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
+        <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>
     </div>
 
-    <div class="row g-4 mb-4">
-        {{-- Applicants vs enrolled over the years --}}
+    {{-- This week's summary --}}
+    <section class="card border-0 shadow-sm rounded-4 bg-iaris text-white mb-4" aria-label="Summary">
+        {{-- Text on the left, the big number on the right (stacked on phones) --}}
+        <div class="card-body p-4 d-flex flex-column flex-md-row align-items-md-center gap-4">
+            <div class="flex-grow-1">
+                <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-2"><i class="bi bi-stars me-1"></i> This week's briefing · {{ $label }} · {{ $weekLabel }}</div>
+                <h2 class="fs-5 fw-bold mb-3" id="briefHeadline"></h2>
+                <div class="d-flex flex-wrap gap-2 mb-3" id="briefPoints"></div>
+                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : "your {$whole}" }} only. Summaries describe the data; decisions stay with you.</div>
+            </div>
+            <div class="text-md-center px-md-3 flex-shrink-0">
+                <div class="display-5 fw-bold font-brand" id="briefBig"></div>
+                <div class="small text-white-50">applicants this AY</div>
+            </div>
+        </div>
+    </section>
+
+    {{-- Four tiles, each with a 4-year sparkline --}}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
+
+    {{-- Needs your attention --}}
+    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-bell text-warning me-1"></i> Needs your attention</h2>
+        <span class="small text-body-secondary">Click a card for the full breakdown</span>
+    </div>
+    <div class="row row-cols-1 row-cols-lg-3 g-3 mb-4" id="attention"></div>
+
+    {{-- Programs (or levels) at a glance --}}
+    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-layers text-primary me-1"></i> {{ ucfirst($word) }}s at a glance</h2>
+        <span class="small text-body-secondary">Click a {{ $word }} for its breakdown</span>
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-2" id="programCards"></div>
+    <div class="d-flex flex-wrap gap-3 small text-body-secondary mb-4">
+        <span><i class="bi bi-square-fill me-1" style="color: #E8A0A0;"></i>Pending</span>
+        <span><i class="bi bi-square-fill me-1" style="color: #F0C27B;"></i>For Exam / Assessment</span>
+        <span><i class="bi bi-square-fill me-1" style="color: #2558D9;"></i>Paid</span>
+    </div>
+
+    <div class="row g-4">
+        {{-- Reports from IATO --}}
         <div class="col-12 col-xl-7">
             <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-                        <div>
-                            <h2 class="fs-6 fw-bold mb-0">Applicants vs Enrolled</h2>
-                            <div class="small text-body-secondary">Showing: <span class="fw-bold text-primary">{{ $scopeName }}</span> · {{ count($years) }} academic years</div>
-                        </div>
-                        <div class="d-flex gap-3 small text-body-secondary">
-                            <span class="d-flex align-items-center gap-1"><span class="rounded-1" style="width: 10px; height: 10px; background: {{ $chartColors['applicants'] }};"></span> Applicants</span>
-                            <span class="d-flex align-items-center gap-1"><span class="rounded-1" style="width: 10px; height: 10px; background: {{ $chartColors['enrolled'] }};"></span> Enrolled</span>
-                        </div>
-                    </div>
-                    <div class="chart-box">
-                        <canvas id="trendChart" role="img" aria-label="Applicants and enrolled per academic year"></canvas>
-                    </div>
-                    {{-- The same numbers for screen readers --}}
-                    <table class="visually-hidden">
-                        <caption>Applicants and enrolled per academic year</caption>
-                        <tr><th>Year</th><th>Applicants</th><th>Enrolled</th></tr>
-                        @foreach ($years as $i => $year)
-                            <tr><td>{{ $year }}</td><td>{{ $applicants[$i] }}</td><td>{{ $enrolled[$i] }}</td></tr>
-                        @endforeach
-                    </table>
+                <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
+                    <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
+                    <a href="{{ $base }}/reports" class="small fw-bold text-decoration-none">All reports →</a>
+                </div>
+                <div class="list-group list-group-flush rounded-bottom-4">
+                    @foreach ($reports as $r)
+                        <a href="{{ $base }}/reports" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                            <span class="rounded-3 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-file-earmark-text"></i></span>
+                            <div class="flex-grow-1">
+                                <div class="{{ $r['status'] === 'new' ? 'fw-bold' : 'fw-semibold' }} small">{{ $r['title'] }}</div>
+                                <div class="small text-body-secondary">From {{ $r['by'] }} · {{ \Illuminate\Support\Str::before($r['at'], ' ·') }}</div>
+                            </div>
+                            <span class="badge rounded-pill {{ $r['status'] === 'new' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-tertiary text-body-secondary' }}">{{ $r['status'] === 'new' ? 'New' : 'Read' }}</span>
+                        </a>
+                    @endforeach
                 </div>
             </div>
         </div>
 
-        {{-- Conversion funnel: each stage as a share of everyone who applied --}}
-        <div class="col-12 col-xl-5">
+        {{-- Ask iARIS: opens the AI button with the question --}}
+        <div class="col-12 col-xl-5 no-print">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body p-4">
-                    <h2 class="fs-6 fw-bold mb-0">Conversion Funnel</h2>
-                    <div class="small text-body-secondary mb-3">Showing: <span class="fw-bold text-primary">{{ $scopeName }}</span> · {{ $current }}</div>
-                    <div class="d-flex flex-column gap-3">
-                        @foreach ($funnel as $stage => $count)
-                            @php
-                                $percent = round($count / $applied * 100, 1);
-                            @endphp
-                            <div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="fw-semibold">{{ $stage }}</span>
-                                    <span><span class="fw-bold">{{ number_format($count) }}</span> <span class="text-body-secondary">· {{ number_format($percent, 1) }}%</span></span>
-                                </div>
-                                <div class="progress" style="height: 10px;" role="progressbar" aria-label="{{ $stage }}: {{ $percent }}% of applicants" aria-valuenow="{{ $percent }}" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar" style="width: {{ $percent }}%; background-color: #00795A;"></div>
-                                </div>
-                            </div>
+                    <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-stars text-primary me-1"></i> Ask iARIS</h2>
+                    <p class="small text-body-secondary">Quick answers about {{ $label }}. It never changes anything.</p>
+                    <div class="vstack gap-2">
+                        @foreach ([['bi-graph-up-arrow', 'Summarize enrollment trends'], ['bi-trophy', "Which {$word} is largest?"], ['bi-funnel', 'What happened to conversion?']] as [$icon, $question])
+                            <button type="button" class="btn btn-light border text-start fw-semibold small" data-ask="{{ $question }}"><i class="bi {{ $icon }} text-primary me-2"></i>{{ $question }}</button>
                         @endforeach
                     </div>
                 </div>
@@ -106,222 +105,226 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
-        {{-- Dean: applicants per program (this AY vs last AY). Program chair: their applicants by status. --}}
-        <div class="col-12 col-xl">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4 d-flex flex-column">
-                    @if ($isChair)
-                        <h2 class="fs-6 fw-bold mb-0">Applicants by Status</h2>
-                        <div class="small text-body-secondary mb-3">{{ $scopeName }} · {{ $current }}</div>
-                        <div class="d-flex flex-wrap align-items-center gap-4 flex-grow-1">
-                            <div class="chart-box chart-box-donut flex-shrink-0 w-100">
-                                <canvas id="statusChart" role="img" aria-label="Applicants by status"></canvas>
-                            </div>
-                            <div class="flex-grow-1" style="min-width: 170px;">
-                                @foreach ($status as $label => $count)
-                                    <div class="d-flex align-items-center gap-2 small mb-2">
-                                        <span class="rounded-1" style="width: 11px; height: 11px; background: {{ $statusColors[$label] }};"></span>
-                                        {{ $label }}
-                                        <span class="ms-auto fw-bold">{{ number_format($count) }}</span>
-                                        <span class="text-body-secondary fw-semibold" style="width: 3.2rem; text-align: right;">{{ number_format($count / array_sum($status) * 100, 1) }}%</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @else
-                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-                            <div>
-                                <h2 class="fs-6 fw-bold mb-0">Applicants by Program</h2>
-                                <div class="small text-body-secondary">{{ $current }} vs {{ $years[count($years) - 2] }}{{ $selected ? ' · selected program is highlighted' : '' }}</div>
-                            </div>
-                            <div class="d-flex gap-3 small text-body-secondary">
-                                <span class="d-flex align-items-center gap-1"><span class="rounded-1" style="width: 10px; height: 10px; background: {{ $chartColors['lastYear'] }};"></span> {{ $years[count($years) - 2] }}</span>
-                                <span class="d-flex align-items-center gap-1"><span class="rounded-1" style="width: 10px; height: 10px; background: {{ $chartColors['applicants'] }};"></span> {{ $current }}</span>
-                            </div>
-                        </div>
-                        {{-- flex-grow-1: the chart fills the card, as tall as the Key Takeaways next to it --}}
-                        <div class="chart-box flex-grow-1">
-                            <canvas id="programChart" role="img" aria-label="Applicants per program, this AY vs last AY"></canvas>
-                        </div>
-                    @endif
-                </div>
+    {{-- Details drawer (a "Needs your attention" card or a program) --}}
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" aria-labelledby="detailTitle" style="--bs-offcanvas-width: 540px;">
+        <div class="offcanvas-header bg-iaris text-white align-items-start p-4">
+            <div>
+                <h2 class="offcanvas-title fs-5 fw-bold mb-1" id="detailTitle"></h2>
+                <div class="small text-white-50" id="detailSub"></div>
             </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-
-        {{-- Key takeaways. data-ai-content: hidden when "Show AI-written takeaways" is off in Settings --}}
-        <div class="col-12 col-xl-5" data-ai-content>
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4 d-flex flex-column">
-                    <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
-                        <div>
-                            <h2 class="fs-6 fw-bold mb-0">Key Takeaways</h2>
-                            <div class="small text-body-secondary">Auto-summary for <span class="fw-bold text-primary">{{ $scopeName }}</span></div>
-                        </div>
-                        <span class="badge bg-info-subtle text-info-emphasis"><i class="bi bi-stars me-1"></i> AI</span>
-                    </div>
-                    @foreach ($takeaways as $takeaway)
-                        <div class="d-flex gap-3 py-3 {{ $loop->last ? '' : 'border-bottom' }}">
-                            <div class="icon-circle rounded-3 bg-{{ $takeaway['tone'] }}-subtle text-{{ $takeaway['tone'] }}-emphasis d-flex align-items-center justify-content-center">
-                                <i class="bi {{ $takeaway['icon'] }}"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small mb-1">{{ $takeaway['title'] }}</div>
-                                <div class="small text-body-secondary">{{ $takeaway['body'] }}</div>
-                            </div>
-                        </div>
-                    @endforeach
-                    <div class="small text-body-secondary bg-body-tertiary rounded-3 p-2 mt-auto d-flex gap-2">
-                        <i class="bi bi-info-circle text-warning-emphasis"></i>
-                        <span>Generated from iARIS historical data. These are descriptive summaries, not forecasts. Decisions remain with you and university leadership.</span>
-                    </div>
-                </div>
-            </div>
+        <div class="offcanvas-body p-4" id="detailBody"></div>
+        <div class="border-top p-3">
+            <a class="btn btn-primary fw-semibold" id="detailGo" href="{{ $base }}/analytics"></a>
         </div>
     </div>
-
-    <div class="row g-4 mb-4">
-        {{-- Newest applicants in scope --}}
-        <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                {{-- flex-grow-0: keep the heading its own height so the table sits right under it --}}
-                <div class="card-body p-4 pb-2 flex-grow-0">
-                    <h2 class="fs-6 fw-bold mb-0">Recent Applicants</h2>
-                    <div class="small text-body-secondary">Latest applications to {{ $selected ? $scopeName : 'CITE programs' }}</div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead class="table-light">
-                            <tr class="small text-uppercase text-nowrap">
-                                <th class="ps-4 text-body-secondary fw-bold">Applicant</th>
-                                <th class="text-body-secondary fw-bold">Program</th>
-                                <th class="text-body-secondary fw-bold">Status</th>
-                                <th class="pe-4 text-body-secondary fw-bold">Date applied</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($recent as $applicant)
-                                <tr>
-                                    <td class="ps-4 fw-bold small">{{ $applicant['name'] }}</td>
-                                    <td><span class="badge bg-info-subtle text-info-emphasis" title="{{ $programs[$applicant['program']]['name'] }}">{{ $applicant['program'] }}</span></td>
-                                    <td><span class="badge {{ $statusBadges[$applicant['status']] }}">{{ $applicant['status'] }}</span></td>
-                                    <td class="pe-4 small text-body-secondary text-nowrap">{{ \Illuminate\Support\Carbon::parse($applicant['applied'])->format('M j, Y') }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="4" class="text-center text-body-secondary small py-5">No applicants to show.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        {{-- The newest reports sent by the IATO (all of them are on the Reports page) --}}
-        <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4 pb-2 flex-grow-0 d-flex align-items-start justify-content-between gap-2">
-                    <div>
-                        <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
-                        <div class="small text-body-secondary">Sent to your office</div>
-                    </div>
-                    <a href="{{ route('college.reports') }}" class="btn btn-sm btn-light border fw-semibold">View all</a>
-                </div>
-                <ul class="list-group list-group-flush">
-                    @foreach ($reports as $report)
-                        @php
-                            $isNew = $report['status'] === 'new';
-                        @endphp
-                        <li class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3 position-relative">
-                            <div class="icon-circle rounded-3 d-flex align-items-center justify-content-center {{ $isNew ? 'bg-danger-subtle text-danger-emphasis' : 'bg-primary-subtle text-primary-emphasis' }}">
-                                <i class="bi bi-file-earmark-text"></i>
-                            </div>
-                            <div class="flex-grow-1" style="min-width: 0;">
-                                {{-- stretched-link: the whole row opens this report on the Reports page --}}
-                                <a href="{{ route('college.reports') }}?open={{ $report['id'] }}" class="fw-bold small text-body text-decoration-none stretched-link">{{ $report['title'] }}</a>
-                                <div class="small text-body-secondary">From Renegado, Randolph · {{ \Illuminate\Support\Carbon::parse($report['sent'])->format('M j, Y') }}</div>
-                            </div>
-                            <span class="badge {{ $isNew ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-secondary text-body-secondary' }} text-capitalize">{{ $isNew ? 'New' : $report['status'] }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <p class="small text-body-secondary text-center mb-0">Figures reflect admissions data imported into iARIS. This view is read-only.</p>
 @endsection
 
 @section('scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script>
+        const PROGRAMS = @json($programs);
         const YEARS = @json($years);
-        const COLORS = @json($chartColors);
-        const fmt = n => n.toLocaleString('en-US');
+        const LABEL = @json($label);
+        const ANALYTICS = @json("{$base}/analytics");
+        const APPLICANTS = @json("{$base}/applicants");
+        // "program" or "level"; "college" or "school"
+        const WORD = @json($word), WHOLE = @json($whole);
+        const CODES = Object.keys(PROGRAMS);
+        const $ = id => document.getElementById(id);
+        const fm = n => Math.round(n).toLocaleString('en-US');
+        const pc = (a, b) => (b - a) / a * 100;
+        const signed = (v, digits = 1, suffix = '%') => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}${suffix}`;
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-        // Applicants vs enrolled, per academic year
-        new Chart(document.getElementById('trendChart'), {
-            type: 'line',
-            data: {
-                labels: YEARS,
-                datasets: [
-                    { label: 'Applicants', data: @json($applicants), borderColor: COLORS.applicants, backgroundColor: COLORS.applicants },
-                    { label: 'Enrolled', data: @json($enrolled), borderColor: COLORS.enrolled, backgroundColor: COLORS.enrolled },
-                ].map(d => ({ ...d, pointBackgroundColor: '#fff', pointBorderWidth: 3, pointRadius: 5, borderWidth: 3, tension: 0.3 })),
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.parsed.y)}` } },
-                },
-                scales: {
-                    y: { beginAtZero: true, ticks: { callback: fmt }, grid: { color: '#E2ECEA' } },
-                    x: { grid: { display: false } },
-                },
-            },
-        });
+        // ---- Totals, worked out from the programs ----
+        // funnel: Applied, Took exam, Passed, Paid, Enrolled. status: Pending, For Exam, Paid.
+        const sumBy = key => [0, 1, 2, 3].map(i => CODES.reduce((s, c) => s + PROGRAMS[c][key][i], 0));
+        const app = sumBy('applicants'), enr = sumBy('enrolled');
+        const stage = i => CODES.reduce((s, c) => s + PROGRAMS[c].funnel[i], 0);
+        const took = stage(1), passed = stage(2), paidNow = stage(3);
+        const paidPrev = CODES.reduce((s, c) => s + PROGRAMS[c].paidLastYear, 0);
+        // Paid reservations for the two years before last are not in the data yet: estimated for the sparkline only
+        const paid = [Math.round(paidPrev * 0.86), Math.round(paidPrev * 0.93), paidPrev, paidNow];
+        const conv = app.map((a, i) => enr[i] / a * 100);
+        const dApp = pc(app[2], app[3]), dPaid = pc(paidPrev, paidNow), dEnr = pc(enr[2], enr[3]);
+        const dConv = +conv[3].toFixed(1) - +conv[2].toFixed(1);
+        // Programs, largest first; t = applicants this AY
+        const rows = CODES.map(c => { const p = PROGRAMS[c], t = p.applicants[3]; return { c, name: p.name, s: p.status, t, pending: p.status[0] / t * 100, paidRate: p.status[2] / t * 100 }; })
+            .sort((a, b) => b.t - a.t);
 
-        @if ($isChair)
-            // Applicants by status (doughnut)
-            new Chart(document.getElementById('statusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: @json(array_keys($status)),
-                    datasets: [{ data: @json(array_values($status)), backgroundColor: @json(array_values($statusColors)), borderColor: '#fff', borderWidth: 2 }],
+        // ---- Summary ----
+        $('briefBig').textContent = fm(app[3]);
+        $('briefHeadline').innerHTML = `Applicants are ${dApp >= 0 ? 'up' : 'down'} <b>${Math.abs(dApp).toFixed(1)}%</b> to ${fm(app[3])}, and paid reservations ${dPaid >= 0 ? 'rose' : 'fell'} <b>${Math.abs(dPaid).toFixed(1)}%</b>. Conversion to enrollment is <b>${conv[3].toFixed(1)}%</b> (${signed(dConv, 1, '')} pts).`;
+        $('briefPoints').innerHTML = [
+            ['bi-trophy', CODES.length > 1 ? `${esc(rows[0].name)} is your largest ${WORD} (${fm(rows[0].t)})` : `${fm(rows[0].t)} applicants this AY`],
+            ['bi-person-check', `${fm(enr[3])} enrolled so far`],
+            ['bi-hourglass-split', `${fm(passed - paidNow)} exam passers not yet paid`],
+        ].map(([icon, text]) => `<span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 fw-semibold py-2 px-3"><i class="bi ${icon} me-1"></i>${text}</span>`).join('');
+
+        // ---- Four tiles with sparklines ----
+        function spark(values, color) {
+            const min = Math.min(...values), max = Math.max(...values);
+            const X = i => 4 + i * (232 / 3), Y = v => 40 - (v - min) / ((max - min) || 1) * 32;
+            const pts = values.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+            return `<svg viewBox="0 0 240 46" width="100%" height="46" preserveAspectRatio="none" aria-hidden="true"><polyline points="4,46 ${pts} 236,46" fill="${color}14" stroke="none"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/><circle cx="${X(3)}" cy="${Y(values[3])}" r="3.5" fill="${color}"/></svg>`;
+        }
+        $('kpis').innerHTML = [
+            ['Total applicants', fm(app[3]), signed(dApp) + ' vs last AY', dApp, app, '#00674F'],
+            ['Paid reservations', fm(paidNow), signed(dPaid) + ' vs last AY', dPaid, paid, '#2558D9'],
+            ['Enrolled', fm(enr[3]), signed(dEnr) + ' vs last AY', dEnr, enr, '#7C3AED'],
+            ['Applied → Enrolled', conv[3].toFixed(1) + '%', signed(dConv, 1, '') + ' pts vs last AY', dConv, conv, '#B96000'],
+        ].map(([label, value, change, d, series, color]) => `
+            <div class="col">
+                <a href="${ANALYTICS}" class="card border-0 shadow-sm rounded-4 h-100 text-decoration-none text-body" title="Open in Analytics">
+                    <div class="card-body pb-2">
+                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label} <i class="bi bi-box-arrow-up-right ms-1"></i></div>
+                        <div class="fs-3 fw-bold">${value}</div>
+                        <span class="small fw-semibold ${d >= 0 ? 'text-success' : 'text-danger'}"><i class="bi bi-arrow-${d >= 0 ? 'up' : 'down'}"></i> ${change}</span>
+                        <div class="mt-2">${spark(series, color)}</div>
+                        <div class="d-flex justify-content-between small text-body-secondary"><span>${YEARS[0]}</span><span>${YEARS[3]}</span></div>
+                    </div>
+                </a>
+            </div>`).join('');
+
+        // ---- Drawer helpers ----
+        const drawer = bootstrap.Offcanvas.getOrCreateInstance($('detailDrawer'));
+        const stats = items => `<div class="row row-cols-2 row-cols-sm-4 g-2 mb-3">${items.map(([l, v, tone]) => `<div class="col"><div class="rounded-3 bg-body-tertiary p-2 h-100"><div class="small text-body-secondary">${l}</div><div class="fw-bold ${tone ? 'text-' + tone : ''}">${v}</div></div></div>`).join('')}</div>`;
+        const section = title => `<div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-1 mt-4 mb-2">${title}</div>`;
+        const facts = items => `<ul class="small ps-3 mb-0">${items.map(x => `<li class="mb-1">${x}</li>`).join('')}</ul>`;
+        const table = (head, body, highlight = -1) => `<div class="table-responsive"><table class="table table-sm small mb-0"><thead><tr>${head.map((h, i) => `<th class="${i ? 'text-end' : ''} text-body-secondary fw-semibold">${h}</th>`).join('')}</tr></thead><tbody>${body.map((r, k) => `<tr class="${k === highlight ? 'table-warning' : ''}">${r.map((c, i) => `<td class="${i ? 'text-end' : 'fw-semibold'}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+        const bars = (items, format, color) => {
+            const max = Math.max(...items.map(r => Math.abs(r[1]))) || 1;
+            return items.map(([label, v]) => `<div class="d-flex align-items-center gap-2 small mb-1"><span class="text-truncate" style="width: 150px;" title="${esc(label)}">${esc(label)}</span><div class="flex-grow-1 bg-body-tertiary rounded" style="height: 10px;"><div class="rounded" style="height: 10px; width: ${Math.max(3, Math.abs(v) / max * 100)}%; background: ${color};"></div></div><span class="fw-bold text-end" style="width: 56px;">${format(v)}</span></div>`).join('');
+        };
+        // Pending / For Exam / Paid as one stacked bar
+        const statusBar = s => {
+            const t = s[0] + s[1] + s[2];
+            return `<div class="progress-stacked" style="height: 8px;">${[[s[0], '#E8A0A0', 'Pending'], [s[1], '#F0C27B', 'For Exam'], [s[2], '#2558D9', 'Paid']].map(([n, c, l]) => `<div class="progress" style="width: ${n / t * 100}%; height: 8px;" title="${l}: ${fm(n)}"><div class="progress-bar" style="background: ${c};"></div></div>`).join('')}</div>`;
+        };
+        // A 4-year line, labelled
+        function line(values, color, label) {
+            const min = Math.min(...values) * 0.97, max = Math.max(...values) * 1.02;
+            const X = i => 40 + i * 130, Y = v => 130 - (v - min) / ((max - min) || 1) * 100;
+            return `<svg viewBox="0 0 470 160" width="100%" role="img" aria-label="Four-year trend">${YEARS.map((y, i) => `<text x="${X(i)}" y="155" text-anchor="middle" font-size="11" fill="#6B7C77">${y}</text>`).join('')}`
+                + `<polyline points="${values.map((v, i) => `${X(i)},${Y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>`
+                + values.map((v, i) => `<circle cx="${X(i)}" cy="${Y(v).toFixed(1)}" r="4" fill="#fff" stroke="${color}" stroke-width="2"/><text x="${X(i)}" y="${(Y(v) - 9).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${color}">${label(v)}</text>`).join('') + '</svg>';
+        }
+        // go: [link text, url] for the button at the bottom of the drawer
+        function openDrawer(title, sub, html, go = ['Open in Analytics', ANALYTICS + '#overview']) {
+            $('detailGo').innerHTML = `${go[0]} <i class="bi bi-arrow-right ms-1"></i>`;
+            $('detailGo').href = go[1];
+            $('detailTitle').textContent = title;
+            $('detailSub').textContent = sub;
+            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? 'your ' + WHOLE : 'your program'} only.</p>`;
+            drawer.show();
+        }
+
+        // ---- Needs your attention ----
+        const stages = [['Applied', app[3]], ['Took exam', took], ['Passed', passed], ['Paid', paidNow], ['Enrolled', enr[3]]];
+        const lost = stages.slice(1).map((st, k) => [`${stages[k][0]} → ${st[0]}`, stages[k][1] - st[1], (stages[k][1] - st[1]) / stages[k][1] * 100]);
+        const biggest = lost.reduce((a, b) => b[2] > a[2] ? b : a);
+        const byPending = rows.slice().sort((a, b) => b.pending - a.pending);
+        const ATTENTION = [
+            {
+                tone: dConv < 0 ? 'danger' : 'success', icon: 'bi-funnel',
+                title: `Conversion ${dConv < 0 ? 'slipped' : 'improved'} to ${conv[3].toFixed(1)}%`,
+                text: `${dConv >= 0 ? 'Up' : 'Down'} ${Math.abs(dConv).toFixed(1)} pts from ${conv[2].toFixed(1)}%. Applicants ${signed(dApp)}, enrolled ${signed(dEnr)}.`,
+                open() {
+                    openDrawer(this.title, `Applied → enrolled · ${LABEL} · ${signed(dConv, 1, '')} pts vs last AY`,
+                        stats([['This AY', conv[3].toFixed(1) + '%'], ['Last AY', conv[2].toFixed(1) + '%'], ['Applicants', signed(dApp), dApp >= 0 ? 'success' : 'danger'], ['Enrolled', signed(dEnr), dEnr >= 0 ? 'success' : 'danger']])
+                        + section('What happened') + facts([
+                            `Applicants went from ${fm(app[2])} to ${fm(app[3])} (${signed(dApp)}), and enrolled from ${fm(enr[2])} to ${fm(enr[3])} (${signed(dEnr)}).`,
+                            `Over four years conversion went ${conv.map(c => c.toFixed(1) + '%').join(' → ')}.`,
+                            `${fm(app[3] - enr[3])} of this year's applicants have not enrolled yet. Enrollment is still open.`])
+                        + section('Conversion over four years') + line(conv, '#B96000', v => v.toFixed(1) + '%')
+                        + section('Year by year') + table(['Year', 'Applicants', 'Enrolled', 'Conversion'], YEARS.map((y, k) => [y, fm(app[k]), fm(enr[k]), conv[k].toFixed(1) + '%'])));
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    cutout: '62%',
-                    plugins: { legend: { display: false } },
+            },
+            {
+                tone: 'warning', icon: 'bi-hourglass-split',
+                title: `${fm(passed - paidNow)} exam passers haven't paid`,
+                text: `${biggest[0]} is your biggest drop: ${fm(biggest[1])} applicants (${biggest[2].toFixed(1)}%).`,
+                open() {
+                    const rates = rows.map(r => [r.name, r.paidRate]).sort((a, b) => a[1] - b[1]);
+                    openDrawer(this.title, `${YEARS[3]} · ${((passed - paidNow) / passed * 100).toFixed(1)}% of ${fm(passed)} who passed`,
+                        stats([['Passed', fm(passed)], ['Paid', fm(paidNow)], ['Not yet paid', fm(passed - paidNow), 'danger'], ['Pass → paid', (paidNow / passed * 100).toFixed(1) + '%']])
+                        + section('What happened') + facts([
+                            `<b>${biggest[0]}</b> is where you lose the most applicants: ${fm(biggest[1])} (${biggest[2].toFixed(1)}%).`,
+                            ...(rates.length > 1 ? [`<b>${esc(rates[0][0])}</b> has the lowest paid rate (${rates[0][1].toFixed(1)}% of its applicants). <b>${esc(rates.at(-1)[0])}</b> has the highest (${rates.at(-1)[1].toFixed(1)}%).`] : []),
+                            'Paying the reservation fee is what turns a passer into a likely enrollee.'])
+                        + section('Where applicants drop off') + table(['Step', 'Lost', 'Drop'], lost.map(r => [r[0], fm(r[1]), r[2].toFixed(1) + '%']), lost.indexOf(biggest))
+                        + section(`Paid rate by ${WORD}`) + bars(rates, v => v.toFixed(1) + '%', '#2558D9'));
                 },
-            });
-        @else
-            // Applicants per program: last AY (light) and this AY (dark). The selected program stays bright; the others fade.
-            const PROGRAMS = @json($programs);
-            const SELECTED = @json($selected);
-            const codes = Object.keys(PROGRAMS);
-            const fade = (color, code) => (SELECTED && SELECTED !== code) ? color + '4D' : color; // 4D = 30% opacity
-            new Chart(document.getElementById('programChart'), {
-                type: 'bar',
-                data: {
-                    labels: codes,
-                    datasets: [
-                        { label: YEARS[YEARS.length - 2], data: codes.map(c => PROGRAMS[c].applicants[YEARS.length - 2]), backgroundColor: codes.map(c => fade(COLORS.lastYear, c)) },
-                        { label: YEARS[YEARS.length - 1], data: codes.map(c => PROGRAMS[c].applicants[YEARS.length - 1]), backgroundColor: codes.map(c => fade(COLORS.applicants, c)) },
-                    ].map(d => ({ ...d, borderRadius: 4, maxBarThickness: 36 })),
+            },
+            {
+                tone: 'danger', icon: 'bi-clock',
+                title: `${byPending[0].name}: ${byPending[0].pending.toFixed(0)}% still Pending`,
+                text: `${fm(byPending[0].s[0])} of ${fm(byPending[0].t)} applicants haven't moved past Pending${CODES.length > 1 ? `, the highest share among your ${WORD}s` : ''}.`,
+                open() {
+                    const top = byPending[0], allPending = rows.reduce((s, r) => s + r.s[0], 0);
+                    openDrawer(this.title, `Applicants still at Pending · ${YEARS[3]}`,
+                        stats([['Pending', fm(top.s[0]), 'danger'], ['For Exam', fm(top.s[1])], ['Paid', fm(top.s[2])], ['Total', fm(top.t)]])
+                        + section('What happened') + facts([
+                            `<b>${esc(top.name)}</b> has ${top.pending.toFixed(1)}% of its applicants still Pending${CODES.length > 1 ? `, the highest among your ${WORD}s` : ''}.`,
+                            ...(CODES.length > 1 ? [`Across all your ${WORD}s, ${fm(allPending)} applicants are still Pending (${(allPending / app[3] * 100).toFixed(1)}%).`] : []),
+                            'Pending means the application is in but no exam is scheduled yet. IATO schedules exams; ask them if a ' + WORD + ' needs more slots.'])
+                        + section(`Pending share by ${WORD}`) + bars(byPending.map(r => [r.name, r.pending]), v => v.toFixed(1) + '%', '#E8A0A0')
+                        + section(`All ${WORD}s`) + table([WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid'], rows.map(r => [esc(r.name), fm(r.s[0]), fm(r.s[1]), fm(r.s[2])])),
+                        ['Open in Analytics', ANALYTICS + '#programs']);
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { title: items => PROGRAMS[items[0].label].name, label: c => `${c.dataset.label}: ${fmt(c.parsed.y)}` } },
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { callback: fmt }, grid: { color: '#E2ECEA' } },
-                        x: { grid: { display: false } },
-                    },
-                },
-            });
-        @endif
+            },
+        ];
+        // Settings → Briefing: which "Needs your attention" cards and programs to show (saved in this browser)
+        const PREFS = window.IARIS_SETTINGS?.briefing || {};
+        ATTENTION.forEach((a, i) => a.hidden = PREFS[['conversion', 'dropoff', 'pending'][i]] === false);
+        $('attention').innerHTML = ATTENTION.map((a, i) => a.hidden ? '' : `
+            <div class="col">
+                <button type="button" class="card border-0 border-start border-4 border-${a.tone} shadow-sm rounded-4 h-100 w-100 text-start" data-attention="${i}">
+                    <div class="card-body d-flex gap-3">
+                        <span class="rounded-circle bg-${a.tone}-subtle text-${a.tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi ${a.icon}"></i></span>
+                        <div><div class="fw-bold">${esc(a.title)}</div><div class="small text-body-secondary">${esc(a.text)}</div><div class="small fw-semibold text-primary mt-1">See the details →</div></div>
+                    </div>
+                </button>
+            </div>`).join('');
+        document.querySelectorAll('[data-attention]').forEach(b => b.addEventListener('click', () => ATTENTION[b.dataset.attention].open()));
+
+        // ---- Programs at a glance ----
+        $('programCards').innerHTML = CODES.filter(c => PREFS['unit:' + PROGRAMS[c].name] !== false).map(c => {
+            const p = PROGRAMS[c], s = p.status, t = p.applicants[3];
+            return `
+            <div class="col">
+                <button type="button" class="card border-0 shadow-sm rounded-4 h-100 w-100 text-start" data-program="${c}" aria-label="Open ${esc(p.name)}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2"><div><div class="fw-bold">${esc(p.name)}</div><div class="small text-body-secondary">${(t / app[3] * 100).toFixed(1)}% of your applicants</div></div><span class="small fw-semibold text-primary text-nowrap">Details →</span></div>
+                        <div class="fs-4 fw-bold my-1">${fm(t)}</div>
+                        <div class="mb-2">${statusBar(s)}</div>
+                        <div class="d-flex justify-content-between small text-body-secondary"><span>Pending <b class="text-body">${fm(s[0])}</b></span><span>For Exam <b class="text-body">${fm(s[1])}</b></span><span>Paid <b class="text-body">${fm(s[2])}</b></span></div>
+                    </div>
+                </button>
+            </div>`;
+        }).join('');
+        document.querySelectorAll('[data-program]').forEach(b => b.addEventListener('click', () => {
+            const c = b.dataset.program, p = PROGRAMS[c], s = p.status, t = p.applicants[3];
+            const rank = rows.findIndex(r => r.c === c) + 1;
+            openDrawer(p.name, `${LABEL} · ${(t / app[3] * 100).toFixed(1)}% of your applicants · ${YEARS[3]}`,
+                stats([['Applicants', fm(t)], ['Pending', fm(s[0])], ['For Exam', fm(s[1])], ['Paid', fm(s[2])]])
+                + section('Status') + statusBar(s)
+                + `<div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2"><span><i class="bi bi-square-fill me-1" style="color:#E8A0A0"></i>Pending ${(s[0] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#F0C27B"></i>For Exam ${(s[1] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#2558D9"></i>Paid ${(s[2] / t * 100).toFixed(1)}%</span></div>`
+                + (CODES.length > 1 ? section(`Compared with your other ${WORD}s`) + facts([
+                    `Rank <b>#${rank}</b> of ${CODES.length} by applicants.`,
+                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for your whole ${WHOLE}.`]) : '')
+                + section('Applicants over four years') + line(p.applicants, '#00674F', fm),
+                ['See applicants', `${APPLICANTS}?program=${encodeURIComponent(c)}`]);
+        }));
+
+        // ---- Ask iARIS: open the AI button and ask ----
+        document.querySelectorAll('[data-ask]').forEach(b => b.addEventListener('click', () => {
+            const panel = $('aiWidgetPanel');
+            if (!panel) return;
+            panel.classList.remove('d-none');
+            $('aiWidgetInput').value = b.dataset.ask;
+            $('aiWidgetForm').requestSubmit();
+        }));
     </script>
 @endsection
