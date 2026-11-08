@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 {{--
-    Briefing: the President / Chancellor home page (ChancellorController::dashboard).
+    Briefing: the Executive Office home page (ExecutiveController::dashboard).
     A short summary of the same placeholder numbers as Analytics ($units). Everything is worked out
     by the script from $units, so the Briefing always agrees with Analytics:
       - the summary sentence, the four tiles (with a 4-year sparkline each)
@@ -72,11 +72,11 @@
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
                     <h2 class="fs-6 fw-bold mb-0">Reports from IATO</h2>
-                    <a href="{{ url('/chancellor/reports') }}" class="small fw-bold text-decoration-none">All reports →</a>
+                    <a href="{{ url('/executive/reports') }}" class="small fw-bold text-decoration-none">All reports →</a>
                 </div>
                 <div class="list-group list-group-flush rounded-bottom-4">
                     @foreach ($reports as $r)
-                        <a href="{{ url('/chancellor/reports') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                        <a href="{{ url('/executive/reports') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
                             <span class="rounded-3 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-file-earmark-text"></i></span>
                             <div class="flex-grow-1">
                                 <div class="{{ $r['status'] === 'new' ? 'fw-bold' : 'fw-semibold' }} small">{{ $r['title'] }}</div>
@@ -116,7 +116,7 @@
         </div>
         <div class="offcanvas-body p-4" id="detailBody"></div>
         <div class="border-top p-3">
-            <a class="btn btn-primary fw-semibold" id="detailGo" href="{{ url('/chancellor/analytics') }}">Open in Analytics <i class="bi bi-arrow-right ms-1"></i></a>
+            <a class="btn btn-primary fw-semibold" id="detailGo" href="{{ url('/executive/analytics') }}">Open in Analytics <i class="bi bi-arrow-right ms-1"></i></a>
         </div>
     </div>
 @endsection
@@ -126,7 +126,7 @@
         const UNITS = @json($units);
         const YEARS = @json($years);
         const PAID_BY_YEAR = @json($paidByYear);
-        const ANALYTICS = @json(url('/chancellor/analytics'));
+        const ANALYTICS = @json(url('/executive/analytics'));
         const NAMES = Object.keys(UNITS);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');

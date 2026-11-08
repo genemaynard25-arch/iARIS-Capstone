@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — President / Chancellor Analytics')
+@section('title', 'iARIS — Executive Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', 'Institution-wide admissions and enrollment analysis, with AI-generated insights')
 
@@ -22,7 +22,7 @@
 
 @section('content')
     {{-- Same id as the dashboard, so "Export PDF" prints this page the same way (iaris.css section 9) --}}
-    <div id="chancellorReport">
+    <div id="executiveReport">
         {{-- Toolbar: read-only notice, academic year, export --}}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2">
@@ -89,7 +89,7 @@
                                 <button type="button" class="btn btn-sm btn-light border" data-export="trendChart"><i class="bi bi-download me-1"></i>Export</button>
                             </div>
                         </div>
-                        @include('chancellor.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
+                        @include('executive.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
                         <div class="chart-box flex-grow-1">
                             <canvas id="trendChart" role="img" aria-label="Applicants and enrolled per academic year"></canvas>
                         </div>
@@ -128,7 +128,7 @@
                             </div>
                             <button type="button" class="btn btn-sm btn-light border no-print" data-export="unitChart"><i class="bi bi-download me-1"></i>Export</button>
                         </div>
-                        @include('chancellor.partials.legend', ['items' => [$years[count($years) - 2] => '#7FC4AB', $years[count($years) - 1] => '#00674F']])
+                        @include('executive.partials.legend', ['items' => [$years[count($years) - 2] => '#7FC4AB', $years[count($years) - 1] => '#00674F']])
                         <div class="chart-box">
                             <canvas id="unitChart" role="img" aria-label="Applicants per unit, last academic year and this academic year"></canvas>
                         </div>

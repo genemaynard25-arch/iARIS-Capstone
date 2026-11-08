@@ -71,10 +71,17 @@ class User extends Authenticatable
             ->first();
     }
 
-    // President / Chancellor office: a read-only, university-wide dashboard
+    // The Chancellor (one of the Executive Office roles; see isExecutive() below)
     public function isChancellor(): bool
     {
         return $this->role === "chancellor";
+    }
+
+    // Executive Office: the President, the Chancellor, Vice Presidents and Vice Chancellors.
+    // They share the same read-only, university-wide pages at /executive.
+    public function isExecutive(): bool
+    {
+        return in_array($this->role, ["president", "vice_president", "chancellor", "vice_chancellor"]);
     }
 
     // Dean of a college, or a Program Chair: a read-only College dashboard at /college.
@@ -119,7 +126,10 @@ class User extends Authenticatable
             "program_chair" => ["Program Chair", "BSCS", "bi-mortarboard"],
             "registrar" => ["Registrar", "Registrar's Office", "bi-person-vcard"],
             "lamp" => ["LAMP Office", "LAMP", "bi-award"],
+            "president" => ["President", "Executive Office", "bi-bank"],
+            "vice_president" => ["Vice President", "Executive Office", "bi-bank"],
             "chancellor" => ["Chancellor", "Executive Office", "bi-bank"],
+            "vice_chancellor" => ["Vice Chancellor", "Executive Office", "bi-bank"],
             default => [ucwords(str_replace("_", " ", $this->role ?? "User")), "iARIS", "bi-person"],
         };
     }

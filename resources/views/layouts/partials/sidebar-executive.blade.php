@@ -1,4 +1,4 @@
-{{-- Sidebar for the President / Chancellor office. Same look as the admin sidebar, read-only links. --}}
+{{-- Sidebar for the Executive Office (President, Chancellor, Vice Presidents, Vice Chancellors). Same look as the admin sidebar, read-only links. --}}
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
 
@@ -22,18 +22,18 @@
 
             @php
                 // Badges: unread reports (red; the Reports page updates it) and conversations IATO answered (amber)
-                $unread = collect(\App\Http\Controllers\ChancellorController::received())->where('status', 'new')->count();
-                $answered = \App\Http\Controllers\ChancellorController::answeredMessages();
+                $unread = collect(\App\Http\Controllers\ExecutiveController::received())->where('status', 'new')->count();
+                $answered = \App\Http\Controllers\ExecutiveController::answeredMessages();
                 // [label, what it's for, icon, url, active pattern, badge html]
                 $menu = [
                     'MENU' => [
-                        ['Briefing', 'Summary and alerts', 'bi-compass', '/chancellor', 'chancellor', ''],
-                        ['Analytics', 'Trends, funnel, insights', 'bi-bar-chart-line', '/chancellor/analytics', 'chancellor/analytics*', ''],
-                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/chancellor/reports', 'chancellor/reports*',
+                        ['Briefing', 'Summary and alerts', 'bi-compass', '/executive', 'executive', ''],
+                        ['Analytics', 'Trends, funnel, insights', 'bi-bar-chart-line', '/executive/analytics', 'executive/analytics*', ''],
+                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/executive/reports', 'executive/reports*',
                             '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
                     ],
                     'HELP' => [
-                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/chancellor/messages', 'chancellor/messages*',
+                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/executive/messages', 'executive/messages*',
                             '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>'],
                     ],
                 ];

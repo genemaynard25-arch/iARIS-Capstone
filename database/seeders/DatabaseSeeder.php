@@ -68,7 +68,20 @@ class DatabaseSeeder extends Seeder
         ]
         );
 
-    // President / Chancellor office: read-only dashboard at /chancellor.
+    // Executive Office (President, Chancellor, Vice Presidents, Vice Chancellors): read-only pages at /executive.
+    foreach ([
+        ['president@gmail.com', 'Andrea Ramos', 'president'],
+        ['vp@gmail.com', 'Paolo Mendoza', 'vice_president'],
+        ['vc@gmail.com', 'Lorna Castillo', 'vice_chancellor'],
+    ] as [$email, $name, $role]) {
+        \App\Models\User::firstOrCreate(['email' => $email], [
+            'name' => $name,
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => $role,
+            'access_type' => 'viewer',
+        ]);
+    }
+
     // Named after the Chancellor in the Executive Office card, so the "You" tag shows.
     \App\Models\User::firstOrCreate(
         ['email' => 'chancellor@gmail.com'],

@@ -67,7 +67,7 @@
                                 <button type="button" class="btn btn-sm btn-light border" data-export="trendChart"><i class="bi bi-download me-1"></i>Export</button>
                             </div>
                         </div>
-                        @include('chancellor.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
+                        @include('executive.partials.legend', ['items' => ['Applicants' => '#00674F', 'Enrolled' => '#2558D9']])
                         <div class="chart-box flex-grow-1">
                             <canvas id="trendChart" role="img" aria-label="Applicants and enrolled per academic year"></canvas>
                         </div>
@@ -125,7 +125,7 @@
                                 </div>
                                 <button type="button" class="btn btn-sm btn-light border text-nowrap flex-shrink-0 no-print" data-export="programChart"><i class="bi bi-download me-1"></i>Export</button>
                             </div>
-                            @include('chancellor.partials.legend', ['items' => [$previous => '#7FC4AB', $current => '#00674F']])
+                            @include('executive.partials.legend', ['items' => [$previous => '#7FC4AB', $current => '#00674F']])
                             <div class="chart-box flex-grow-1">
                                 <canvas id="programChart" role="img" aria-label="Applicants per program, last academic year and this academic year"></canvas>
                             </div>

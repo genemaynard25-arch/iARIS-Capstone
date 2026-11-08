@@ -247,8 +247,8 @@
                     </div>
                 @endif
 
-                {{-- ========== REPORT PREFERENCES (President / Chancellor) ========== --}}
-                {{-- ========== BRIEFING (President / Chancellor) ========== --}}
+                {{-- ========== REPORT PREFERENCES (Executive Office) ========== --}}
+                {{-- ========== BRIEFING (Executive Office) ========== --}}
                 @if (in_array('briefing', $sections))
                     <div class="tab-pane fade {{ $openSection === 'briefing' ? 'show active' : '' }}" id="section-briefing" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="briefing">
@@ -333,7 +333,7 @@
                     </div>
                 @endif
 
-                {{-- ========== DISPLAY (President / Chancellor) ========== --}}
+                {{-- ========== DISPLAY (Executive Office) ========== --}}
                 @if (in_array('display', $sections))
                     <div class="tab-pane fade {{ $openSection === 'display' ? 'show active' : '' }}" id="section-display" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="display">

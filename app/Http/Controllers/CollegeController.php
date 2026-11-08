@@ -10,7 +10,7 @@ class CollegeController extends Controller
      * The college's programs. Placeholder data, same idea as the Chancellor dashboard.
      * Later these numbers would come from the admission_stats and applicants tables.
      *
-     * applicants / enrolled: one number per academic year in ChancellorController::YEARS (the last is this year)
+     * applicants / enrolled: one number per academic year in ExecutiveController::YEARS (the last is this year)
      * funnel: this AY — Applied, Took exam, Passed, Paid, Enrolled
      * status: applicants still in process this AY — Pending, For Exam, Paid
      * paidLastYear: paid reservations last AY (for the "vs last AY" change)
@@ -72,7 +72,7 @@ class CollegeController extends Controller
             'selected' => $selected,
             'scopeName' => $scopeName,
 
-            'years' => ChancellorController::YEARS,
+            'years' => ExecutiveController::YEARS,
             'applicants' => $applicants,
             'enrolled' => $enrolled,
             'paid' => ['previous' => $sum('paidLastYear'), 'current' => $funnel['Paid']],
@@ -127,7 +127,7 @@ class CollegeController extends Controller
             // The programs shown in the per-program charts: all of them for a dean, one for a program chair
             'chartPrograms' => $isChair ? $scope : self::PROGRAMS,
 
-            'years' => ChancellorController::YEARS,
+            'years' => ExecutiveController::YEARS,
             'applicants' => $applicants,
             'enrolled' => $enrolled,
             'paid' => ['previous' => array_sum(array_column($scope, 'paidLastYear')), 'current' => $funnel['Paid']],
@@ -184,7 +184,7 @@ class CollegeController extends Controller
                 'sharedTitle' => null, 'locked' => $chair,
             ],
             'received' => self::received($isChair),
-            'years' => ChancellorController::YEARS,
+            'years' => ExecutiveController::YEARS,
             'units' => $units,
             'insights' => $this->insights($scope, $sum('applicants'), $sum('enrolled'), $funnel),
             // Who you can send a copy to (besides the IATO)

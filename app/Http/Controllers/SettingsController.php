@@ -23,12 +23,12 @@ class SettingsController extends Controller
     {
         $user = auth()->user();
 
-        // Every role gets these; the President / Chancellor office also gets report and display preferences
+        // Every role gets these; the Executive Office also gets report and display preferences
         // (The LAMP Office and Registrars have no AI button, so no AI section either.)
         $sections = $user->isLamp() || $user->role === 'registrar'
             ? ['profile', 'security', 'notifications']
             : ['profile', 'security', 'notifications', 'ai'];
-        if ($user->isChancellor()) {
+        if ($user->isExecutive()) {
             array_splice($sections, 3, 0, ['briefing', 'reports']);
             $sections[] = 'display';
         }
@@ -48,7 +48,10 @@ class SettingsController extends Controller
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
             'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
-            'chancellor' => ['President / Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
+            'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
+            'vice_president' => ['Vice President', 'Vice President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
+            'chancellor' => ['Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
+            'vice_chancellor' => ['Vice Chancellor', 'Vice Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
         ];
         // The seeded SHS principal has role 'admin', so their SHS assignment decides
         $roleKey = $user->isShsPrincipal() ? 'principal' : $user->role;
@@ -59,7 +62,7 @@ class SettingsController extends Controller
         }
 
         $scopes = ['college' => 'College', 'is' => 'Integrated School'];
-        $scope = $user->isChancellor() || ($user->isAdmin() && ! $user->assigned_level)
+        $scope = $user->isExecutive() || ($user->isAdmin() && ! $user->assigned_level)
             ? 'All units, institution-wide'
             : trim(($scopes[$user->assigned_level] ?? 'All units') . ($user->assigned_sub_level === 'shs' ? ' · Senior High' : ''));
 
@@ -82,7 +85,7 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
-                    $user->isChancellor() => 'View · can generate reports',
+                    $user->isExecutive() => 'View · can generate reports',
                     $user->role === 'registrar' => 'View only; can ask IATO about a record',
                     $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
                     $user->access_type === 'editor' => 'Can view and edit',
@@ -103,10 +106,10 @@ class SettingsController extends Controller
             'signIns' => $this->signIns($user->id),
             'notificationGroups' => $this->notificationGroups($user),
 
-            // For the President / Chancellor's report and display preferences
-            'years' => ChancellorController::YEARS,
+            // For the Executive Office's report and display preferences
+            'years' => ExecutiveController::YEARS,
             'units' => ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
-            'recipients' => $user->isChancellor() ? [
+            'recipients' => $user->isExecutive() ? [
                 ['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'],
                 ['initials' => 'EF', 'name' => 'Br. Edmundo L. Fernandez FSC'],
                 ['initials' => 'TP', 'name' => 'Dr. Tessie Palma'],
@@ -138,7 +141,7 @@ class SettingsController extends Controller
                 ],
             ];
         }
-        if ($user->isChancellor()) {
+        if ($user->isExecutive()) {
             return [
                 'Reports' => [
                     ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to the Executive Office.', true],

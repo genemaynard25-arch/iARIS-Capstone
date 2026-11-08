@@ -25,7 +25,7 @@ use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
 use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
-use App\Http\Controllers\ChancellorController;
+use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CollegeController;
 
@@ -113,12 +113,15 @@ Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(functi
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
 
-// President / Chancellor dashboard (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to the Chancellor's office, plus IATO admins
-Route::get('/chancellor', [ChancellorController::class, 'dashboard'])->middleware('auth')->name('chancellor.dashboard');
-Route::get('/chancellor/analytics', [ChancellorController::class, 'analytics'])->middleware('auth')->name('chancellor.analytics');
-Route::get('/chancellor/reports', [ChancellorController::class, 'reports'])->middleware('auth')->name('chancellor.reports');
-Route::get('/chancellor/messages', [ChancellorController::class, 'messages'])->middleware('auth')->name('chancellor.messages');
+// Executive Office: President, Chancellor, Vice Presidents, Vice Chancellors (their own sidebar: see layouts/app.blade.php)
+// TODO (RBAC): limit to executive roles, plus IATO admins
+Route::get('/executive', [ExecutiveController::class, 'dashboard'])->middleware('auth')->name('executive.dashboard');
+Route::get('/executive/analytics', [ExecutiveController::class, 'analytics'])->middleware('auth')->name('executive.analytics');
+Route::get('/executive/reports', [ExecutiveController::class, 'reports'])->middleware('auth')->name('executive.reports');
+Route::get('/executive/messages', [ExecutiveController::class, 'messages'])->middleware('auth')->name('executive.messages');
+// The old /chancellor addresses still work
+Route::redirect('/chancellor', '/executive');
+Route::get('/chancellor/{page}', fn ($page) => redirect('/executive/' . $page))->where('page', 'analytics|reports|messages');
 
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');

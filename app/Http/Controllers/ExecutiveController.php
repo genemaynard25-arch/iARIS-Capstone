@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\CachedInsight;
 
-class ChancellorController extends Controller
+class ExecutiveController extends Controller
 {
     // The academic years in the placeholder data, oldest first (the last one is this year)
     public const YEARS = ['AY 2022–23', 'AY 2023–24', 'AY 2024–25', 'AY 2025–26'];
 
     /**
-     * President / Chancellor dashboard: a read-only, university-wide view.
+     * Executive Office pages (President, Chancellor, Vice Presidents, Vice Chancellors): a read-only, university-wide view.
      *
      * Placeholder data, same idea as the LAMP and SHS dashboards. Later the
      * numbers would come from the admission_stats table (the same data the
@@ -21,14 +21,14 @@ class ChancellorController extends Controller
      * so they always add up.
      */
     /**
-     * Briefing (the President / Chancellor home page): a short, read-only summary of the
+     * Briefing (the Executive Office home page): a short, read-only summary of the
      * same placeholder numbers as Analytics (self::units()), with "Needs your attention"
      * items and a card per unit. Everything on the page is worked out from these numbers
      * in the view, so it always agrees with Analytics.
      */
     public function dashboard()
     {
-        return view('chancellor.dashboard', [
+        return view('executive.dashboard', [
             'academicYear' => '2025–2026',
             'years' => self::YEARS,
             'units' => self::units(),
@@ -47,7 +47,7 @@ class ChancellorController extends Controller
      */
     public function messages()
     {
-        return view('chancellor.messages', ['threads' => self::threads()]);
+        return view('executive.messages', ['threads' => self::threads()]);
     }
 
     /** Conversations IATO answered (the number on the sidebar's Messages link). */
@@ -78,7 +78,7 @@ class ChancellorController extends Controller
     }
 
     /**
-     * President / Chancellor analytics: the same university-wide numbers, per unit,
+     * Executive analytics: the same university-wide numbers, per unit,
      * with charts the user can filter by unit.
      *
      * Placeholder data. Each unit's numbers add up to the dashboard's totals
@@ -88,7 +88,7 @@ class ChancellorController extends Controller
      */
     public function analytics()
     {
-        return view('chancellor.analytics', [
+        return view('executive.analytics', [
             'academicYear' => '2025–2026',
             'years' => self::YEARS,
 
@@ -101,7 +101,7 @@ class ChancellorController extends Controller
     }
 
     /**
-     * President / Chancellor reports: what the IATO sent (with a reply thread each),
+     * Executive reports: what the IATO sent (with a reply thread each),
      * and report templates to generate from the same numbers as the Analytics page.
      *
      * Placeholder data. Marking as read, replying and generating only happen in the
@@ -112,12 +112,12 @@ class ChancellorController extends Controller
         // The Reports page is shared with the College offices (resources/views/reports/inbox.blade.php)
         return view('reports.inbox', [
             'labels' => [
-                'office' => 'President / Chancellor',
+                'office' => 'Executive',
                 'subtitle' => 'Reports from IATO, and reports you can generate yourself. Questions about a report go to Messages.',
                 // No reply thread: questions about a report go to Messages
-                'askUrl' => url('/chancellor/messages'),
+                'askUrl' => url('/executive/messages'),
                 'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
-                'role' => 'President / Chancellor', 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
+                'role' => auth()->user()->roleInfo()[0], 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
                 'sharedTitle' => 'Shared with the Executive Office', 'locked' => null,
             ],
             // Replies now live in Messages, so a report is just unread or read

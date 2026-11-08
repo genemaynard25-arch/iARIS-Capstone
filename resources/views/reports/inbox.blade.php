@@ -1,4 +1,4 @@
-{{-- Reports page shared by the President / Chancellor (ChancellorController) and the College offices
+{{-- Reports page shared by the Executive Office (ExecutiveController) and the College offices
      (CollegeController): reports received from the IATO, and reports you generate yourself.
      Each controller passes its own data, plus $labels for the words that differ:
        office      page title, e.g. "College"                  subtitle  the text under the page title
