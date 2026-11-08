@@ -1,3 +1,14 @@
+@php
+    $sensitivePage = request()->is(
+        'applicants*',
+        'review-queue*',
+        'submissions*',
+        'records/*',
+        'lamp/scholars*',
+        'college/applicants*',
+    );
+@endphp
+
 <div id="aiWidget">
     <button id="aiWidgetToggle" class="btn btn-primary rounded-circle shadow" type="button" aria-label="Open AI Assistant"
         style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 2000;">
@@ -23,7 +34,20 @@
             </div>
             <button id="aiWidgetClose" type="button" class="btn-close btn-close-white btn-sm" aria-label="Close"></button>
         </div>
+
+        {{-- Disclaimer Banner --}}
+        <div class="small text-body-secondary px-3 py-2 border-bottom bg-body-tertiary" style="font-size: 0.75rem;">
+            <i class="bi bi-shield-check me-1"></i>
+            I can read and chart data on pages like Dashboard, Analytics, and Reports. For privacy, I don't read information on Applicants, Records, Review Queue, or Submissions pages.
+        </div>
+
         <div id="aiWidgetMessages" class="flex-grow-1 overflow-auto p-3 small" style="background: #F5F7F6;"></div>
+            <div class="d-flex flex-wrap gap-1 px-2 pt-2" style="background: #F5F7F6;">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" data-suggest="about" style="font-size: 0.72rem;">What can you do?</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" data-suggest="privacy" style="font-size: 0.72rem;">What don't you read?</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" data-suggest="summarize" style="font-size: 0.72rem;">Summarize this page</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" data-suggest="chart" style="font-size: 0.72rem;">Make a chart from this</button>
+            </div>
         <form id="aiWidgetForm" class="d-flex gap-2 p-2 border-top bg-white">
             <input type="text" id="aiWidgetInput" class="form-control form-control-sm" placeholder="Ask about this page..." autocomplete="off" required>
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i></button>
@@ -41,6 +65,11 @@
     const input = document.getElementById('aiWidgetInput');
     const messages = document.getElementById('aiWidgetMessages');
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const SENSITIVE_PAGE = @json($sensitivePage);
+    const CANNED_REPLIES = {
+        about: "I can answer questions about the page you're viewing and build charts (bar, line, or pie) from the data shown, when it helps. I'm here to help you read your admissions data faster, not to replace your own judgment on decisions.",
+        privacy: "For privacy, I don't read or send what's shown on the Applicants, Records, Review Queue, or Submissions pages as those contain individual student data. I still work on those pages for general questions, I just can't see what's on screen there. On pages like Dashboard, Analytics, and Reports, I can read the page and help with it directly.",
+    };
 
     toggle.addEventListener('click', () => panel.classList.toggle('d-none'));
     closeBtn.addEventListener('click', () => panel.classList.add('d-none'));
@@ -271,10 +300,25 @@
     }
 
     function pageContext() {
+        if (SENSITIVE_PAGE) return '';   // don't send individual student/applicant data off-site
         const main = document.querySelector('main');
         const text = main ? main.innerText : document.body.innerText;
         return text.replace(/\s+/g, ' ').trim().slice(0, 4000);
     }
+    
+    // Handler for clicking on the suggestions
+    document.querySelectorAll('[data-suggest]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const key = btn.dataset.suggest;
+        if (CANNED_REPLIES[key]) {
+            addMessage(btn.textContent, 'user');
+            addMessage(CANNED_REPLIES[key], 'ai');
+            return;
+        }
+        input.value = btn.textContent;
+        form.requestSubmit();
+        });
+    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
