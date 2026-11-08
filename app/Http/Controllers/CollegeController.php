@@ -71,12 +71,17 @@ class CollegeController extends Controller
             'BSFS' => ['name' => 'BS Forensic Science', 'applicants' => [24, 27, 30, 33], 'enrolled' => [6, 7, 8, 8],
                 'funnel' => [33, 24, 20, 9, 8], 'status' => [10, 14, 9], 'paidLastYear' => 8],
         ]],
+        // 'title' (optional): how the dean's title reads when it isn't the code ("Dean, College of Nursing")
+        'CON' => ['name' => 'College of Nursing', 'title' => 'College of Nursing', 'programs' => [
+            'BSN' => ['name' => 'BS Nursing', 'applicants' => [123, 129, 135, 142], 'enrolled' => [36, 37, 39, 39],
+                'funnel' => [142, 105, 89, 44, 39], 'status' => [40, 58, 44], 'paidLastYear' => 43],
+        ]],
     ];
 
     // How a dean is greeted ("Good morning, Engr. Villafuerte"). Names as in the mockups.
     private const HONORIFICS = [
         'Cherrie Villafuerte' => 'Engr.', 'Jasmin De Silva' => 'Dr.', 'Gina Dimaano' => 'Dr.',
-        'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.',
+        'Evangeline Necio' => 'Ms.', 'Aristotle Balba' => 'Dr.', 'Margie Ebreo' => 'Dr.',
     ];
 
     /**
@@ -257,6 +262,9 @@ class CollegeController extends Controller
             ['id' => 'APP-2026-0632', 'name' => 'Castro, Jenny Lyn M.', 'program' => 'BSCrim', 'status' => 'For Exam', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'October 3, 2005', 'gender' => 'Female', 'email' => 'j.castro@dlsl.edu.ph', 'phone' => '0920 932 3332', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
             ['id' => 'APP-2026-0633', 'name' => 'Rivera, Joshua Emmanuel D.', 'program' => 'BSFS', 'status' => 'Pending', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'July 8, 2006', 'gender' => 'Male', 'email' => 'j.rivera@dlsl.edu.ph', 'phone' => '0917 933 4433', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
             ['id' => 'APP-2026-0634', 'name' => 'Santos, Erika Mae V.', 'program' => 'BSCrim', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'December 1, 2005', 'gender' => 'Female', 'email' => 'e.santos@dlsl.edu.ph', 'phone' => '0918 934 5534', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
+            ['id' => 'APP-2026-0641', 'name' => 'Bautista, Patricia Anne L.', 'program' => 'BSN', 'status' => 'Paid', 'applied' => '2026-05-23', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'March 22, 2006', 'gender' => 'Female', 'email' => 'p.bautista@dlsl.edu.ph', 'phone' => '0917 941 2241', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 9, 2026 · 8:00 AM', 'paid' => 'Jun 4, 2026'],
+            ['id' => 'APP-2026-0642', 'name' => 'Mercado, John Paul R.', 'program' => 'BSN', 'status' => 'For Exam', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'August 14, 2005', 'gender' => 'Male', 'email' => 'j.mercado@dlsl.edu.ph', 'phone' => '0918 942 3342', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
+            ['id' => 'APP-2026-0643', 'name' => 'Ilagan, Sophia Marie C.', 'program' => 'BSN', 'status' => 'Pending', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'November 9, 2005', 'gender' => 'Female', 'email' => 's.ilagan@dlsl.edu.ph', 'phone' => '0919 943 4443', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
         ];
 
         return array_values(array_filter($all, fn ($a) => isset($scope[$a['program']])));

@@ -61,7 +61,7 @@ class SettingsController extends Controller
         // Deans: "Dean, CBEAM" and their college's full name
         if ($user->role === 'dean') {
             $college = CollegeController::college();
-            $roleLabel = $title = "Dean, {$college['code']}";
+            $roleLabel = $title = 'Dean, ' . ($college['title'] ?? $college['code']);
             $office = $college['name'];
         }
         // Registrars: "College Registrar" or "IS Registrar"

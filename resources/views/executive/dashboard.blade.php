@@ -33,14 +33,15 @@
 
     {{-- This week's summary --}}
     <section class="card border-0 shadow-sm rounded-4 bg-iaris text-white mb-4" aria-label="Summary">
-        <div class="card-body p-4 d-flex flex-wrap align-items-center gap-4">
-            <div class="flex-grow-1" style="min-width: 260px;">
+        {{-- Text on the left, the big number on the right (stacked on phones) --}}
+        <div class="card-body p-4 d-flex flex-column flex-md-row align-items-md-center gap-4">
+            <div class="flex-grow-1">
                 <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-2"><i class="bi bi-stars me-1"></i> This week's briefing · {{ $weekLabel }}</div>
                 <h2 class="fs-5 fw-bold mb-3" id="briefHeadline"></h2>
                 <div class="d-flex flex-wrap gap-2 mb-3" id="briefPoints"></div>
                 <div class="small text-white-50">Placeholder data until the numbers come from iARIS. Summaries describe the data; decisions stay with university leadership.</div>
             </div>
-            <div class="text-center px-3">
+            <div class="text-md-center px-md-3 flex-shrink-0">
                 <div class="display-5 fw-bold font-brand" id="briefBig"></div>
                 <div class="small text-white-50">applicants this AY</div>
             </div>
