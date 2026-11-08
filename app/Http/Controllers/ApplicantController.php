@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\ApplicantRecords;
+use Illuminate\Http\Request;
 
 class ApplicantController extends Controller
 {
@@ -21,6 +22,180 @@ class ApplicantController extends Controller
             'divisions' => self::DIVISIONS,
             'applicants' => self::pipeline(),
         ]);
+    }
+
+    public function store(Request $request)
+    {
+        $scopeToLevel = ['college' => 'college', 'is' => 'is'];
+        $level = $scopeToLevel[$request->input('scope')] ?? null;
+
+        if (! $level || ! $request->user()->canEdit($level)) {
+            abort(403, 'You do not have permission to add applicants here.');
+        }
+
+        $validated = $request->validate([
+            'last' => 'required|string|max:100',
+            'first' => 'required|string|max:100',
+            'mi' => 'nullable|string|max:5',
+            'gender' => 'required|in:Male,Female',
+            'email' => 'nullable|email|max:150',
+            'contact' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:255',
+            'group' => 'required|string|max:100',
+            'program' => 'required|string|max:150',
+            'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
+            'applied' => 'required|date',
+        ]);
+
+        $referenceNumber = 'APP-' . now()->format('Y') . '-' . str_pad((string) (\App\Models\Applicant::max('id') + 1), 4, '0', STR_PAD_LEFT);
+
+        $applicant = \App\Models\Applicant::create([
+            'reference_number' => $referenceNumber,
+            'school_year' => \App\Models\Applicant::max('school_year') ?? (now()->format('Y') . '-' . (now()->year + 1)),
+            'level' => $level,
+            'sub_level' => $level === 'is' ? $this->subLevelFromGroup($validated['group']) : null,
+            'last_name' => $validated['last'],
+            'first_name' => $validated['first'],
+            'gender' => strtolower($validated['gender']),
+            'program_or_track' => $validated['program'],
+            'college' => $level === 'college' ? $validated['group'] : null,
+            'email' => $validated['email'] ?? null,
+            'contact_number' => $validated['contact'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $validated['applied']]);
+
+        $this->applyStatus($applicant, $validated['status']);
+
+        $module = $level === 'college' ? 'College Records' : 'Integrated School';
+        \App\Models\AuditLog::record(
+            'create',
+            $module,
+            'Applicant Created',
+            "Added new applicant **{$validated['last']}, {$validated['first']}** — {$validated['group']} · {$validated['program']}",
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function update(Request $request, \App\Models\Applicant $applicant)
+    {
+        if (! $request->user()->canEdit($applicant->level)) {
+            abort(403, 'You do not have permission to edit this record.');
+        }
+
+        $validated = $request->validate([
+            'last' => 'required|string|max:100',
+            'first' => 'required|string|max:100',
+            'mi' => 'nullable|string|max:5',
+            'gender' => 'required|in:Male,Female',
+            'email' => 'nullable|email|max:150',
+            'contact' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:255',
+            'group' => 'required|string|max:100',
+            'program' => 'required|string|max:150',
+            'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
+            'applied' => 'required|date',
+        ]);
+
+        $beforeStatus = ApplicantRecords::status($applicant);
+        $name = "{$applicant->last_name}, {$applicant->first_name}";
+
+        $applicant->update([
+            'last_name' => $validated['last'],
+            'first_name' => $validated['first'],
+            'gender' => strtolower($validated['gender']),
+            'program_or_track' => $validated['program'],
+            'college' => $applicant->level === 'college' ? $validated['group'] : $applicant->college,
+            'sub_level' => $applicant->level === 'is' ? $this->subLevelFromGroup($validated['group']) : $applicant->sub_level,
+            'email' => $validated['email'] ?? null,
+            'contact_number' => $validated['contact'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $validated['applied']]);
+
+        $this->applyStatus($applicant, $validated['status']);
+
+        $module = $applicant->level === 'college' ? 'College Records' : 'Integrated School';
+        \App\Models\AuditLog::record(
+            'edit',
+            $module,
+            'Record Edited',
+            "Edited record of **{$name}** — status changed to **{$validated['status']}**",
+            null,
+            $beforeStatus !== $validated['status'] ? [['field' => 'Status', 'before' => $beforeStatus, 'after' => $validated['status']]] : null,
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroy(Request $request, \App\Models\Applicant $applicant)
+    {
+        if (! $request->user()->canEdit($applicant->level)) {
+            abort(403, 'You do not have permission to remove this record.');
+        }
+
+        $name = "{$applicant->last_name}, {$applicant->first_name}";
+        $refNumber = $applicant->reference_number;
+        $module = $applicant->level === 'college' ? 'College Records' : 'Integrated School';
+
+        $applicant->update(['archived_at' => now()]);
+
+        \App\Models\AuditLog::record('delete', $module, 'Applicant Removed', "Removed applicant **{$name}** ({$refNumber})");
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function restore(Request $request, \App\Models\Applicant $applicant)
+    {
+        if (! $request->user()->canEdit($applicant->level)) {
+            abort(403);
+        }
+
+        $module = $applicant->level === 'college' ? 'College Records' : 'Integrated School';
+
+        $applicant->update(['archived_at' => null]);
+
+        \App\Models\AuditLog::record('edit', $module, 'Applicant Restored', "Restored applicant **{$applicant->last_name}, {$applicant->first_name}** ({$applicant->reference_number})");
+
+        return response()->json(['ok' => true]);
+    }
+
+    protected function applyStatus(\App\Models\Applicant $applicant, string $status): void
+    {
+        $map = [
+            'Pending' => ['admission_test_status' => 'not_taken', 'application_status' => 'pooling'],
+            'For Exam' => ['admission_test_status' => 'took_test', 'application_status' => 'submitted'],
+            'Passed' => ['admission_test_status' => 'passed', 'application_status' => 'submitted'],
+            'Not Qualified' => ['admission_test_status' => 'failed', 'application_status' => 'submitted'],
+            'Paid' => ['admission_test_status' => 'passed', 'application_status' => 'completed'],
+        ];
+
+        $applicant->update($map[$status]);
+
+        if ($status === 'Paid') {
+            \Illuminate\Support\Facades\DB::table('payments')->updateOrInsert(
+                ['applicant_id' => $applicant->id, 'fee_type' => 'reservation_fee'],
+                ['status' => 'paid', 'paid_at' => now(), 'amount' => 2000]
+            );
+        } else {
+            \Illuminate\Support\Facades\DB::table('payments')
+                ->where('applicant_id', $applicant->id)
+                ->where('fee_type', 'reservation_fee')
+                ->delete();
+        }
+    }
+
+    protected function subLevelFromGroup(string $group): ?string
+    {
+        return match ($group) {
+            'Preschool' => 'kindergarten',
+            'Junior High' => 'jhs',
+            'Senior High' => 'shs',
+            default => null,
+        };
     }
 
     /**
@@ -52,7 +227,6 @@ class ApplicantController extends Controller
             'dept' => $dept,
             'dept_label' => $deptLabel,
             'program' => $program,
-            // The database only says regular or scholar; the placeholder people have no scholarship
             'scholarship' => ! empty($a['scholar']) ? 'Scholar' : '',
             'status' => $a['status'],
             'applied' => $a['applied'],
@@ -69,7 +243,6 @@ class ApplicantController extends Controller
         $isNames = ['Preschool' => 'Preschool', 'Grade School' => 'GS', 'Junior High' => 'JHS', 'Senior High' => 'SHS'];
         $all = [];
 
-        // From the database
         foreach (ApplicantRecords::forLevel('is') as $a) {
             $all[] = $row($a, 'Integrated School', $isNames[$a['sub_level']], $a['sub_level'], $a['program']);
         }
@@ -83,7 +256,6 @@ class ApplicantController extends Controller
             $all[] = $row($a, 'ETEEAP', $a['group'], $a['program_label'], $a['program_label']);
         }
 
-        // Placeholder people (no Law or iPACE level in the database yet)
         foreach (LawRecordController::sample() as $a) {
             $all[] = $row($a, 'College of Law', $a['group'], $a['program_label'], $a['program_label']);
         }
@@ -101,7 +273,6 @@ class ApplicantController extends Controller
     public static function sample(): array
     {
         return [
-            // College
             ['id' => 'APP-2026-0381', 'unit' => 'college', 'last' => 'Santos', 'first' => 'Maria Isabel', 'mi' => 'L', 'college' => 'CITE', 'program' => 'BS Computer Science', 'status' => 'Enrolled', 'applied' => '2026-05-14', 'updated' => '2026-06-08 09:14', 'dob' => '2005-03-03', 'gender' => 'Female', 'email' => 'm.santos@example.com', 'contact' => '0917 000 0381', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 8:00 AM', 'paid' => '2026-06-03', 'amount' => 2000],
             ['id' => 'APP-2026-0382', 'unit' => 'college', 'last' => 'Reyes', 'first' => 'Joshua', 'mi' => 'D', 'college' => 'CITE', 'program' => 'BS Information Technology', 'status' => 'Paid', 'applied' => '2026-05-16', 'updated' => '2026-06-08 10:02', 'dob' => '2004-07-22', 'gender' => 'Male', 'email' => 'j.reyes@example.com', 'contact' => '0917 000 0382', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => '2026-06-05', 'amount' => 2000],
             ['id' => 'APP-2026-0383', 'unit' => 'college', 'last' => 'Dela Cruz', 'first' => 'Ana Patricia', 'mi' => 'M', 'college' => 'CBEAM', 'program' => 'BS Accountancy', 'status' => 'For Exam', 'applied' => '2026-05-18', 'updated' => '2026-06-07 15:45', 'dob' => '2005-01-10', 'gender' => 'Female', 'email' => 'a.delacruz@example.com', 'contact' => '0917 000 0383', 'address' => 'San Jose, Batangas', 'exam' => 'Jun 20, 2026 · 8:00 AM', 'paid' => null, 'amount' => null],
@@ -114,8 +285,6 @@ class ApplicantController extends Controller
             ['id' => 'APP-2026-0390', 'unit' => 'college', 'last' => 'Castillo', 'first' => 'Paolo', 'mi' => 'J', 'college' => 'CITE', 'program' => 'BS Computer Engineering', 'status' => 'For Exam', 'applied' => '2026-05-27', 'updated' => '2026-06-04 10:20', 'dob' => '2005-08-09', 'gender' => 'Male', 'email' => 'p.castillo@example.com', 'contact' => '0917 000 0390', 'address' => 'Cuenca, Batangas', 'exam' => 'Jun 22, 2026 · 8:00 AM', 'paid' => null, 'amount' => null],
             ['id' => 'APP-2026-0391', 'unit' => 'college', 'last' => 'Navarro', 'first' => 'Janine', 'mi' => 'C', 'college' => 'CIHTM', 'program' => 'BS Hospitality Management', 'status' => 'Paid', 'applied' => '2026-05-28', 'updated' => '2026-06-03 15:15', 'dob' => '2005-05-19', 'gender' => 'Female', 'email' => 'j.navarro@example.com', 'contact' => '0917 000 0391', 'address' => 'Ibaan, Batangas', 'exam' => 'Jun 13, 2026 · 1:00 PM', 'paid' => '2026-06-02', 'amount' => 2000],
             ['id' => 'APP-2026-0392', 'unit' => 'college', 'last' => 'Bautista', 'first' => 'Luis', 'mi' => 'E', 'college' => 'College of Law', 'program' => 'Juris Doctor', 'status' => 'Pending', 'applied' => '2026-05-29', 'updated' => '2026-06-03 08:45', 'dob' => '2001-10-11', 'gender' => 'Male', 'email' => 'l.bautista@example.com', 'contact' => '0917 000 0392', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null, 'amount' => null],
-
-            // Integrated School
             ['id' => 'APP-IS-2026-0101', 'unit' => 'is', 'last' => 'Lim', 'first' => 'Ethan', 'mi' => 'G', 'level' => 'Grade 11', 'program' => 'STEM', 'status' => 'Enrolled', 'applied' => '2026-05-10', 'updated' => '2026-06-08 08:30', 'dob' => '2010-03-03', 'gender' => 'Male', 'email' => 'parent.lim@example.com', 'contact' => '0917 000 0101', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 10, 2026 · 8:00 AM', 'paid' => '2026-06-01', 'amount' => 1500],
             ['id' => 'APP-IS-2026-0102', 'unit' => 'is', 'last' => 'Soriano', 'first' => 'Andrea', 'mi' => 'P', 'level' => 'Grade 11', 'program' => 'ABM', 'status' => 'Paid', 'applied' => '2026-05-12', 'updated' => '2026-06-08 09:00', 'dob' => '2010-04-18', 'gender' => 'Female', 'email' => 'parent.soriano@example.com', 'contact' => '0917 000 0102', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 14, 2026 · 9:00 AM', 'paid' => '2026-06-03', 'amount' => 1500],
             ['id' => 'APP-IS-2026-0103', 'unit' => 'is', 'last' => 'Pascual', 'first' => 'Miguel', 'mi' => 'F', 'level' => 'Grade 7', 'program' => 'Junior High School', 'status' => 'For Exam', 'applied' => '2026-05-13', 'updated' => '2026-06-07 10:10', 'dob' => '2014-01-21', 'gender' => 'Male', 'email' => 'parent.pascual@example.com', 'contact' => '0917 000 0103', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 19, 2026 · 8:00 AM', 'paid' => null, 'amount' => null],

@@ -209,6 +209,40 @@
         </div>
     </div>
 
+        {{-- Editor permissions for IATO Staff (Level Editor vs Level Viewer) --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="fs-6 fw-bold mb-1">IATO Staff — Editor Permissions</h2>
+                    <p class="small text-body-secondary mb-0">Which modules a "Level Editor" (vs a read-only "Level Viewer") can actually add, edit, or remove data in. Requires the module to already be turned on above.</p>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2 d-none" id="editUnsavedBadge"></span>
+                    <button type="button" class="btn btn-light border fw-semibold" id="editDiscardButton" disabled>Discard</button>
+                    <button type="button" class="btn btn-primary fw-semibold" id="editSaveButton" disabled>
+                        <i class="bi bi-floppy me-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                @foreach ($editableModules as $module)
+                    <div class="col">
+                        <label class="d-flex align-items-center justify-content-between gap-2 p-3 rounded-3 border w-100">
+                            <span class="fw-semibold small">{{ $module['name'] }}</span>
+                            <div class="form-switch d-inline-block p-0 m-0">
+                                <input class="form-check-input m-0" type="checkbox" role="switch"
+                                    data-edit-perm data-module="{{ $module['key'] }}"
+                                    {{ $module['can_edit'] ? 'checked' : '' }}>
+                            </div>
+                        </label>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
     {{-- Access change log --}}
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-4">
@@ -496,6 +530,52 @@
             });
             updateChanges();
             toast(`${list.length} change${list.length === 1 ? '' : 's'} saved.`);
+        });
+        
+                // ---- IATO Staff editor permissions ----
+        const editSwitches = [...document.querySelectorAll('[data-edit-perm]')];
+        const editChanged = () => editSwitches.filter(input => input.checked !== input.defaultChecked);
+
+        function updateEditChanges() {
+            const count = editChanged().length;
+            const badge = document.getElementById('editUnsavedBadge');
+            badge.textContent = `${count} unsaved change${count === 1 ? '' : 's'}`;
+            badge.classList.toggle('d-none', count === 0);
+            document.getElementById('editSaveButton').disabled = count === 0;
+            document.getElementById('editDiscardButton').disabled = count === 0;
+        }
+        editSwitches.forEach(input => input.addEventListener('change', updateEditChanges));
+
+        document.getElementById('editDiscardButton').addEventListener('click', () => {
+            editSwitches.forEach(input => input.checked = input.defaultChecked);
+            updateEditChanges();
+        });
+
+        document.getElementById('editSaveButton').addEventListener('click', async () => {
+            const list = editChanged();
+            if (!list.length) return;
+
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const payload = list.map(input => ({
+                role: 'iato_staff',
+                module: input.dataset.module,
+                can_edit: input.checked,
+            }));
+
+            const res = await fetch('{{ url('/access-control/permissions') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ changes: payload }),
+            });
+
+            if (!res.ok) {
+                toast('Something went wrong saving editor permissions.');
+                return;
+            }
+
+            list.forEach(input => input.defaultChecked = input.checked);
+            updateEditChanges();
+            toast(`${list.length} editor permission${list.length === 1 ? '' : 's'} saved.`);
         });
         
         // Warn before leaving the page with unsaved switches

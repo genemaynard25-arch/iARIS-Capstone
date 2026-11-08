@@ -26,10 +26,13 @@
     $databaseStatuses = ['Pending', 'For Exam', 'Passed', 'Not Qualified', 'Paid'];
     // Pages that read the database: they get an "imported" empty message
     $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap']);
-    // Add / Edit / Remove: only roles with the 'edit' permission (Access Control). Front end only for now.
+    // Add / Edit / Remove: only roles with the 'edit' permission (Access Control).
     // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
     $isRegistrar = auth()->user()->role === 'registrar';
-    $canEdit = auth()->user()->canAccess('edit');
+    $canEdit = match ($scope) {
+        'college', 'is', 'scholars' => auth()->user()->canEdit($scope),
+        default => auth()->user()->canAccess('edit'),
+    };
 
     $defaults = [
         'extras' => [], 'labels' => null, 'groupBadge' => false, 'programBadges' => [],
@@ -712,6 +715,7 @@
         window.RECORD_FORM = {
             items: APPLICANTS, rows, tbody: 'applicantRows', render, drawer, current: () => drawerApplicant,
             labels: currentLabels, groupOrder: GROUP_ORDER, statuses: PAGE.statuses, statusLabels: PAGE.statusLabels, noun: PAGE.noun,
+            scope: @json($scope),
             toForm: a => a,   // the rows already use the form's field names
         };
 

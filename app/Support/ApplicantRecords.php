@@ -93,18 +93,19 @@ class ApplicantRecords
             'applied' => $a->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'),
             'updated' => ($a->updated_at ?? $a->created_at ?? now())->format('Y-m-d H:i'),
             'dob' => null,
+            'dob' => $a->date_of_birth?->format('Y-m-d'),
             'gender' => ucfirst($a->gender),
-            'email' => null,
-            'contact' => null,
-            'address' => null,
-            'exam' => null,
+            'email' => $a->email,
+            'contact' => $a->contact_number,
+            'address' => $a->address,
+            'exam' => $a->exam_scheduled_at ? $a->exam_scheduled_at->format('M j, Y') . ' · ' . $a->exam_scheduled_at->format('g:i A') : null,
             'paid' => $payment && $payment[1] ? Carbon::parse($payment[1])->format('Y-m-d') : null,
             'amount' => $payment[0] ?? null,
         ];
 
         // array_merge: the level's own values replace the shared ones (e.g. 'program' on Graduate and ETEEAP)
         return match ($a->level) {
-            'college' => array_merge($row, ['unit' => 'college', 'college' => self::collegeFor($program)]),
+            'college' => array_merge($row, ['unit' => 'college', 'college' => $a->college ?: self::collegeFor($program)]),
             'is' => array_merge($row, [
                 'unit' => 'is',
                 'sub_level' => self::IS_SUB_LEVELS[$a->sub_level] ?? 'Grade School',

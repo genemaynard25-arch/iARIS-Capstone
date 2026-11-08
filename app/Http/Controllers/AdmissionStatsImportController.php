@@ -33,6 +33,14 @@ class AdmissionStatsImportController extends Controller
 
         $batch->update(['status' => 'completed']);
 
+        $rowCount = AdmissionStat::count();
+            \App\Models\AuditLog::record(
+                'import',
+                'Import Data',
+                'Data Import',
+                "Imported **{$batch->original_filename}** — **{$rowCount} rows** added (Admission Stats)",
+        );
+
         return redirect("/import/admission-stats/{$batch->id}");
     }
 

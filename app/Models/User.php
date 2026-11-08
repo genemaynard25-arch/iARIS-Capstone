@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(["name", "email", "password", "department", "status"])]
+#[Fillable(["name", "email", "password", "department", "status", "role", "assigned_college"])]
 #[Hidden(["password", "remember_token"])]
 class User extends Authenticatable
 {
@@ -51,16 +51,33 @@ class User extends Authenticatable
             ->where("user_id", $this->id)
             ->exists();
     }
+    // Whether the user can access a module. Admins can access everything; other users must have a RolePermission with enabled = true.
+   public function canAccess(string $module): bool
+{
+    if ($this->isAdmin()) {
+        return true;
+    }
 
-    public function canAccess(string $module): bool
+    return \App\Models\RolePermission::where("role", $this->role)
+        ->where("module", $module)
+        ->where("enabled", true)
+        ->exists();
+    }
+    // Whether the user can edit a module. Admins can edit everything; other users must have access_type 'editor' and a RolePermission with can_edit = true.
+    public function canEdit(string $module): bool
     {
         if ($this->isAdmin()) {
             return true;
         }
 
+        if ($this->access_type !== 'editor') {
+            return false;
+        }
+
         return \App\Models\RolePermission::where("role", $this->role)
             ->where("module", $module)
             ->where("enabled", true)
+            ->where("can_edit", true)
             ->exists();
     }
     // Grants temporary admin privileges to a user. Returns the TempAdmin model if the user has an active grant, or null otherwise.

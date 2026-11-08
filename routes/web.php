@@ -54,6 +54,10 @@ Route::get('/loading', function () {
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
+Route::post('/applicants', [ApplicantController::class, 'store'])->middleware(['auth', 'module:college']);
+Route::put('/applicants/{applicant:reference_number}', [ApplicantController::class, 'update'])->middleware('auth');
+Route::delete('/applicants/{applicant:reference_number}', [ApplicantController::class, 'destroy'])->middleware('auth');
+Route::post('/applicants/{applicant:reference_number}/restore', [ApplicantController::class, 'restore'])->middleware('auth');
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports'); // now redirects to the Reports tab of /analytics
 // Analytics & Reports: one page with tabs. The controller checks the 'analytics' / 'reports' permissions per tab.
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
