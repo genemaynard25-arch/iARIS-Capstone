@@ -28,8 +28,9 @@ class SettingsController extends Controller
         $sections = $user->isLamp() || $user->role === 'registrar'
             ? ['profile', 'security', 'notifications']
             : ['profile', 'security', 'notifications', 'ai'];
+        // (Vice Presidents and Vice Chancellors are view only, so no Report Preferences.)
         if ($user->isExecutive()) {
-            array_splice($sections, 3, 0, ['briefing', 'reports']);
+            array_splice($sections, 3, 0, $user->isVice() ? ['briefing'] : ['briefing', 'reports']);
             $sections[] = 'display';
         }
 
@@ -60,6 +61,11 @@ class SettingsController extends Controller
         if ($user->role === 'registrar') {
             $roleLabel = $title = $user->roleInfo()[0];
         }
+        // Vice Presidents and Vice Chancellors: "Vice President for Finance", "Office of the VP for Finance"
+        if ($user->isVice() && $user->department) {
+            $roleLabel = $title = $user->executiveTitle();
+            $office = 'Office of the ' . ($user->role === 'vice_chancellor' ? 'VC' : 'VP') . " for {$user->department}";
+        }
 
         $scopes = ['college' => 'College', 'is' => 'Integrated School'];
         $scope = $user->isExecutive() || ($user->isAdmin() && ! $user->assigned_level)
@@ -85,6 +91,7 @@ class SettingsController extends Controller
                 'Role' => $roleLabel,
                 'Access level' => match (true) {
                     $user->isLamp() => 'Confirm, flag, and correct scholars',
+                    $user->isVice() => 'View only',
                     $user->isExecutive() => 'View · can generate reports',
                     $user->role === 'registrar' => 'View only; can ask IATO about a record',
                     $user->role === 'iato_staff' && ! $user->isAdmin() => 'Edit, through the Review Queue',
@@ -109,13 +116,13 @@ class SettingsController extends Controller
             // For the Executive Office's report and display preferences
             'years' => ExecutiveController::YEARS,
             'units' => ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
-            'recipients' => $user->isExecutive() ? [
-                ['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'],
-                ['initials' => 'EF', 'name' => 'Br. Edmundo L. Fernandez FSC'],
-                ['initials' => 'TP', 'name' => 'Dr. Tessie Palma'],
-                ['initials' => 'SM', 'name' => 'Dr. Sheila Maloles'],
-                ['initials' => 'WA', 'name' => 'Mr. Wenifredo Angeles'],
-            ] : [],
+            // "Send a copy to": the IATO and the rest of the Executive Office (not you)
+            'recipients' => $user->isExecutive()
+                ? collect(ExecutiveController::executives())
+                    ->reject(fn ($person) => str_contains($person['name'], $user->name))
+                    ->prepend(['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'])
+                    ->values()->all()
+                : [],
         ]);
     }
 

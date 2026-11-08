@@ -110,6 +110,21 @@ class User extends Authenticatable
         return in_array($this->role, ["president", "vice_president", "chancellor", "vice_chancellor"]);
     }
 
+    // A Vice President or Vice Chancellor: same pages as the President and Chancellor,
+    // but view only (no Report Preferences). Their area is kept in `department`, e.g. "Finance".
+    public function isVice(): bool
+    {
+        return in_array($this->role, ["vice_president", "vice_chancellor"]);
+    }
+
+    // "Vice President for Finance", "Vice Chancellor for Academics", or just the role without a department
+    public function executiveTitle(): string
+    {
+        $title = $this->role === "vice_chancellor" ? "Vice Chancellor" : "Vice President";
+
+        return $this->department ? "{$title} for {$this->department}" : $title;
+    }
+
     // Dean of a college, or a Program Chair: a read-only College dashboard at /college.
     // A dean sees every program in their college; a program chair sees only their program.
     public function isDeanOrChair(): bool
@@ -137,6 +152,10 @@ class User extends Authenticatable
         // Registrars: one for College (and Graduate, Law, iPACE, ETEEAP), one for the Integrated School
         if ($this->role === "registrar") {
             return [$this->assigned_level === "is" ? "IS Registrar" : "College Registrar", "Registrar's Office", "bi-person-vcard"];
+        }
+        // Vice Presidents and Vice Chancellors: "VP for Finance", "VC for Academics"
+        if ($this->isVice() && $this->department) {
+            return [($this->role === "vice_chancellor" ? "VC" : "VP") . " for {$this->department}", "Executive Office", "bi-bank"];
         }
         if ($this->isShsPrincipal()) {
             return ["SHS Principal", "Senior High School", "bi-building"];

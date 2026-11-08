@@ -115,7 +115,9 @@ class ExecutiveController extends Controller
         return view('reports.inbox', [
             'labels' => [
                 'office' => 'Executive',
-                'subtitle' => 'Reports from IATO, and reports you can generate yourself. Questions about a report go to Messages.',
+                'subtitle' => auth()->user()->isVice()
+                    ? 'Reports IATO sends to your office. Open one to read or download it. Questions go to Messages.'
+                    : 'Reports from IATO, and reports you can generate yourself. Questions about a report go to Messages.',
                 // No reply thread: questions about a report go to Messages
                 'askUrl' => url('/executive/messages'),
                 'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
@@ -346,12 +348,15 @@ class ExecutiveController extends Controller
     }
 
     // The Executive Office: who can see these pages. Later: users whose role is 'chancellor'.
-    private static function executives(): array
+    public static function executives(): array
     {
         // Who else sees this page (names as in the mockups). Later: the users with an executive role (User::isExecutive()).
         return [
             ['name' => 'Br. Edmundo L. Fernandez FSC', 'initials' => 'EF', 'title' => 'President', 'tone' => 'danger'],
             ['name' => 'Dr. Teodosia Merlin Suarez', 'initials' => 'TS', 'title' => 'Chancellor', 'tone' => 'primary'],
+            ['name' => 'Br. Cyrill Kino Escolano FSC', 'initials' => 'CE', 'title' => 'Vice President for Administration', 'tone' => 'danger'],
+            ['name' => 'Br. Agustin Boquer FSC', 'initials' => 'AB', 'title' => 'Vice President for Advancement', 'tone' => 'danger'],
+            ['name' => 'Ms. Luz Magpantay', 'initials' => 'LM', 'title' => 'Vice President for Finance', 'tone' => 'danger'],
             ['name' => 'Dr. Tessie Palma', 'initials' => 'TP', 'title' => 'Vice Chancellor for Academics', 'tone' => 'info'],
             ['name' => 'Dr. Sheila Maloles', 'initials' => 'SM', 'title' => 'Vice Chancellor for Research, Innovation & Internationalization', 'tone' => 'secondary'],
             ['name' => 'Mr. Wenifredo Angeles', 'initials' => 'WA', 'title' => 'Vice Chancellor for Mission', 'tone' => 'warning'],

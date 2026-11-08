@@ -69,19 +69,22 @@ class DatabaseSeeder extends Seeder
         );
 
     // Executive Office (President, Chancellor, Vice Presidents, Vice Chancellors): read-only pages at /executive.
-    // Named as in the mockups (and the Executive Office card, so the "You" tag shows). The Vice President
-    // has no name in the mockups yet. updateOrCreate, so running the seeder again fixes older names.
+    // Named as in the mockups (and the Executive Office card, so the "You" tag shows). A VP's or VC's area
+    // goes in `department` ("Vice President for Finance"). updateOrCreate, so running the seeder again fixes older names.
     foreach ([
-        ['president@gmail.com', 'Edmundo L. Fernandez FSC', 'president'],
-        ['chancellor@gmail.com', 'Teodosia Merlin Suarez', 'chancellor'],
-        ['vp@gmail.com', 'Paolo Mendoza', 'vice_president'],
-        ['vc@gmail.com', 'Tessie Palma', 'vice_chancellor'],
-    ] as [$email, $name, $role]) {
+        ['president@gmail.com', 'Edmundo L. Fernandez FSC', 'president', null],
+        ['chancellor@gmail.com', 'Teodosia Merlin Suarez', 'chancellor', null],
+        ['vp@gmail.com', 'Luz Magpantay', 'vice_president', 'Finance'],
+        ['vpadmin@gmail.com', 'Cyrill Kino Escolano FSC', 'vice_president', 'Administration'],
+        ['vpadv@gmail.com', 'Agustin Boquer FSC', 'vice_president', 'Advancement'],
+        ['vc@gmail.com', 'Tessie Palma', 'vice_chancellor', 'Academics'],
+    ] as [$email, $name, $role, $department]) {
         \App\Models\User::updateOrCreate(['email' => $email], [
             'name' => $name,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'role' => $role,
             'access_type' => 'viewer',
+            'department' => $department,
         ]);
     }
 
