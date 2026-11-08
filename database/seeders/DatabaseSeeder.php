@@ -78,6 +78,8 @@ class DatabaseSeeder extends Seeder
         ['vpadmin@gmail.com', 'Cyrill Kino Escolano FSC', 'vice_president', 'Administration'],
         ['vpadv@gmail.com', 'Agustin Boquer FSC', 'vice_president', 'Advancement'],
         ['vc@gmail.com', 'Tessie Palma', 'vice_chancellor', 'Academics'],
+        ['vcrii@gmail.com', 'Sheila Maloles', 'vice_chancellor', 'Research, Innovation & Internationalization'],
+        ['vcmission@gmail.com', 'Wenifredo Angeles', 'vice_chancellor', 'Mission'],
     ] as [$email, $name, $role, $department]) {
         \App\Models\User::updateOrCreate(['email' => $email], [
             'name' => $name,

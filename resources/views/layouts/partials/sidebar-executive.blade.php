@@ -29,7 +29,7 @@
                     'MENU' => [
                         ['Briefing', 'Summary and alerts', 'bi-compass', '/executive', 'executive', ''],
                         ['Analytics', 'Trends, funnel, insights', 'bi-bar-chart-line', '/executive/analytics', 'executive/analytics*', ''],
-                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/executive/reports', 'executive/reports*',
+                        ['Reports', auth()->user()->isVice() ? 'From IATO' : 'From IATO and your own', 'bi-file-earmark-text', '/executive/reports', 'executive/reports*',
                             '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
                     ],
                     'HELP' => [
