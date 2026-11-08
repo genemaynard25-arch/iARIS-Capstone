@@ -132,3 +132,4 @@ Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('aut
 Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');
 Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');
 Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware('auth')->name('college.reports');
+Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware('auth')->name('college.messages');

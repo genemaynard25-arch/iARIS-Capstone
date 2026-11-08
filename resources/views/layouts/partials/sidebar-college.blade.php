@@ -1,6 +1,7 @@
-{{-- Sidebar for Deans and Program Chairs. Same look as the admin sidebar, read-only links. --}}
+{{-- Sidebar for Deans and Program Chairs. Same look as the Executive sidebar, read-only links. --}}
 @php
     $isChair = auth()->user()->isProgramChair();
+    $code = \App\Http\Controllers\CollegeController::COLLEGE['code'];
 @endphp
 <aside class="sidebar bg-iaris text-white offcanvas-lg offcanvas-start sticky-lg-top vh-100 flex-shrink-0" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
     <div class="offcanvas-body d-flex flex-column h-100 p-0">
@@ -13,7 +14,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">{{ $isChair ? 'Program Chair · BSCS' : 'Dean · CITE' }}</div>
+                    <div class="small text-white-50">{{ $isChair ? 'Program Chair View' : 'Dean View' }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
@@ -23,18 +24,37 @@
             {{-- Who is signed in --}}
             @include('layouts.partials.signed-in')
 
-            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">MENU</div>
-            <nav class="nav nav-pills flex-column">
-                <a href="{{ url('/college') }}" class="nav-link {{ request()->is('college') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                <a href="{{ url('/college/applicants') }}" class="nav-link {{ request()->is('college/applicants*') ? 'active' : '' }}"><i class="bi bi-people"></i> Applicants</a>
-                <a href="{{ url('/college/analytics') }}" class="nav-link {{ request()->is('college/analytics*') ? 'active' : '' }}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
-                {{-- The badge counts unread reports (the Reports page updates it as you open them) --}}
-                @php
-                    $unread = collect(\App\Http\Controllers\CollegeController::received($isChair))->where('status', 'new')->count();
-                @endphp
-                <a href="{{ url('/college/reports') }}" class="nav-link {{ request()->is('college/reports*') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Reports
-                    <span class="badge rounded-pill bg-danger ms-auto {{ $unread ? '' : 'd-none' }}" id="reportsBadge">{{ $unread }}</span></a>
-            </nav>
+            @php
+                // Badges: unread reports (red; the Reports page updates it) and conversations IATO answered
+                $unread = collect(\App\Http\Controllers\CollegeController::received($isChair))->where('status', 'new')->count();
+                $answered = \App\Http\Controllers\CollegeController::answeredMessages();
+                // [label, what it's for, icon, url, active pattern, badge html]
+                $menu = [
+                    'MENU' => [
+                        ['Briefing', 'Summary and alerts', 'bi-compass', '/college', 'college', ''],
+                        ['Applicants', ($isChair ? 'BSCS' : $code) . ' · view only', 'bi-people', '/college/applicants', 'college/applicants*', ''],
+                        ['Analytics', 'Trends, programs, insights', 'bi-bar-chart-line', '/college/analytics', 'college/analytics*', ''],
+                        ['Reports', 'From IATO and your own', 'bi-file-earmark-text', '/college/reports', 'college/reports*',
+                            '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
+                    ],
+                    'HELP' => [
+                        ['Messages', 'Talk with IATO', 'bi-chat-dots', '/college/messages', 'college/messages*',
+                            '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>'],
+                    ],
+                ];
+            @endphp
+            @foreach ($menu as $title => $links)
+                <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">{{ $title }}</div>
+                <nav class="nav nav-pills flex-column mb-3">
+                    @foreach ($links as [$label, $hint, $icon, $url, $match, $badge])
+                        <a href="{{ url($url) }}" class="nav-link {{ request()->is($match) ? 'active' : '' }}" @if (request()->is($match)) aria-current="page" @endif>
+                            <i class="bi {{ $icon }}"></i>
+                            <span class="d-flex flex-column lh-sm"><span>{{ $label }}</span><small class="fw-normal text-white-50">{{ $hint }}</small></span>
+                            {!! $badge !!}
+                        </a>
+                    @endforeach
+                </nav>
+            @endforeach
         </div>
 
         {{-- Footer (always visible) --}}

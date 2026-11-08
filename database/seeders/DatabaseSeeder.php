@@ -25,10 +25,12 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
-    \App\Models\User::firstOrCreate(
+    // Dean of CITE: the Dean pages at /college. Named as in the mockups; updateOrCreate, so running
+    // the seeder again renames the old "Test Dean".
+    \App\Models\User::updateOrCreate(
         ['email' => 'dean@gmail.com'],
         [
-            'name' => 'Test Dean',
+            'name' => 'Cherrie Villafuerte',
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'role' => 'dean',
             'access_type' => 'viewer',

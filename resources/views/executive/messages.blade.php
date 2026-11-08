@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 {{--
-    Messages with IATO (ExecutiveController::messages): the Executive Office's conversations.
+    Messages with IATO: the Executive Office's conversations (ExecutiveController::messages), and a dean's
+    (CollegeController::messages). $base is that office's pages, for the links at the bottom.
     List on the left, the open conversation on the right. ?new=1&subject=… opens "New message" filled in
     (the Reports page's "Ask IATO" uses it).
     FRONT END ONLY: new messages, replies and "Mark resolved" stay until reload.
@@ -30,8 +31,8 @@
 
     <div class="small text-body-secondary d-flex flex-wrap gap-3">
         <span>Other ways to get answers:</span>
-        <a href="{{ url('/executive/reports') }}" class="text-decoration-none fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> Ask about a report</a>
-        <a href="{{ url('/executive') }}" class="text-decoration-none fw-semibold"><i class="bi bi-stars me-1"></i> Ask iARIS on your Briefing</a>
+        <a href="{{ ($base ?? url('/executive')) . '/reports' }}" class="text-decoration-none fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> Ask about a report</a>
+        <a href="{{ $base ?? url('/executive') }}" class="text-decoration-none fw-semibold"><i class="bi bi-stars me-1"></i> Ask iARIS on your Briefing</a>
     </div>
 
     {{-- New message --}}

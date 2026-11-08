@@ -1,5 +1,5 @@
-{{-- Reports page shared by the Executive Office (ExecutiveController) and the College offices
-     (CollegeController): reports received from the IATO, and reports you generate yourself.
+{{-- Reports page for the Executive Office (ExecutiveController): reports received from the IATO,
+     and reports you generate yourself. (Deans have their own: college/reports.blade.php)
      Each controller passes its own data, plus $labels for the words that differ:
        office      page title, e.g. "College"                  subtitle  the text under the page title
        unit / all  "Unit" / "All Units", or "Program" / "All CITE programs"
