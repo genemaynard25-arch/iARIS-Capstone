@@ -8,11 +8,9 @@
     // e.g. ['Super Admin', 'IATO', 'bi-star-fill'] (see User::roleInfo())
     [$roleLabel, $office, $roleIcon] = $me->roleInfo();
 
-    // "Cherrie Villafuerte" -> "Villafuerte, Cherrie" and "CV"
-    $parts = preg_split('/\s+/', trim($me->name));
-    $last = array_pop($parts);
-    $displayName = $parts ? $last . ', ' . implode(' ', $parts) : $last;
-    $initials = strtoupper(substr($parts[0] ?? $last, 0, 1) . ($parts ? substr($last, 0, 1) : ''));
+    // "Cherrie Villafuerte" -> "Villafuerte, Cherrie" and "CV" (a suffix like FSC stays at the end; see User.php)
+    $displayName = $me->displayName();
+    $initials = $me->initials();
 @endphp
 <a href="{{ url('/settings') }}" class="signed-in d-flex align-items-center gap-3 rounded-3 p-2 ps-3 mb-3 text-decoration-none text-white" title="Your profile and settings">
     <span class="signed-in-avatar rounded-circle fw-bold d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0" data-avatar>{{ $initials }}</span>

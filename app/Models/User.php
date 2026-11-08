@@ -77,6 +77,32 @@ class User extends Authenticatable
         return $this->role === "chancellor";
     }
 
+    // Name parts: "Edmundo L. Fernandez FSC" -> [first and middle "Edmundo L.", last "Fernandez", suffix "FSC"]
+    private function nameParts(): array
+    {
+        $parts = preg_split('/\s+/', trim($this->name ?? ''));
+        $suffix = count($parts) > 2 && preg_match('/^(FSC|Jr\.?|Sr\.?|II|III|IV)$/i', end($parts)) ? array_pop($parts) : '';
+        $last = array_pop($parts);
+
+        return [implode(' ', $parts), $last, $suffix];
+    }
+
+    // "Cherrie Villafuerte" -> "Villafuerte, Cherrie"; "Edmundo L. Fernandez FSC" -> "Fernandez, Edmundo L. FSC"
+    public function displayName(): string
+    {
+        [$first, $last, $suffix] = $this->nameParts();
+
+        return $first === '' ? $last : trim("{$last}, {$first} {$suffix}");
+    }
+
+    // "Cherrie Villafuerte" -> "CV"; "Edmundo L. Fernandez FSC" -> "EF"
+    public function initials(): string
+    {
+        [$first, $last] = $this->nameParts();
+
+        return mb_strtoupper(mb_substr($first !== '' ? $first : $last, 0, 1) . ($first !== '' ? mb_substr($last, 0, 1) : ''));
+    }
+
     // Executive Office: the President, the Chancellor, Vice Presidents and Vice Chancellors.
     // They share the same read-only, university-wide pages at /executive.
     public function isExecutive(): bool

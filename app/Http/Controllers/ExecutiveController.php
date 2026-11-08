@@ -36,6 +36,8 @@ class ExecutiveController extends Controller
             'paidByYear' => [801, 878, 949, 1019],
             // The 3 newest reports the IATO sent to this office (all of them are on the Reports page)
             'reports' => array_slice(self::received(), 0, 3),
+            // For the greeting's honorific (Br., Dr.)
+            'executives' => self::executives(),
         ]);
     }
 
@@ -346,10 +348,10 @@ class ExecutiveController extends Controller
     // The Executive Office: who can see these pages. Later: users whose role is 'chancellor'.
     private static function executives(): array
     {
-        // Who else sees this page. Later: users whose role is 'chancellor' (or president / vice chancellor).
+        // Who else sees this page (names as in the mockups). Later: the users with an executive role (User::isExecutive()).
         return [
             ['name' => 'Br. Edmundo L. Fernandez FSC', 'initials' => 'EF', 'title' => 'President', 'tone' => 'danger'],
-            ['name' => 'Dr. Merlin Teodosia C. Suarez', 'initials' => 'MS', 'title' => 'Chancellor', 'tone' => 'primary'],
+            ['name' => 'Dr. Teodosia Merlin Suarez', 'initials' => 'TS', 'title' => 'Chancellor', 'tone' => 'primary'],
             ['name' => 'Dr. Tessie Palma', 'initials' => 'TP', 'title' => 'Vice Chancellor for Academics', 'tone' => 'info'],
             ['name' => 'Dr. Sheila Maloles', 'initials' => 'SM', 'title' => 'Vice Chancellor for Research, Innovation & Internationalization', 'tone' => 'secondary'],
             ['name' => 'Mr. Wenifredo Angeles', 'initials' => 'WA', 'title' => 'Vice Chancellor for Mission', 'tone' => 'warning'],

@@ -190,7 +190,7 @@ class CollegeController extends Controller
             // Who you can send a copy to (besides the IATO)
             'people' => $isChair
                 ? [['name' => 'Villafuerte, Cherrie · Dean', 'initials' => 'CV', 'tone' => 'warning'], ['name' => 'Dr. Tessie Palma · VC for Academics', 'initials' => 'TP', 'tone' => 'info']]
-                : [['name' => 'Dr. Merlin Teodosia C. Suarez · Chancellor', 'initials' => 'MS', 'tone' => 'primary'], ['name' => 'Dr. Tessie Palma · VC for Academics', 'initials' => 'TP', 'tone' => 'info']],
+                : [['name' => 'Dr. Teodosia Merlin Suarez · Chancellor', 'initials' => 'TS', 'tone' => 'primary'], ['name' => 'Dr. Tessie Palma · VC for Academics', 'initials' => 'TP', 'tone' => 'info']],
             'sender' => ['name' => 'Renegado, Randolph', 'role' => 'Super Admin', 'initials' => 'RR'],
             'templates' => $templates,
             // Reports generated before. 'year' is an index into YEARS; 'to' lists initials.

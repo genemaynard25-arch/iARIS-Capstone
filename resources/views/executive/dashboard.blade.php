@@ -13,13 +13,16 @@
 @php
     $hour = now()->hour;
     $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
+    // "Br. Edmundo" / "Dr. Teodosia": the honorific from the Executive Office list, then the first name
     $firstName = \Illuminate\Support\Str::before(auth()->user()->name, ' ');
+    $listed = collect($executives)->first(fn ($p) => str_contains($p['name'], auth()->user()->name));
+    $honorific = $listed && preg_match('/^(\S+\.)\s/', $listed['name'], $m) ? $m[1] . ' ' : '';
     $role = auth()->user()->roleInfo()[0];
     $weekLabel = now()->startOfWeek()->format('M j') . '–' . now()->endOfWeek()->format('M j, Y');
 @endphp
 
 @section('title', 'iARIS — Briefing')
-@section('page-title', "{$greeting}, {$firstName}")
+@section('page-title', "{$greeting}, {$honorific}{$firstName}")
 @section('page-subtitle', "{$role} · Admissions briefing for AY {$academicYear}")
 
 @section('content')

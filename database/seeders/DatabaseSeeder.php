@@ -69,29 +69,21 @@ class DatabaseSeeder extends Seeder
         );
 
     // Executive Office (President, Chancellor, Vice Presidents, Vice Chancellors): read-only pages at /executive.
+    // Named as in the mockups (and the Executive Office card, so the "You" tag shows). The Vice President
+    // has no name in the mockups yet. updateOrCreate, so running the seeder again fixes older names.
     foreach ([
-        ['president@gmail.com', 'Andrea Ramos', 'president'],
+        ['president@gmail.com', 'Edmundo L. Fernandez FSC', 'president'],
+        ['chancellor@gmail.com', 'Teodosia Merlin Suarez', 'chancellor'],
         ['vp@gmail.com', 'Paolo Mendoza', 'vice_president'],
-        ['vc@gmail.com', 'Lorna Castillo', 'vice_chancellor'],
+        ['vc@gmail.com', 'Tessie Palma', 'vice_chancellor'],
     ] as [$email, $name, $role]) {
-        \App\Models\User::firstOrCreate(['email' => $email], [
+        \App\Models\User::updateOrCreate(['email' => $email], [
             'name' => $name,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'role' => $role,
             'access_type' => 'viewer',
         ]);
     }
-
-    // Named after the Chancellor in the Executive Office card, so the "You" tag shows.
-    \App\Models\User::firstOrCreate(
-        ['email' => 'chancellor@gmail.com'],
-        [
-            'name' => 'Merlin Teodosia C. Suarez',
-            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-            'role' => 'chancellor',
-            'access_type' => 'viewer',
-        ]
-    );
 
     // Program Chair: the College dashboard at /college, locked to one program (BS Computer Science for now)
     \App\Models\User::firstOrCreate(

@@ -78,8 +78,8 @@ class SettingsController extends Controller
                 'email' => $user->email,
                 'title' => $title,
                 'office' => $office,
-                // First and last name, e.g. "Merlin Teodosia C. Suarez" -> MS
-                'initials' => mb_strtoupper(mb_substr(Str::before($user->name, ' '), 0, 1) . mb_substr(Str::afterLast($user->name, ' '), 0, 1)),
+                // First and last name, e.g. "Teodosia Merlin Suarez" -> TS (a suffix like FSC is skipped)
+                'initials' => $user->initials(),
             ],
             'access' => [
                 'Role' => $roleLabel,
