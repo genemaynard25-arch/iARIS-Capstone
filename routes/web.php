@@ -30,6 +30,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CollegeController;
 use App\Http\Controllers\ToicController;
 use App\Http\Controllers\MessagesController;
+use App\Http\Controllers\IatoMessagesController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -118,6 +119,9 @@ Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(functi
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
+
+// IATO's Messages (Super Admin and IATO Staff): every conversation with the other offices
+Route::get('/messages', [IatoMessagesController::class, 'index'])->middleware('auth')->name('messages');
 
 // Messages with IATO for the LAMP Office, the Registrars and the SHS Principal (one page, three addresses)
 Route::get('/lamp/messages', [MessagesController::class, 'index'])->middleware('auth')->name('lamp.messages');

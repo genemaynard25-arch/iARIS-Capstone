@@ -19,6 +19,8 @@
             $link('Applicants', 'bi-people', '/applicants', 'applicants*', $user->canAccess('applicants')),
             // One page with Overview / AI Insights / Reports tabs (Reports-only roles land on the Reports tab)
             $link('Analytics & Reports', 'bi-bar-chart-line', '/analytics', 'analytics*', $user->canAccess('analytics') || $user->canAccess('reports')),
+            // The number: conversations waiting for IATO's reply
+            $link('Messages', 'bi-chat-dots', '/messages', 'messages*', $isSuperAdmin || $isStaff, ($isSuperAdmin || $isStaff) ? \App\Http\Controllers\IatoMessagesController::needsReply() : 0),
         ],
         'RECORDS' => [
             ['group' => 'Academic Divisions', 'icon' => 'bi-bank', 'items' => [

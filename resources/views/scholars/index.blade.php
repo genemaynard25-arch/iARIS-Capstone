@@ -469,6 +469,10 @@
 
         render();
 
+        // ?open=APP-2026-0383 opens that scholar's drawer (IATO's Messages "Open the record" links here)
+        const linkedScholar = SCHOLARS.find(s => s.id === new URLSearchParams(location.search).get('open'));
+        if (linkedScholar) openDrawer(linkedScholar);
+
         // Tells the Add / Edit / Remove partial (applicants/partials/record-modals) where things are on this page
         window.RECORD_FORM = {
             items: SCHOLARS, rows, tbody: 'scholarRows', render, current: () => drawerScholar,
