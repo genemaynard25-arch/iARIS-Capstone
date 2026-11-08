@@ -7,7 +7,8 @@
 @section('page-subtitle', 'Applicants who paid the reservation fee and can now be enrolled')
 
 @section('content')
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
+    {{-- Two cards for the IS Registrar (one unit), four for the College Registrar --}}
+    <div class="row row-cols-2 row-cols-xl-{{ count($units) > 1 ? 4 : 2 }} g-3 mb-4" id="statCards"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom no-print">
@@ -88,11 +89,10 @@
         function draw() {
             const list = filtered(), unit = $('unitFilter').value, dept = $('deptFilter').value;
 
-            // Cards: this view, then the paid count of each unit (IS Registrar: of each level)
-            const groupKey = LEVELS.length ? 'dept' : 'unit';
+            // Cards: this view, then the paid count of each unit (the first three; IS Registrar: just Integrated School)
             $('statCards').replaceChildren(...[
                 ['Ready for enrollment', list.length, 'info', dept || (UNITS.length > 1 ? unit : '') || 'All your units'],
-                ...(LEVELS.length ? LEVELS : UNITS).slice(0, 3).map(g => [g, ROWS.filter(r => r[groupKey] === g).length, 'primary', 'Paid reservations']),
+                ...UNITS.slice(0, 3).map(u => [u, ROWS.filter(r => r.unit === u).length, 'primary', 'Paid reservations']),
             ].map(([label, value, tone, sub]) => {
                 const col = el('div', 'col');
                 const card = el('div', `card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100`);
