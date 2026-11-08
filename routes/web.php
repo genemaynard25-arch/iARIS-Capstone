@@ -29,6 +29,7 @@ use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CollegeController;
 use App\Http\Controllers\ToicController;
+use App\Http\Controllers\MessagesController;
 
 // Admission Stats Import routes
 Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
@@ -117,6 +118,11 @@ Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(functi
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to the SHS principal, plus IATO admins
 Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
+
+// Messages with IATO for the LAMP Office, the Registrars and the SHS Principal (one page, three addresses)
+Route::get('/lamp/messages', [MessagesController::class, 'index'])->middleware('auth')->name('lamp.messages');
+Route::get('/registrar/messages', [MessagesController::class, 'index'])->middleware('auth')->name('registrar.messages');
+Route::get('/shs/messages', [MessagesController::class, 'index'])->middleware('auth')->name('shs.messages');
 
 // Executive Office: President, Chancellor, Vice Presidents, Vice Chancellors (their own sidebar: see layouts/app.blade.php)
 // TODO (RBAC): limit to executive roles, plus IATO admins

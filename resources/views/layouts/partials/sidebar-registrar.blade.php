@@ -55,6 +55,14 @@
                     <i class="bi bi-question-circle"></i> Questions to IATO
                     <span class="badge rounded-pill nav-count ms-auto {{ $answered ? '' : 'd-none' }}" id="navAnsweredBadge" title="IATO answered">{{ $answered }}</span>
                 </a>
+                {{-- Messages: everything else for IATO (Questions to IATO are about one record) --}}
+                @php
+                    $answeredMessages = \App\Http\Controllers\MessagesController::answeredMessages();
+                @endphp
+                <a href="{{ url('/registrar/messages') }}" class="nav-link {{ request()->is('registrar/messages*') ? 'active' : '' }}">
+                    <i class="bi bi-chat-dots"></i> Messages
+                    <span class="badge rounded-pill nav-count ms-auto {{ $answeredMessages ? '' : 'd-none' }}" id="messagesBadge" title="IATO answered">{{ $answeredMessages }}</span>
+                </a>
             </nav>
         </div>
 

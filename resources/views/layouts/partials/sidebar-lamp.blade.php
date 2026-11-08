@@ -35,6 +35,17 @@
                     @endif
                 </a>
             </nav>
+            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1 mt-3">HELP</div>
+            <nav class="nav nav-pills flex-column">
+                {{-- Badge: conversations IATO answered --}}
+                @php
+                    $answeredMessages = \App\Http\Controllers\MessagesController::answeredMessages();
+                @endphp
+                <a href="{{ url('/lamp/messages') }}" class="nav-link {{ request()->is('lamp/messages*') ? 'active' : '' }}">
+                    <i class="bi bi-chat-dots"></i> Messages
+                    <span class="badge rounded-pill nav-count ms-auto {{ $answeredMessages ? '' : 'd-none' }}" id="messagesBadge" title="IATO answered">{{ $answeredMessages }}</span>
+                </a>
+            </nav>
         </div>
 
         {{-- Footer (always visible) --}}

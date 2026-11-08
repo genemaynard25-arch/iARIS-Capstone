@@ -27,6 +27,17 @@
                 <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-file-earmark-text"></i> Reports</a>
                 <a href="#" class="nav-link opacity-50" aria-disabled="true" title="Coming soon"><i class="bi bi-bar-chart-line"></i> Analytics</a>
             </nav>
+            <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1 mt-3">HELP</div>
+            <nav class="nav nav-pills flex-column">
+                {{-- Badge: conversations IATO answered --}}
+                @php
+                    $answeredMessages = \App\Http\Controllers\MessagesController::answeredMessages();
+                @endphp
+                <a href="{{ url('/shs/messages') }}" class="nav-link {{ request()->is('shs/messages*') ? 'active' : '' }}">
+                    <i class="bi bi-chat-dots"></i> Messages
+                    <span class="badge rounded-pill nav-count ms-auto {{ $answeredMessages ? '' : 'd-none' }}" id="messagesBadge" title="IATO answered">{{ $answeredMessages }}</span>
+                </a>
+            </nav>
         </div>
 
         {{-- Footer (always visible) --}}
