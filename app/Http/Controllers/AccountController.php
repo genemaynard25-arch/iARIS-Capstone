@@ -22,6 +22,8 @@ class AccountController extends Controller
         "vice_president" => ["name" => "Vice President", "tone" => "danger"],
         "chancellor" => ["name" => "Chancellor", "tone" => "danger"],
         "vice_chancellor" => ["name" => "Vice Chancellor", "tone" => "danger"],
+        "toic" => ["name" => "TOIC", "tone" => "dark"],
+        "director" => ["name" => "Director", "tone" => "info"],
     ];
 
     protected array $statuses = [
