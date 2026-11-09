@@ -42,7 +42,7 @@ Route::post('/import', [ImportController::class, 'store'])->middleware(['auth', 
 
 Route::get('/', function () {
     return auth()->check()
-        ? redirect(auth()->user()->isLamp() ? '/lamp' : '/home')
+        ? redirect(auth()->user()->isLamp() ? '/lamp' : (auth()->user()->role === 'registrar' ? '/registrar' : '/home'))
         : redirect()->route('login');
 });
 
@@ -50,9 +50,14 @@ Route::get('/', function () {
 // then on to the page the user was heading to, or the dashboard.
 Route::get('/loading', function () {
     $next = session()->pull('url.intended');
-    // LAMP has its own dashboard; /home requires an admin dashboard permission.
-    if (auth()->user()->isLamp() && (! $next || rtrim(parse_url($next, PHP_URL_PATH) ?? '', '/') === '/home')) {
-        $next = url('/lamp');
+    // These roles have their own dashboards; /home checks the shared dashboard permission.
+    $dashboard = match (true) {
+        auth()->user()->isLamp() => '/lamp',
+        auth()->user()->role === 'registrar' => '/registrar',
+        default => '/home',
+    };
+    if (! $next || rtrim(parse_url($next, PHP_URL_PATH) ?? '', '/') === '/home') {
+        $next = url($dashboard);
     }
 
     return view('splash', ['next' => $next ?? url('/home')]);
