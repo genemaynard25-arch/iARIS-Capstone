@@ -54,6 +54,9 @@ class User extends Authenticatable
     // Whether the user can access a module. Admins can access everything; other users must have a RolePermission with enabled = true.
    public function canAccess(string $module): bool
 {
+    if ($this->isToic()) {
+        return false;
+    }
     if ($this->isAdmin()) {
         return true;
     }
@@ -66,6 +69,9 @@ class User extends Authenticatable
     // Whether the user can edit a module. Admins can edit everything; other users must have access_type 'editor' and a RolePermission with can_edit = true.
     public function canEdit(string $module): bool
     {
+        if ($this->isToic()) {
+            return false;
+        }
         if ($this->isAdmin()) {
             return true;
         }

@@ -370,7 +370,7 @@ class AccessControlController extends Controller
 
         $validated = $request->validate([
             'changes' => 'required|array',
-            'changes.*.role' => 'required|string',
+            'changes.*.role' => ['required', 'string', \Illuminate\Validation\Rule::notIn(['toic'])],
             'changes.*.module' => 'required|string',
             'changes.*.enabled' => 'sometimes|boolean',
             'changes.*.can_edit' => 'sometimes|boolean',

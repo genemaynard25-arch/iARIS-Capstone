@@ -483,6 +483,9 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
     };
     $isPreview = fn (array $role, array $module): bool => ! empty($role['preview']) || ! empty($module['preview']);
     $permissionLevel = function (array $role, array $module) use ($isPreview, $previewState, $editorPermissions): int {
+        if ($role['key'] === 'toic') {
+            return 0;
+        }
         if ($isPreview($role, $module)) {
             return $previewState($role, $module)['level'];
         }
@@ -494,7 +497,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         }
         return in_array($module['key'], $editorPermissions[$role['key']] ?? [], true) ? 2 : 1;
     };
-    $permissionLocked = fn (array $role, array $module): bool => $role['key'] === 'admin' || ! empty($module['adminOnly']) || ($isPreview($role, $module) && $previewState($role, $module)['locked']);
+    $permissionLocked = fn (array $role, array $module): bool => in_array($role['key'], ['admin', 'toic'], true) || ! empty($module['adminOnly']) || ($isPreview($role, $module) && $previewState($role, $module)['locked']);
 @endphp
 
     {{-- Both permission views share the database-backed controls below. --}}
@@ -594,7 +597,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                                             <span class="ac-preview-level ac-preview-level-{{ $level }}" data-preview-level-label>{{ ['None', 'View', 'Edit'][$level] }}</span>
                                         @else
                                         <div class="form-switch d-inline-block p-0 m-0"><input class="form-check-input m-0" type="checkbox" role="switch" aria-label="{{ $role['name'] }}: {{ $module['name'] }}" {{ $on ? 'checked' : '' }}
-                                            @if ($locked) disabled title="{{ $isAdmin ? 'The Super Admin always has access' : 'Super Admin only' }}"
+                                            @if ($locked) disabled title="{{ $role['key'] === 'toic' ? 'TOIC has no access to these modules' : ($isAdmin ? 'The Super Admin always has access' : 'Super Admin only') }}"
                                             @else data-perm data-role="{{ $role['key'] }}" data-module="{{ $module['key'] }}" data-role-name="{{ $role['name'] }}" data-module-name="{{ $module['name'] }}"
                                             @endif></div>
                                         @endif
