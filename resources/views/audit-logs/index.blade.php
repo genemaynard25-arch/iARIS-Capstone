@@ -247,7 +247,7 @@
         function buildRow(log) {
             const row = document.getElementById('logRowTemplate').content.firstElementChild.cloneNode(true);
             const cell = name => row.querySelector(`[data-cell="${name}"]`);
-            const person = PEOPLE[log.user];
+            const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '', tone: 'secondary' };
 
             cell('id').textContent = log.id;
             cell('initials').textContent = initials(person.name);
@@ -268,7 +268,7 @@
 
         function filtered() {
             return LOGS.filter(log => {
-                const person = PEOPLE[log.user];
+                const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '' };
                 const text = `${person.name} ${person.role} ${ACTIONS[log.action].label} ${log.module} ${plain(log.details)} ${log.ip} ${log.id}`;
                 return (!state.user || log.user === state.user) &&
                     (!state.module || log.module === state.module) &&
@@ -356,8 +356,11 @@
         document.getElementById('exportButton').addEventListener('click', () => {
             const quote = value => `"${String(value).replace(/"/g, '""')}"`;
             const lines = [['Log ID', 'User', 'Role', 'Action', 'Module', 'Details', 'IP Address', 'Timestamp']].concat(
-                filtered().map(log => [logId(log.id), PEOPLE[log.user].name, PEOPLE[log.user].role, ACTIONS[log.action].label,
-                    log.module, plain(log.details), log.ip, formatTime(log.at)]));
+                filtered().map(log => {
+                    const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '' };
+                    return [logId(log.id), person.name, person.role, ACTIONS[log.action].label,
+                        log.module, plain(log.details), log.ip, formatTime(log.at)];
+                }));
             const link = document.createElement('a');
             // The BOM (﻿) makes Excel read the ₱ and dashes correctly
             link.href = URL.createObjectURL(new Blob(['﻿' + lines.map(row => row.map(quote).join(',')).join('\r\n')], { type: 'text/csv' }));
