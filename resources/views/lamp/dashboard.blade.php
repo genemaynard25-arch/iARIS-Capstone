@@ -21,6 +21,8 @@
 @endphp
 
 @section('title', 'iARIS — LAMP Office')
+@section('page-breadcrumb-root', 'LAMP Office')
+@section('page-breadcrumb', 'Dashboard')
 @section('page-title', "{$greeting}, {$firstName}!")
 @section('page-subtitle', "Scholarship applicants from IATO for AY {$academicYear}")
 

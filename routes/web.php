@@ -41,13 +41,21 @@ Route::get('/import', [ImportController::class, 'show'])->middleware(['auth', 'm
 Route::post('/import', [ImportController::class, 'store'])->middleware(['auth', 'module:import']);
 
 Route::get('/', function () {
-    return auth()->check() ? redirect('/home') : redirect()->route('login');
+    return auth()->check()
+        ? redirect(auth()->user()->isLamp() ? '/lamp' : '/home')
+        : redirect()->route('login');
 });
 
 // Splash screen shown right after signing in (see App\Http\Responses\LoginResponse),
 // then on to the page the user was heading to, or the dashboard.
 Route::get('/loading', function () {
-    return view('splash', ['next' => session()->pull('url.intended', url('/home'))]);
+    $next = session()->pull('url.intended');
+    // LAMP has its own dashboard; /home requires an admin dashboard permission.
+    if (auth()->user()->isLamp() && (! $next || rtrim(parse_url($next, PHP_URL_PATH) ?? '', '/') === '/home')) {
+        $next = url('/lamp');
+    }
+
+    return view('splash', ['next' => $next ?? url('/home')]);
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
