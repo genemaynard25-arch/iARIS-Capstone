@@ -16,6 +16,7 @@ class Applicant extends Model
         'school_year',
         'level',
         'sub_level',
+        'year_level',
         'first_name',
         'last_name',
         'gender',

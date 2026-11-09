@@ -103,6 +103,7 @@ class ApplicantRecords
             'test' => self::testLabel($a->admission_test_status),
             'exam_status' => $a->admission_test_status,
             'scholar' => $a->applying_for_scholarship,
+            'scholarship' => $a->applying_for_scholarship ? 'Yes' : 'No',
             'exam_paid' => $examPaid,
             'feeder_school' => $a->feeder_school,
             'applied' => $a->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'),
@@ -120,11 +121,15 @@ class ApplicantRecords
 
         // array_merge: the level's own values replace the shared ones (e.g. 'program' on Graduate and ETEEAP)
         return match ($a->level) {
-            'college' => array_merge($row, ['unit' => 'college', 'college' => $a->college ?: self::collegeFor($program)]),
+            'college' => array_merge($row, [
+                'unit' => 'college',
+                'college' => $a->college ?: self::collegeFor($program),
+                'year' => $a->year_level ?: '—',
+            ]),
             'is' => array_merge($row, [
                 'unit' => 'is',
                 'sub_level' => self::IS_SUB_LEVELS[$a->sub_level] ?? 'Grade School',
-                'level' => '—', // no grade in the table yet
+                'level' => $a->year_level ?: '—',
             ]),
             'graduate_school' => array_merge($row, [
                 'unit' => 'graduate',
@@ -132,6 +137,8 @@ class ApplicantRecords
                 'group' => self::graduateCode($program),
                 'program_label' => $program,
                 'program' => str_contains($program, 'Doctor') ? 'Doctoral' : "Master's",
+                // Not in the portal export - there's no "what degree did you already
+                // have" column to read this from, so this always shows "-" for real data.
                 'degree' => '—',
             ]),
             'eteeap' => array_merge($row, [
@@ -141,8 +148,9 @@ class ApplicantRecords
                 'program_label' => $program,
                 // The second column on ETEEAP Records: how far the portfolio / competency assessment is
                 'program' => self::portfolioStatus($a->admission_test_status),
-                // Not in the table yet
-                'age' => '—', 'education' => '—', 'experience' => '—', 'employer' => '—',
+                'age' => $a->age ? (string) $a->age : '—',
+                // Not in the portal export - no columns for these
+                'education' => '—', 'experience' => '—', 'employer' => '—',
             ]),
             default => array_merge($row, [
                 'unit' => $a->level,

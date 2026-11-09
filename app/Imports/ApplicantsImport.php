@@ -103,6 +103,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
             'school_year' => $this->schoolYear,
             'level' => $classified['level'],
             'sub_level' => $classified['sub_level'],
+            'year_level' => $yearLevel ?: null,
             'college' => $classified['college'],
             'first_name' => $firstName,
             'last_name' => $lastName,

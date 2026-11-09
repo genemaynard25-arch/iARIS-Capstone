@@ -48,14 +48,20 @@
         'college' => [
             'title' => 'College Records', 'subtitle' => "All college applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'student',
-            'extras' => [['key' => 'year', 'label' => 'Year Level', 'first' => false]],
+            'extras' => [
+                ['key' => 'year', 'label' => 'Year Level', 'first' => false],
+                ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
+            ],
             'labels' => ['group' => 'College', 'groupAll' => 'All Colleges', 'program' => 'Program', 'programAll' => 'All Programs'],
             'statuses' => $databaseStatuses,
         ],
         'is' => [
             'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
             'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
-            'extras' => [['key' => 'level', 'label' => 'Grade', 'first' => true]],
+            'extras' => [
+                ['key' => 'level', 'label' => 'Grade', 'first' => true],
+                ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
+            ],
             'labels' => ['group' => 'Level', 'groupAll' => 'All Levels', 'program' => 'Strand', 'programAll' => 'All Strands'],
             'statuses' => $databaseStatuses,
             // Learners are children: show LRN and the parent / guardian (contact details are the guardian's)
@@ -70,6 +76,7 @@
                 ['key' => 'age', 'label' => 'Age', 'first' => false],
                 ['key' => 'education', 'label' => 'Highest Educ. Attainment', 'first' => false],
                 ['key' => 'experience', 'label' => 'Work Experience', 'first' => false],
+                ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
             ],
             'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Portfolio / Assessment', 'programAll' => 'All Assessment Status'],
             'groupBadge' => true,
@@ -126,7 +133,10 @@
             'title' => 'Graduate Programs Records', 'subtitle' => "Master's and doctoral applicant records for AY {$academicYear}",
             'total' => 'Total Applicants', 'totalSub' => 'All graduate programs', 'noun' => 'applicant',
             // "Prior" because PhD applicants already have a master's
-            'extras' => [['key' => 'degree', 'label' => 'Prior Degree', 'first' => false]],
+            'extras' => [
+                ['key' => 'degree', 'label' => 'Prior Degree', 'first' => false],
+                ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
+            ],
             'labels' => ['group' => 'Program', 'groupAll' => 'All Programs', 'program' => 'Level', 'programAll' => 'All Levels'],
             'groupBadge' => true,
             'programBadges' => ["Master's" => ['primary', 'bi-mortarboard'], 'Doctoral' => ['info', 'bi-journal-bookmark']],
