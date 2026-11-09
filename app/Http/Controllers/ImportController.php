@@ -28,7 +28,12 @@ class ImportController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'file' => 'required|mimes:xlsx,csv',
+            // extensions (not mimes): mimes sniffs the file's raw bytes to guess a MIME
+            // type, which is unreliable for CSVs re-saved by tools like WPS Office or
+            // Excel - a perfectly valid .csv can get misdetected and rejected. The
+            // importer itself (Maatwebsite Excel) still fails loudly on genuinely
+            // unreadable content, so this isn't loosening what's actually accepted.
+            'file' => 'required|extensions:xlsx,csv',
             'school_year' => 'required|regex:/^\d{4}-\d{4}$/',
         ]);
 
