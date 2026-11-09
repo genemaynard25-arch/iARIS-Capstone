@@ -313,7 +313,10 @@ class ApplicantController extends Controller
         $all = [];
 
         foreach (ApplicantRecords::forLevel('is') as $a) {
-            $all[] = $row($a, 'Integrated School', $isNames[$a['sub_level']], $a['sub_level'], $a['program']);
+            // The "Program / Grade" column means Strand for Senior High (program_or_track) and
+            // Grade level for everyone else (Nursery/Grade School/JHS don't have a strand at all).
+            $programOrGrade = $a['program'] !== '—' ? $a['program'] : $a['level'];
+            $all[] = $row($a, 'Integrated School', $isNames[$a['sub_level']], $a['sub_level'], $programOrGrade);
         }
         foreach (ApplicantRecords::forLevel('college') as $a) {
             $all[] = $row($a, 'College', $a['college'], $a['college'], $a['program']);
