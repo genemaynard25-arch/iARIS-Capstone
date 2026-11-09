@@ -104,6 +104,8 @@ class ApplicantRecords
             'exam_status' => $a->admission_test_status,
             'scholar' => $a->applying_for_scholarship,
             'scholarship' => $a->applying_for_scholarship ? 'Yes' : 'No',
+            'pwd' => $a->pwd ? 'Yes' : 'No',
+            'ssen' => $a->ssen ? 'Yes' : 'No',
             'exam_paid' => $examPaid,
             'feeder_school' => $a->feeder_school,
             'applied' => $a->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'),

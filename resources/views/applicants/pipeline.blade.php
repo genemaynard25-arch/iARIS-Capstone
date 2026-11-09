@@ -183,6 +183,8 @@
                     <div class="col-6"><dt class="text-body-secondary fw-semibold" id="emailLabel">Email</dt><dd class="fw-bold mb-0 text-break" data-field="email"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold" id="contactLabel">Contact No.</dt><dd class="fw-bold mb-0" data-field="contact"></dd></div>
                     <div class="col-12"><dt class="text-body-secondary fw-semibold">Address</dt><dd class="fw-bold mb-0" data-field="address"></dd></div>
+                    <div class="col-6"><dt class="text-body-secondary fw-semibold">PWD</dt><dd class="fw-bold mb-0" data-field="pwd"></dd></div>
+                    <div class="col-6"><dt class="text-body-secondary fw-semibold">SSEN</dt><dd class="fw-bold mb-0" data-field="ssen"></dd></div>
                 </dl>
             </div>
 
@@ -478,7 +480,7 @@
             $('contactLabel').textContent = isSchool ? 'Guardian Contact' : 'Contact No.';
             $('deptLabel').textContent = DIVISIONS[a.division].dept;
             $('examLabel').textContent = examLabel(a);
-            ['name', 'id', 'gender', 'email', 'contact', 'address', 'division', 'dept_label', 'program'].forEach(f => set(f, a[f]));
+            ['name', 'id', 'gender', 'email', 'contact', 'address', 'division', 'dept_label', 'program', 'pwd', 'ssen'].forEach(f => set(f, a[f]));
             set('dob', formatDate(a.dob, true));
             set('applied', formatDate(a.applied));
             set('scholarship', a.scholarship || 'None');

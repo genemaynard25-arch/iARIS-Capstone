@@ -134,6 +134,8 @@ class AnalyticsController extends Controller
             'comparison' => $comparison,
             'insights' => $insights,
             'projection' => $projection,
+            // Automatic Yes/No and gender counts - no manual filtering or tallying needed
+            'yesNoBreakdown' => AdmissionStats::yesNoBreakdown(),
             'lastAnalyzed' => $cached?->generated_at?->format('M j, Y \a\t g:i A') ?? 'Never',
         ]);
     }

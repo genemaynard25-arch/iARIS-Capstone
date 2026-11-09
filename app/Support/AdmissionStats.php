@@ -125,6 +125,43 @@ class AdmissionStats
     }
 
     /**
+     * Automatic counts of the portal's Yes/No and gender fields for the current school
+     * year — the whole point being nobody has to filter or tally these by hand.
+     */
+    public static function yesNoBreakdown(): array
+    {
+        $current = self::currentSchoolYear();
+        if (! $current) {
+            return ['male' => 0, 'female' => 0, 'scholars' => 0, 'pwd' => 0, 'ssen' => 0, 'noaIssued' => 0, 'paidExam' => 0];
+        }
+
+        // A fresh query builder each call - where() mutates the builder in place, so
+        // reusing one instance across these counts would stack every condition together.
+        $base = fn () => Applicant::query()->where('school_year', $current)->whereNull('archived_at');
+
+        // gender is an encrypted column (FR-09) - non-deterministic ciphertext, so a raw
+        // WHERE on it can never match. Fetch and count in PHP instead, where the model
+        // cast has already decrypted it.
+        $genders = $base()->get('gender')->countBy('gender');
+
+        return [
+            'male' => $genders->get('male', 0),
+            'female' => $genders->get('female', 0),
+            'scholars' => $base()->where('applying_for_scholarship', true)->count(),
+            'pwd' => $base()->where('pwd', true)->count(),
+            'ssen' => $base()->where('ssen', true)->count(),
+            'noaIssued' => $base()->where('noa_issued', true)->count(),
+            'paidExam' => DB::table('payments')
+                ->join('applicants', 'applicants.id', '=', 'payments.applicant_id')
+                ->where('payments.fee_type', 'application_fee')
+                ->where('payments.status', 'paid')
+                ->where('applicants.school_year', $current)
+                ->whereNull('applicants.archived_at')
+                ->count(),
+        ];
+    }
+
+    /**
      * One row per level that actually has imported applicants, current vs previous
      * school year — the replacement for admission_stats' per-level_program rows.
      *

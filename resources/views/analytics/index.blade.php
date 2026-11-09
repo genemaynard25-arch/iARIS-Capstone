@@ -107,6 +107,34 @@
         @endforeach
     </div>
 
+    {{-- Yes/No fields and gender, counted automatically from the imported applicants —
+         nothing here is filtered or tallied by hand. Current school year only. --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <h2 class="fs-6 fw-bold mb-1">Applicant field counts</h2>
+            <p class="small text-body-secondary mb-3">Read automatically from the imported file — current school year</p>
+            <div class="row row-cols-2 row-cols-md-4 row-cols-xl-7 g-3">
+                @foreach ([
+                    ['label' => 'Male', 'value' => $yesNoBreakdown['male'], 'icon' => 'bi-gender-male'],
+                    ['label' => 'Female', 'value' => $yesNoBreakdown['female'], 'icon' => 'bi-gender-female'],
+                    ['label' => 'Applying for Scholarship', 'value' => $yesNoBreakdown['scholars'], 'icon' => 'bi-award'],
+                    ['label' => 'Paid Entrance Exam', 'value' => $yesNoBreakdown['paidExam'], 'icon' => 'bi-cash-coin'],
+                    ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-universal-access'],
+                    ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge'],
+                    ['label' => 'NOA Issued', 'value' => $yesNoBreakdown['noaIssued'], 'icon' => 'bi-patch-check'],
+                ] as $field)
+                    <div class="col">
+                        <div class="rounded-3 bg-body-tertiary p-3 h-100">
+                            <i class="bi {{ $field['icon'] }} text-primary mb-1 d-block"></i>
+                            <div class="fs-5 fw-bold">{{ number_format($field['value']) }}</div>
+                            <div class="small text-body-secondary">{{ $field['label'] }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
     {{-- Charts --}}
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-6">

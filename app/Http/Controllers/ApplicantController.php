@@ -293,6 +293,8 @@ class ApplicantController extends Controller
             'dept_label' => $deptLabel,
             'program' => $program,
             'scholarship' => ! empty($a['scholar']) ? 'Scholar' : '',
+            'pwd' => $a['pwd'] ?? null,
+            'ssen' => $a['ssen'] ?? null,
             'exam_paid' => ! empty($a['exam_paid']),
             'status' => $a['status'],
             // Raw admission_test_status, for the editable Exam Result control (null on
