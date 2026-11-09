@@ -52,7 +52,7 @@ class SettingsController extends Controller
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
             'toic' => ['TOIC', 'TOIC Support', 'System Support', 'System Overview, Issues, Security, Documentation, Budget & Maintenance, Reports'],
-            'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
+            'lamp' => ['LAMP Office', 'Director, Advancement Office and LAMP', 'Lasallian Assistance Management Program', 'Dashboard, Analytics & Reports, Scholars, Messages'],
             'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
             'vice_president' => ['Vice President', 'Vice President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
             'chancellor' => ['Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],

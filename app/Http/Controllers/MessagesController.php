@@ -19,6 +19,16 @@ class MessagesController extends Controller
 
     public function index()
     {
+        // The LAMP Office: scholar checks also appear here, and the note points to Scholars
+        if (auth()->user()->isLamp()) {
+            return view('executive.messages', [
+                'threads' => self::threads(),
+                'base' => url('/lamp/scholars'),
+                'note' => ['Scholar checks from IATO appear here. You can also see them on', 'Scholars', 'bi-award'],
+                'correctTypes' => \App\Support\LampOffice::correctTypes(),
+            ]);
+        }
+
         return view('executive.messages', [
             'threads' => self::threads(),
             'base' => url(self::base()),
@@ -27,7 +37,7 @@ class MessagesController extends Controller
         ]);
     }
 
-    /** Conversations IATO answered (the number on the sidebar's Messages link). */
+    /** Conversations that need you: IATO's answers, and for LAMP the scholar checks IATO asked (the number on the sidebar's Messages link). */
     public static function answeredMessages(): int
     {
         return collect(self::threads())->where('status', 'answered')->count();
@@ -37,12 +47,9 @@ class MessagesController extends Controller
     private static function threads(): array
     {
         $user = auth()->user();
+        // The LAMP Office: its own messages, and the scholar checks IATO started
         if ($user->isLamp()) {
-            return [
-                ['id' => 'MSG-0113', 'topic' => 'Request a report', 'subject' => 'Scholar list with the new CCJE applicants', 'status' => 'waiting', 'messages' => [
-                    ['from' => 'me', 'at' => 'Jun 12, 2026 · 10:40 AM', 'text' => 'Can IATO send an updated list of scholarship applicants that includes CCJE? We need it for the LAMP committee on Monday.'],
-                ]],
-            ];
+            return \App\Support\LampOffice::threads();
         }
         if ($user->role === 'registrar' && $user->assigned_level !== 'is') {
             return [
