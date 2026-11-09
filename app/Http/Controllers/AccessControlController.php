@@ -216,6 +216,11 @@ class AccessControlController extends Controller
             "roles" => $roles,
             "modules" => $modules,
             "editableModules" => $editableModules,
+            "editorPermissions" => \App\Models\RolePermission::where('can_edit', true)
+                ->get()
+                ->groupBy('role')
+                ->map(fn ($rows) => $rows->pluck('module')->all())
+                ->all(),
 
             "permanentAdmin" => [
                 "name" => auth()->user()->name,

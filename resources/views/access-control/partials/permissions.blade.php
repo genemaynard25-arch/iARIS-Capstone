@@ -482,7 +482,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         return ['level' => (int) $value, 'locked' => str_contains($value, 'L')];
     };
     $isPreview = fn (array $role, array $module): bool => ! empty($role['preview']) || ! empty($module['preview']);
-    $permissionLevel = function (array $role, array $module) use ($isPreview, $previewState, $editableModules): int {
+    $permissionLevel = function (array $role, array $module) use ($isPreview, $previewState, $editorPermissions): int {
         if ($isPreview($role, $module)) {
             return $previewState($role, $module)['level'];
         }
@@ -492,7 +492,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         if (! in_array($role['key'], $module['on'])) {
             return 0;
         }
-        return $role['key'] === 'iato_staff' && (bool) (collect($editableModules)->firstWhere('key', $module['key'])['can_edit'] ?? false) ? 2 : 1;
+        return in_array($module['key'], $editorPermissions[$role['key']] ?? [], true) ? 2 : 1;
     };
     $permissionLocked = fn (array $role, array $module): bool => $role['key'] === 'admin' || ! empty($module['adminOnly']) || ($isPreview($role, $module) && $previewState($role, $module)['locked']);
 @endphp
@@ -502,7 +502,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         <div class="ac-permissions-header d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div>
                 <h2 id="permissionsTitle">Role Permissions</h2>
-                <p>Choose a role and set its module access. Staff editor access also allows changes to records.</p>
+                <p>Choose a role and set its module access. View is read-only; Edit allows changes for accounts with editor access.</p>
             </div>
             <div class="ac-view-switch btn-group" role="group" aria-label="Permission view">
                 <input type="radio" class="btn-check" name="permView" id="viewByRole" value="role" checked>
@@ -546,7 +546,6 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                                     $isAdmin = $role['key'] === 'admin';
                                     $preview = $isPreview($role, $module);
                                     $locked = $permissionLocked($role, $module);
-                                    $supportsEditing = $preview || ($role['key'] === 'iato_staff' && collect($editableModules)->contains('key', $module['key']));
                                     $level = $permissionLevel($role, $module);
                                 @endphp
                                 <div class="ac-module-row" data-permission-row data-row-role="{{ $role['key'] }}" data-row-module="{{ $module['key'] }}">
@@ -555,7 +554,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                                         <span class="ac-locked"><i class="bi bi-lock-fill" aria-hidden="true"></i> {{ $level > 0 ? ($isAdmin ? 'Full access' : 'View only') : (! empty($module['adminOnly']) ? 'Super Admin only' : 'No access') }}</span>
                                     @else
                                         <div class="ac-levels btn-group" role="group" aria-label="{{ $role['name'] }}: {{ $module['name'] }}">
-                                            @foreach ($supportsEditing ? [0 => 'None', 1 => 'View', 2 => 'Edit'] : [0 => 'None', 1 => 'Access'] as $value => $label)
+                                            @foreach ([0 => 'None', 1 => 'View', 2 => 'Edit'] as $value => $label)
                                                 <button type="button" class="btn {{ $level === $value ? 'is-selected' : '' }}" data-level-choice="{{ $value }}" data-choice-role="{{ $role['key'] }}" data-choice-module="{{ $module['key'] }}" data-preview-choice="{{ $preview ? 'true' : 'false' }}" aria-pressed="{{ $level === $value ? 'true' : 'false' }}">{{ $label }}</button>
                                             @endforeach
                                         </div>
@@ -570,7 +569,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
 
         <div class="table-responsive d-none ac-compare" id="compareView">
             <table class="table align-middle mb-0 matrix-table">
-                <caption class="visually-hidden">Module access by role. IATO Staff editing is configured in the By role view.</caption>
+                <caption class="visually-hidden">Module access by role. View and Edit levels are configured in the By role view.</caption>
                 <thead><tr><th scope="col">Module</th>
                     @foreach ($roles as $role)
                         <th scope="col" class="text-center"><span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis mx-auto mb-1"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span><span class="d-block">{{ $role['name'] }}</span>@if ($role['preview'])<span class="ac-preview-badge">Preview</span>@endif</th>
@@ -611,8 +610,12 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
 
         {{-- Canonical editor values come from the existing RolePermission records. --}}
         <div hidden>
-            @foreach ($editableModules as $module)
-                <input type="checkbox" data-edit-perm data-module="{{ $module['key'] }}" data-module-name="{{ $module['name'] }}" {{ $module['can_edit'] ? 'checked' : '' }}>
+            @foreach ($roles as $role)
+                @foreach (collect($modules)->flatten(1) as $module)
+                    @unless ($isPreview($role, $module) || $permissionLocked($role, $module))
+                        <input type="checkbox" data-edit-perm data-role="{{ $role['key'] }}" data-role-name="{{ $role['name'] }}" data-module="{{ $module['key'] }}" data-module-name="{{ $module['name'] }}" {{ in_array($module['key'], $editorPermissions[$role['key']] ?? [], true) ? 'checked' : '' }}>
+                    @endunless
+                @endforeach
             @endforeach
         </div>
         <div class="ac-permission-note"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i> Preview controls use mockup data and apply only to this page. Connected permissions save to iARIS; locked permissions cannot be changed.</div>
@@ -622,4 +625,3 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
             <button type="button" class="btn btn-primary fw-semibold" id="saveButton" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i> <span id="permissionSaveLabel">Save Changes</span></button>
         </div>
     </section>
-

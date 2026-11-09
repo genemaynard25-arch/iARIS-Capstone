@@ -289,20 +289,20 @@
         const changed = () => switches.filter(input => input.checked !== input.defaultChecked);
         const editChanged = () => editSwitches.filter(input => input.checked !== input.defaultChecked);
         const matrixSwitch = (role, module) => switches.find(input => input.dataset.role === role && input.dataset.module === module);
-        const editorSwitch = module => editSwitches.find(input => input.dataset.module === module);
+        const editorSwitch = (role, module) => editSwitches.find(input => input.dataset.role === role && input.dataset.module === module);
         let saving = false;
 
         function updateChanges() {
             const accessChanges = changed();
             const editorChanges = editChanged();
             const previewChanges = previewChanged();
-            const count = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`), ...previewChanges.map(input => `${input.dataset.role}:${input.dataset.module}`)]).size;
+            const count = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...previewChanges.map(input => `${input.dataset.role}:${input.dataset.module}`)]).size;
 
             document.querySelectorAll('[data-permission-row]').forEach(row => {
                 const input = matrixSwitch(row.dataset.rowRole, row.dataset.rowModule);
                 const preview = previewSwitch(row.dataset.rowRole, row.dataset.rowModule);
                 if (!input && !preview) return;
-                const editor = row.dataset.rowRole === 'iato_staff' ? editorSwitch(row.dataset.rowModule) : null;
+                const editor = editorSwitch(row.dataset.rowRole, row.dataset.rowModule);
                 const level = preview ? Number(preview.value) : !input.checked ? 0 : editor?.checked ? 2 : 1;
                 const dirty = preview ? preview.value !== preview.dataset.initialLevel : input.checked !== input.defaultChecked || (editor && editor.checked !== editor.defaultChecked);
                 row.classList.toggle('is-changed', !!dirty);
@@ -329,11 +329,11 @@
                         if (counter.dataset.roleCount === role) counter.textContent = enabled;
                     });
                 }
-                const dirty = accessChanges.some(input => input.dataset.role === role) || (role === 'iato_staff' && editorChanges.length > 0) || previewChanges.some(input => input.dataset.role === role);
+                const dirty = accessChanges.some(input => input.dataset.role === role) || editorChanges.some(input => input.dataset.role === role) || previewChanges.some(input => input.dataset.role === role);
                 button.querySelector('[data-role-dirty]').classList.toggle('d-none', !dirty);
             });
 
-            const liveCount = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`)]).size;
+            const liveCount = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `${input.dataset.role}:${input.dataset.module}`)]).size;
             document.getElementById('unsavedBadge').textContent = `${liveCount} connected · ${previewChanges.length} preview module changes`;
             document.getElementById('permissionSaveLabel').textContent = liveCount === 0 && previewChanges.length ? 'Apply Preview' : 'Save Changes';
             document.getElementById('permissionSaveBar').classList.toggle('d-none', count === 0);
@@ -345,7 +345,7 @@
         switches.forEach(input => input.addEventListener('change', updateChanges));
         document.querySelectorAll('[data-level-choice]').forEach(button => button.addEventListener('click', () => {
             const input = matrixSwitch(button.dataset.choiceRole, button.dataset.choiceModule);
-            const editor = button.dataset.choiceRole === 'iato_staff' ? editorSwitch(button.dataset.choiceModule) : null;
+            const editor = editorSwitch(button.dataset.choiceRole, button.dataset.choiceModule);
             const level = Number(button.dataset.levelChoice);
             if (button.dataset.previewChoice === 'true') {
                 previewSwitch(button.dataset.choiceRole, button.dataset.choiceModule).value = String(level);
@@ -388,8 +388,8 @@
                 role: input.dataset.role, module: input.dataset.module, enabled: value,
             }));
             editorChanges.forEach(({ input, value }) => {
-                const key = `iato_staff:${input.dataset.module}`;
-                changes.set(key, { ...changes.get(key), role: 'iato_staff', module: input.dataset.module, can_edit: value });
+                const key = `${input.dataset.role}:${input.dataset.module}`;
+                changes.set(key, { ...changes.get(key), role: input.dataset.role, module: input.dataset.module, can_edit: value });
             });
 
             saving = true;
@@ -408,7 +408,7 @@
                     input.defaultChecked = value;
                 });
                 editorChanges.forEach(({ input, value }) => {
-                    addLog({ action: `${input.dataset.moduleName} editor access ${value ? 'granted' : 'revoked'}`, meta: `IATO Staff Level Editors ${value ? 'can now edit' : 'have view-only access to'} this module when module access is enabled.`, affected: 'IATO Staff', module: input.dataset.moduleName, type: 'Modified' });
+                    addLog({ action: `${input.dataset.moduleName} editor access ${value ? 'granted' : 'revoked'}`, meta: `${input.dataset.roleName} editor accounts ${value ? 'can now edit' : 'have view-only access to'} this module when module access is enabled.`, affected: input.dataset.roleName, module: input.dataset.moduleName, type: 'Modified' });
                     input.defaultChecked = value;
                 });
                 previewChanges.forEach(({ input, value }) => input.dataset.initialLevel = value);
