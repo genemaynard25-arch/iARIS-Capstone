@@ -65,10 +65,15 @@
     const input = document.getElementById('aiWidgetInput');
     const messages = document.getElementById('aiWidgetMessages');
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
-    const SENSITIVE_PAGE = @json($sensitivePage);
+    // Safe by default: a page only sends its visible text to the AI if it explicitly
+    // declares itself aggregate-only (passes aggregateOnlyPage = true to the view). This
+    // used to be the other way around (blocked a hardcoded list of "sensitive" pages),
+    // but that variable was never actually set by any controller, so every page -
+    // Applicants, Records, Scholars, Accounts - sent its full visible text regardless.
+    const AGGREGATE_ONLY_PAGE = @json($aggregateOnlyPage ?? false);
     const CANNED_REPLIES = {
         about: "I can answer questions about the page you're viewing and build charts (bar, line, or pie) from the data shown, when it helps. I'm here to help you read your admissions data faster, not to replace your own judgment on decisions.",
-        privacy: "For privacy, I don't read or send what's shown on the Applicants, Records, Review Queue, or Submissions pages as those contain individual student data. I still work on those pages for general questions, I just can't see what's on screen there. On pages like Dashboard, Analytics, and Reports, I can read the page and help with it directly.",
+        privacy: "For privacy, I only read what's on screen on pages built entirely from aggregated totals, like Analytics & Reports - never individual student or applicant records. Everywhere else, including the Dashboard, Applicants, and Records pages, I can still answer general questions, I just can't see what's on screen there.",
     };
 
     toggle.addEventListener('click', () => panel.classList.toggle('d-none'));
@@ -300,7 +305,7 @@
     }
 
     function pageContext() {
-        if (SENSITIVE_PAGE) return '';   // don't send individual student/applicant data off-site
+        if (!AGGREGATE_ONLY_PAGE) return '';   // don't send individual student/applicant data off-site
         const main = document.querySelector('main');
         const text = main ? main.innerText : document.body.innerText;
         return text.replace(/\s+/g, ' ').trim().slice(0, 4000);

@@ -113,6 +113,10 @@ class AnalyticsController extends Controller
         ]];
 
         return view('analytics.index', [
+            // Safe for the AI widget to read: built entirely from admission_stats (aggregate
+            // totals) plus the Reports tab's fictional sample preview rows - never real
+            // individual applicant records.
+            'aggregateOnlyPage' => true,
             'tabs' => $tabs,
             'tab' => $tab,
             'reportData' => (new ReportController)->data(),
