@@ -38,6 +38,22 @@ class Applicant extends Model
             'date_of_birth' => 'date',
             'exam_scheduled_at' => 'datetime',
             'archived_at' => 'datetime',
+
+            // FR-09: applicant data encrypted at rest. Nothing filters on these with raw SQL
+            // anywhere in the app (verified) - search is done client-side on the already-
+            // decrypted value. Fields used in real where()/groupBy() queries (level, sub_level,
+            // school_year, program_or_track, applicant_type, scholarship_type,
+            // admission_test_status, application_status) are deliberately left out: Laravel's
+            // encrypted cast is non-deterministic ciphertext, so a column with it can never be
+            // matched by a plain WHERE and would silently break every real query this session
+            // built against them.
+            'first_name' => 'encrypted',
+            'last_name' => 'encrypted',
+            'gender' => 'encrypted',
+            'feeder_school' => 'encrypted',
+            'email' => 'encrypted',
+            'contact_number' => 'encrypted',
+            'address' => 'encrypted',
         ];
     }
 }
