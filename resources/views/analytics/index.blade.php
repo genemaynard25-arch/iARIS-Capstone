@@ -13,7 +13,7 @@
     @include('partials.auth-logo', ['size' => 44, 'variant' => 'glass'])
 @endsection
 @section('app-banner')
-    <div class="ac-institution-bar"><span><strong>De La Salle Lipa</strong><span class="mx-2 opacity-50">|</span>Institutional Admissions and Testing Office</span><span class="d-none d-md-inline">iARIS · Analytics &amp; Reports</span></div>
+    @include('partials.institution-bar')
 @endsection
 @section('page-subtitle', 'Explore admissions data, read the AI insights, and turn any view into an official report')
 
