@@ -185,6 +185,92 @@ class CollegeController extends Controller
         return url($user?->isPrincipal() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
     }
 
+    // The applicants.level value a college code's records actually live under.
+    private static function levelFor(string $collegeCode): string
+    {
+        return match ($collegeCode) {
+            'IS' => 'is',
+            'GRAD' => 'graduate_school',
+            'IPACE' => 'ipace',
+            'LAW' => 'law',
+            default => 'college',
+        };
+    }
+
+    /**
+     * Real per-program numbers from the applicants table, in the same shape the hardcoded
+     * COLLEGES programs used to have, matched by each applicant's program_or_track against
+     * the program's name. There is only one real school year of data (no import history), so
+     * all 4 yearly slots repeat the current total instead of 0 (which would divide by zero in
+     * the Analytics page's % change math) or a fabricated prior year.
+     */
+    private static function realPrograms(string $collegeCode, array $programs): array
+    {
+        $level = self::levelFor($collegeCode);
+        $applicants = \App\Models\Applicant::where('level', $level)->get();
+
+        $result = [];
+        foreach ($programs as $code => $p) {
+            $matched = $applicants->where('program_or_track', $p['name']);
+            $submitted = $matched->count();
+            $tookExam = $matched->where('admission_test_status', '!=', 'not_taken')->count();
+            $passed = $matched->where('admission_test_status', 'passed')->count();
+            $completed = $matched->where('application_status', 'completed')->count();
+            $pending = $matched->whereIn('application_status', ['pooling', 'not_submitted'])->count();
+            $forExam = $matched->where('application_status', 'submitted')->count();
+
+            // array_merge, not $p + [...]: array union keeps the LEFT side's value on key
+            // collision, which would silently keep the old hardcoded numbers instead of these.
+            $result[$code] = array_merge($p, [
+                'applicants' => [$submitted, $submitted, $submitted, $submitted],
+                'enrolled' => [$completed, $completed, $completed, $completed],
+                'funnel' => [$submitted, $tookExam, $passed, $completed, $completed],
+                'status' => [$pending, $forExam, $completed],
+                'paidLastYear' => $completed,
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Real applicant rows for the given programs/level, matched the same way as realPrograms().
+     * email/phone/address/dob/exam/paid are null: the regular import doesn't fill those in
+     * (only the Add/Edit Applicant form does), so they're honestly blank, not fabricated.
+     */
+    private static function realApplicantsIn(array $scope, string $collegeCode): array
+    {
+        $level = self::levelFor($collegeCode);
+        $byName = collect($scope)->mapWithKeys(fn ($p, $code) => [$p['name'] => $code]);
+        $statusLabel = fn ($s) => match ($s) {
+            'submitted' => 'For Exam',
+            'completed' => 'Paid',
+            default => 'Pending',
+        };
+
+        return \App\Models\Applicant::where('level', $level)
+            ->get()
+            ->filter(fn ($a) => $byName->has($a->program_or_track))
+            ->map(fn ($a) => [
+                'id' => $a->reference_number,
+                'name' => "{$a->last_name}, {$a->first_name}",
+                'program' => $byName[$a->program_or_track],
+                'status' => $statusLabel($a->application_status),
+                'applied' => optional($a->created_at)->toDateString(),
+                'updated' => optional($a->updated_at)->format('M j, g:i A'),
+                'dob' => optional($a->date_of_birth)->format('F j, Y'),
+                'gender' => $a->gender === 'male' ? 'Male' : 'Female',
+                'email' => $a->email,
+                'phone' => $a->contact_number,
+                'address' => $a->address,
+                'exam' => null,
+                'paid' => null,
+            ])
+            ->sortByDesc('applied')
+            ->values()
+            ->all();
+    }
+
     /** Program names, for Settings (Briefing and Display). */
     public static function programNames(): array
     {
@@ -213,7 +299,9 @@ class CollegeController extends Controller
             'profiles' => $college['profiles'] ?? [],
             // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
             'base' => self::base(),
-            'programs' => $isChair ? ['BSCS' => self::COLLEGES['CITE']['programs']['BSCS']] : $college['programs'],
+            'programs' => $isChair
+                ? self::realPrograms('CITE', ['BSCS' => self::COLLEGES['CITE']['programs']['BSCS']])
+                : self::realPrograms($college['code'], $college['programs']),
             'years' => ExecutiveController::YEARS,
         ];
     }
@@ -255,8 +343,7 @@ class CollegeController extends Controller
 
         return view('college.applicants', $common + [
             'selected' => isset($common['programs'][$request->query('program')]) ? $request->query('program') : '',
-            // Sample records; the tiles count every applicant (the programs' status totals)
-            'rows' => self::applicantsIn($common['programs']),
+            'rows' => self::realApplicantsIn($common['programs'], $common['college']['code']),
         ]);
     }
 
@@ -273,9 +360,10 @@ class CollegeController extends Controller
 
         return view('college.reports', $common + [
             'received' => self::received($common['isChair']),
-            // For the "Paid reservations" report: applicants in scope who paid
+            // For the "Paid reservations" report: applicants in scope who paid. Real rows never have
+            // a 'paid' value (payments aren't tracked yet), so this is honestly empty outside Director.
             'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'], $a['paid']],
-                array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::applicantsIn($common['programs']), fn ($a) => $a['paid']))),
+                array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::realApplicantsIn($common['programs'], $common['college']['code']), fn ($a) => $a['paid']))),
             // Reports you generated before (kept for 90 days)
             'history' => [['template' => 'programs', 'period' => 'AY 2025–26', 'at' => 'Jun 5, 2026 · 10:12 AM']],
         ]);
@@ -386,90 +474,4 @@ class CollegeController extends Controller
         ];
     }
 
-    /**
-     * Applicants in the given programs, newest first. Placeholder records (every college); later a query on the
-     * applicants table (e.g. Applicant::where('college', 'CITE')->whereIn('program', ...)).
-     * paid: date of the reservation payment, or null if not paid yet. year (optional): "Grade 11 · STEM" (default 1st Year).
-     * amount (optional): the reservation fee paid (default ₱2,000.00). undergrad (optional): a graduate applicant's degree. bar (optional): Bar exam result (College of Law).
-     */
-    private static function applicantsIn(array $scope): array
-    {
-        $all = [
-            ['id' => 'APP-2026-0501', 'name' => 'Cruz, Angelo Miguel R.', 'program' => 'BSArch', 'status' => 'Pending', 'applied' => '2026-05-25', 'updated' => 'Jun 2, 8:10 AM', 'dob' => 'March 14, 2006', 'gender' => 'Male', 'email' => 'a.cruz@dlsl.edu.ph', 'phone' => '0917 100 1000', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0502', 'name' => 'Dizon, Katrina Joy P.', 'program' => 'BSCpE', 'status' => 'For Exam', 'applied' => '2026-05-24', 'updated' => 'Jun 3, 9:17 AM', 'dob' => 'August 2, 2005', 'gender' => 'Female', 'email' => 'k.dizon@dlsl.edu.ph', 'phone' => '0918 137 1911', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0503', 'name' => 'Ramos, Joshua Benedict T.', 'program' => 'BSIT', 'status' => 'For Exam', 'applied' => '2026-05-23', 'updated' => 'Jun 4, 10:24 AM', 'dob' => 'January 19, 2006', 'gender' => 'Male', 'email' => 'j.ramos@dlsl.edu.ph', 'phone' => '0919 174 2822', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 17, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0385', 'name' => 'Sangalang, Pia Amherstia V.', 'program' => 'BSCS', 'status' => 'Pending', 'applied' => '2026-05-22', 'updated' => 'Jun 5, 11:31 AM', 'dob' => 'April 18, 2005', 'gender' => 'Female', 'email' => 'p.sangalang@dlsl.edu.ph', 'phone' => '0921 567 8901', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0505', 'name' => 'Bautista, Marian Grace S.', 'program' => 'BSCS', 'status' => 'For Exam', 'applied' => '2026-05-21', 'updated' => 'Jun 6, 8:38 AM', 'dob' => 'November 3, 2005', 'gender' => 'Female', 'email' => 'm.bautista@dlsl.edu.ph', 'phone' => '0917 248 4644', 'address' => 'San Pablo, Laguna', 'exam' => 'Jun 19, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0506', 'name' => 'Mercado, Sofia Isabel L.', 'program' => 'BSIT', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'Jun 7, 9:45 AM', 'dob' => 'June 27, 2006', 'gender' => 'Female', 'email' => 's.mercado@dlsl.edu.ph', 'phone' => '0918 285 5555', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0507', 'name' => 'Lim, Kevin Andrei D.', 'program' => 'BSCS', 'status' => 'Paid', 'applied' => '2026-05-19', 'updated' => 'Jun 2, 10:52 AM', 'dob' => 'February 9, 2006', 'gender' => 'Male', 'email' => 'k.lim@dlsl.edu.ph', 'phone' => '0919 322 6466', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 11, 2026 · 8:00 AM', 'paid' => 'Jun 2, 2026'],
-            ['id' => 'APP-2026-0508', 'name' => 'Aquino, Matthew Jose B.', 'program' => 'BSCS', 'status' => 'Pending', 'applied' => '2026-05-18', 'updated' => 'Jun 3, 11:59 AM', 'dob' => 'September 12, 2005', 'gender' => 'Male', 'email' => 'm.aquino@dlsl.edu.ph', 'phone' => '0920 359 7377', 'address' => 'Calamba, Laguna', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0509', 'name' => 'Castillo, Bea Francesca M.', 'program' => 'BSEMC', 'status' => 'For Exam', 'applied' => '2026-05-17', 'updated' => 'Jun 4, 8:16 AM', 'dob' => 'May 30, 2006', 'gender' => 'Female', 'email' => 'b.castillo@dlsl.edu.ph', 'phone' => '0917 396 8288', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0382', 'name' => 'Malibiran, Gene Maynard G.', 'program' => 'BSIT', 'status' => 'Paid', 'applied' => '2026-05-16', 'updated' => 'Jun 5, 9:23 AM', 'dob' => 'July 22, 2004', 'gender' => 'Male', 'email' => 'g.malibiran@dlsl.edu.ph', 'phone' => '0918 234 5678', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => 'Jun 5, 2026'],
-            ['id' => 'APP-2026-0511', 'name' => 'Navarro, Carlo Emmanuel T.', 'program' => 'BSCpE', 'status' => 'Paid', 'applied' => '2026-05-15', 'updated' => 'Jun 6, 10:30 AM', 'dob' => 'December 5, 2005', 'gender' => 'Male', 'email' => 'c.navarro@dlsl.edu.ph', 'phone' => '0919 470 1110', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 8, 2026 · 9:00 AM', 'paid' => 'Jun 1, 2026'],
-            ['id' => 'APP-2026-0381', 'name' => 'Go, Raphael Lorenzo L.', 'program' => 'BSCS', 'status' => 'Paid', 'applied' => '2026-05-14', 'updated' => 'Jun 7, 11:37 AM', 'dob' => 'March 3, 2005', 'gender' => 'Male', 'email' => 'r.go@dlsl.edu.ph', 'phone' => '0917 123 4567', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 8:00 AM', 'paid' => 'Jun 3, 2026'],
-            ['id' => 'APP-2026-0513', 'name' => 'Santiago, Hannah Mae R.', 'program' => 'BSIT', 'status' => 'Paid', 'applied' => '2026-05-13', 'updated' => 'Jun 2, 8:44 AM', 'dob' => 'October 21, 2005', 'gender' => 'Female', 'email' => 'h.santiago@dlsl.edu.ph', 'phone' => '0917 544 2932', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 10, 2026 · 8:00 AM', 'paid' => 'Jun 3, 2026'],
-            ['id' => 'APP-2026-0514', 'name' => 'Pascual, Gabriel Luis C.', 'program' => 'BSCS', 'status' => 'For Exam', 'applied' => '2026-05-12', 'updated' => 'Jun 3, 9:51 AM', 'dob' => 'January 30, 2006', 'gender' => 'Male', 'email' => 'g.pascual@dlsl.edu.ph', 'phone' => '0918 581 3843', 'address' => 'San Jose, Batangas', 'exam' => 'Jun 20, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0515', 'name' => 'De Guzman, Trisha Anne V.', 'program' => 'BSIE', 'status' => 'Paid', 'applied' => '2026-05-11', 'updated' => 'Jun 4, 10:58 AM', 'dob' => 'April 8, 2005', 'gender' => 'Female', 'email' => 't.deguzman@dlsl.edu.ph', 'phone' => '0919 618 4754', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 5, 2026 · 10:00 AM', 'paid' => 'Jun 5, 2026'],
-            ['id' => 'APP-2026-0516', 'name' => 'Flores, Miguel Antonio D.', 'program' => 'BSCpE', 'status' => 'Pending', 'applied' => '2026-05-10', 'updated' => 'Jun 5, 11:15 AM', 'dob' => 'August 17, 2005', 'gender' => 'Male', 'email' => 'm.flores@dlsl.edu.ph', 'phone' => '0920 655 5665', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0517', 'name' => 'Reyes, Jasmine Faith A.', 'program' => 'BSIT', 'status' => 'For Exam', 'applied' => '2026-05-09', 'updated' => 'Jun 6, 8:22 AM', 'dob' => 'February 25, 2006', 'gender' => 'Female', 'email' => 'j.reyes@dlsl.edu.ph', 'phone' => '0917 692 6576', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0518', 'name' => 'Tolentino, Rafael Dominic S.', 'program' => 'BSCS', 'status' => 'Paid', 'applied' => '2026-05-08', 'updated' => 'Jun 7, 9:29 AM', 'dob' => 'June 14, 2005', 'gender' => 'Male', 'email' => 'r.tolentino@dlsl.edu.ph', 'phone' => '0918 729 7487', 'address' => 'Calamba, Laguna', 'exam' => 'Jun 8, 2026 · 10:00 AM', 'paid' => 'Jun 3, 2026'],
-            // Other colleges (sample records)
-            ['id' => 'APP-2026-0601', 'name' => 'Villanueva, Andrea Nicole P.', 'program' => 'BSA', 'status' => 'Paid', 'applied' => '2026-05-24', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'June 3, 2006', 'gender' => 'Female', 'email' => 'a.villanueva@dlsl.edu.ph', 'phone' => '0917 610 2201', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 9, 2026 · 8:00 AM', 'paid' => 'Jun 4, 2026'],
-            ['id' => 'APP-2026-0602', 'name' => 'Mendoza, John Carlo S.', 'program' => 'BSBA', 'status' => 'For Exam', 'applied' => '2026-05-22', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'October 11, 2005', 'gender' => 'Male', 'email' => 'j.mendoza@dlsl.edu.ph', 'phone' => '0918 620 3302', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0603', 'name' => 'Perez, Bianca Louise R.', 'program' => 'BSBA', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'January 7, 2006', 'gender' => 'Female', 'email' => 'b.perez@dlsl.edu.ph', 'phone' => '0919 630 4403', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0604', 'name' => 'Garcia, Paolo Miguel D.', 'program' => 'BSEntrep', 'status' => 'Paid', 'applied' => '2026-05-18', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'July 19, 2005', 'gender' => 'Male', 'email' => 'p.garcia@dlsl.edu.ph', 'phone' => '0920 640 5504', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 8, 2026 · 9:00 AM', 'paid' => 'Jun 2, 2026'],
-            ['id' => 'APP-2026-0605', 'name' => 'Ramirez, Isabelle T.', 'program' => 'BSLM', 'status' => 'For Exam', 'applied' => '2026-05-16', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'April 2, 2006', 'gender' => 'Female', 'email' => 'i.ramirez@dlsl.edu.ph', 'phone' => '0917 650 6605', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 17, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0611', 'name' => 'Fernando, Clarisse Anne M.', 'program' => 'BSPsych', 'status' => 'Paid', 'applied' => '2026-05-23', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'May 27, 2006', 'gender' => 'Female', 'email' => 'c.fernando@dlsl.edu.ph', 'phone' => '0918 711 2211', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 10, 2026 · 8:00 AM', 'paid' => 'Jun 4, 2026'],
-            ['id' => 'APP-2026-0612', 'name' => 'Salazar, Nathan Paul G.', 'program' => 'BAMMA', 'status' => 'For Exam', 'applied' => '2026-05-21', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'September 5, 2005', 'gender' => 'Male', 'email' => 'n.salazar@dlsl.edu.ph', 'phone' => '0919 712 3312', 'address' => 'San Pablo, Laguna', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0613', 'name' => 'Domingo, Ella Marie C.', 'program' => 'BSEd', 'status' => 'Pending', 'applied' => '2026-05-19', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'December 14, 2005', 'gender' => 'Female', 'email' => 'e.domingo@dlsl.edu.ph', 'phone' => '0920 713 4413', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0614', 'name' => 'Torres, Miguel Angelo B.', 'program' => 'BSBio', 'status' => 'Paid', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'February 21, 2006', 'gender' => 'Male', 'email' => 'm.torres@dlsl.edu.ph', 'phone' => '0917 714 5514', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 9, 2026 · 9:00 AM', 'paid' => 'Jun 3, 2026'],
-            ['id' => 'APP-2026-0615', 'name' => 'Aguilar, Samantha Rose L.', 'program' => 'BAComm', 'status' => 'For Exam', 'applied' => '2026-05-15', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'August 30, 2005', 'gender' => 'Female', 'email' => 's.aguilar@dlsl.edu.ph', 'phone' => '0918 715 6615', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0621', 'name' => 'Manalo, Kristine Joy A.', 'program' => 'BSHM', 'status' => 'Paid', 'applied' => '2026-05-24', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'March 9, 2006', 'gender' => 'Female', 'email' => 'k.manalo@dlsl.edu.ph', 'phone' => '0919 821 2221', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => 'Jun 5, 2026'],
-            ['id' => 'APP-2026-0622', 'name' => 'Robles, Adrian James P.', 'program' => 'BSTM', 'status' => 'Pending', 'applied' => '2026-05-21', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'November 18, 2005', 'gender' => 'Male', 'email' => 'a.robles@dlsl.edu.ph', 'phone' => '0920 822 3322', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0623', 'name' => 'Lopez, Danielle Mae S.', 'program' => 'BSCA', 'status' => 'For Exam', 'applied' => '2026-05-18', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'June 25, 2006', 'gender' => 'Female', 'email' => 'd.lopez@dlsl.edu.ph', 'phone' => '0917 823 4423', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 17, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0624', 'name' => 'Hernandez, Marco Luis R.', 'program' => 'BSHM', 'status' => 'For Exam', 'applied' => '2026-05-15', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'January 29, 2006', 'gender' => 'Male', 'email' => 'm.hernandez@dlsl.edu.ph', 'phone' => '0918 824 5524', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 19, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0631', 'name' => 'Valdez, Christian Mark T.', 'program' => 'BSCrim', 'status' => 'Paid', 'applied' => '2026-05-23', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'April 15, 2005', 'gender' => 'Male', 'email' => 'c.valdez@dlsl.edu.ph', 'phone' => '0919 931 2231', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 8, 2026 · 8:00 AM', 'paid' => 'Jun 3, 2026'],
-            ['id' => 'APP-2026-0632', 'name' => 'Castro, Jenny Lyn M.', 'program' => 'BSCrim', 'status' => 'For Exam', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'October 3, 2005', 'gender' => 'Female', 'email' => 'j.castro@dlsl.edu.ph', 'phone' => '0920 932 3332', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0633', 'name' => 'Rivera, Joshua Emmanuel D.', 'program' => 'BSFS', 'status' => 'Pending', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'July 8, 2006', 'gender' => 'Male', 'email' => 'j.rivera@dlsl.edu.ph', 'phone' => '0917 933 4433', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0634', 'name' => 'Santos, Erika Mae V.', 'program' => 'BSCrim', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'December 1, 2005', 'gender' => 'Female', 'email' => 'e.santos@dlsl.edu.ph', 'phone' => '0918 934 5534', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-0641', 'name' => 'Bautista, Patricia Anne L.', 'program' => 'BSN', 'status' => 'Paid', 'applied' => '2026-05-23', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'March 22, 2006', 'gender' => 'Female', 'email' => 'p.bautista@dlsl.edu.ph', 'phone' => '0917 941 2241', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 9, 2026 · 8:00 AM', 'paid' => 'Jun 4, 2026'],
-            ['id' => 'APP-2026-0642', 'name' => 'Mercado, John Paul R.', 'program' => 'BSN', 'status' => 'For Exam', 'applied' => '2026-05-20', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'August 14, 2005', 'gender' => 'Male', 'email' => 'j.mercado@dlsl.edu.ph', 'phone' => '0918 942 3342', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-0643', 'name' => 'Ilagan, Sophia Marie C.', 'program' => 'BSN', 'status' => 'Pending', 'applied' => '2026-05-17', 'updated' => 'Jun 6, 9:00 AM', 'dob' => 'November 9, 2005', 'gender' => 'Female', 'email' => 's.ilagan@dlsl.edu.ph', 'phone' => '0919 943 4443', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            // Integrated School (as in the Principal's mockup). 'year' and 'amount' are given here; elsewhere they default.
-            ['id' => 'IS-2026-1101', 'name' => 'Santos, Bianca Mae R.', 'program' => 'K', 'year' => 'Kinder', 'status' => 'Pending', 'applied' => '2026-05-26', 'updated' => 'Jun 2, 8:12 AM', 'dob' => 'March 2, 2021', 'gender' => 'Female', 'email' => 'santos.family@gmail.com', 'phone' => '0917 200 1000', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'IS-2026-1102', 'name' => 'Lim, Ethan Gabriel S.', 'program' => 'GS', 'year' => 'Grade 1', 'status' => 'For Exam', 'applied' => '2026-05-25', 'updated' => 'Jun 3, 9:19 AM', 'dob' => 'June 18, 2019', 'gender' => 'Male', 'email' => 'lim.family@gmail.com', 'phone' => '0918 241 1733', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 15, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1103', 'name' => 'Reyes, Andrea Nicole P.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'Paid', 'applied' => '2026-05-24', 'updated' => 'Jun 4, 10:26 AM', 'dob' => 'October 9, 2009', 'gender' => 'Female', 'email' => 'reyes.family@gmail.com', 'phone' => '0919 282 2466', 'address' => 'Tanauan City, Batangas', 'exam' => 'Jun 16, 2026 · 10:00 AM', 'paid' => 'Jun 4, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1104', 'name' => 'Garcia, Miguel Andres T.', 'program' => 'JHS', 'year' => 'Grade 7', 'status' => 'For Exam', 'applied' => '2026-05-23', 'updated' => 'Jun 5, 11:33 AM', 'dob' => 'January 21, 2013', 'gender' => 'Male', 'email' => 'garcia.family@gmail.com', 'phone' => '0920 323 3199', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 17, 2026 · 8:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1105', 'name' => 'Mendoza, Sofia Isabel L.', 'program' => 'SHS', 'year' => 'Grade 11 · ABM', 'status' => 'For Exam', 'applied' => '2026-05-22', 'updated' => 'Jun 6, 8:40 AM', 'dob' => 'May 30, 2009', 'gender' => 'Female', 'email' => 'mendoza.family@gmail.com', 'phone' => '0917 364 3932', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1106', 'name' => 'Navarro, Joaquin Luis D.', 'program' => 'GS', 'year' => 'Grade 4', 'status' => 'Paid', 'applied' => '2026-05-21', 'updated' => 'Jun 7, 9:47 AM', 'dob' => 'August 3, 2016', 'gender' => 'Male', 'email' => 'navarro.family@gmail.com', 'phone' => '0918 405 4665', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 19, 2026 · 10:00 AM', 'paid' => 'Jun 7, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1107', 'name' => 'Villanueva, Gwyneth Anne C.', 'program' => 'SHS', 'year' => 'Grade 11 · HUMSS', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'Jun 8, 10:54 AM', 'dob' => 'July 14, 2009', 'gender' => 'Female', 'email' => 'villanueva.family@gmail.com', 'phone' => '0919 446 5398', 'address' => 'San Jose, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'IS-2026-1108', 'name' => 'Castillo, Lorenzo Miguel B.', 'program' => 'JHS', 'year' => 'Grade 8', 'status' => 'Paid', 'applied' => '2026-05-19', 'updated' => 'Jun 2, 11:01 AM', 'dob' => 'November 27, 2012', 'gender' => 'Male', 'email' => 'castillo.family@gmail.com', 'phone' => '0920 487 6131', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 21, 2026 · 9:00 AM', 'paid' => 'Jun 3, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1109', 'name' => 'Aquino, Chloe Margaret V.', 'program' => 'K', 'year' => 'Kinder', 'status' => 'Paid', 'applied' => '2026-05-18', 'updated' => 'Jun 3, 8:08 AM', 'dob' => 'February 11, 2021', 'gender' => 'Female', 'email' => 'aquino.family@gmail.com', 'phone' => '0917 528 6864', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 22, 2026 · 10:00 AM', 'paid' => 'Jun 4, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1110', 'name' => 'Bautista, Rafael Jose M.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'For Exam', 'applied' => '2026-05-17', 'updated' => 'Jun 4, 9:15 AM', 'dob' => 'December 5, 2009', 'gender' => 'Male', 'email' => 'bautista.family@gmail.com', 'phone' => '0918 569 7597', 'address' => 'Calamba, Laguna', 'exam' => 'Jun 14, 2026 · 8:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1111', 'name' => 'Dela Rosa, Kyla Marie F.', 'program' => 'GS', 'year' => 'Grade 2', 'status' => 'Pending', 'applied' => '2026-05-16', 'updated' => 'Jun 5, 10:22 AM', 'dob' => 'April 19, 2018', 'gender' => 'Female', 'email' => 'delarosa.family@gmail.com', 'phone' => '0919 610 8330', 'address' => 'Lipa City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'IS-2026-1112', 'name' => 'Torres, Nathaniel James R.', 'program' => 'SHS', 'year' => 'Grade 12 · GAS', 'status' => 'Paid', 'applied' => '2026-05-15', 'updated' => 'Jun 6, 11:29 AM', 'dob' => 'September 8, 2008', 'gender' => 'Male', 'email' => 'torres.family@gmail.com', 'phone' => '0920 651 9063', 'address' => 'Batangas City, Batangas', 'exam' => 'Jun 16, 2026 · 10:00 AM', 'paid' => 'Jun 7, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1113', 'name' => 'Flores, Alyssa Jane C.', 'program' => 'JHS', 'year' => 'Grade 7', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'Jun 7, 8:36 AM', 'dob' => 'March 25, 2013', 'gender' => 'Female', 'email' => 'flores.family@gmail.com', 'phone' => '0917 692 9796', 'address' => 'Tanauan City, Batangas', 'exam' => null, 'paid' => null],
-            ['id' => 'IS-2026-1114', 'name' => 'Ramos, Gabriel Vince A.', 'program' => 'SHS', 'year' => 'Grade 11 · TVL', 'status' => 'For Exam', 'applied' => '2026-05-13', 'updated' => 'Jun 8, 9:43 AM', 'dob' => 'June 1, 2009', 'gender' => 'Male', 'email' => 'ramos.family@gmail.com', 'phone' => '0918 733 1529', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 18, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1115', 'name' => 'Pascual, Isabella Rose T.', 'program' => 'GS', 'year' => 'Grade 6', 'status' => 'For Exam', 'applied' => '2026-05-12', 'updated' => 'Jun 2, 10:50 AM', 'dob' => 'January 7, 2014', 'gender' => 'Female', 'email' => 'pascual.family@gmail.com', 'phone' => '0919 774 2262', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 19, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1116', 'name' => 'Cruz, Daniel Matthew S.', 'program' => 'SHS', 'year' => 'Grade 11 · STEM', 'status' => 'Paid', 'applied' => '2026-05-11', 'updated' => 'Jun 3, 11:57 AM', 'dob' => 'August 22, 2009', 'gender' => 'Male', 'email' => 'cruz.family@gmail.com', 'phone' => '0920 815 2995', 'address' => 'Santo Tomas, Batangas', 'exam' => 'Jun 20, 2026 · 8:00 AM', 'paid' => 'Jun 5, 2026', 'amount' => '₱1,500.00'],
-            ['id' => 'IS-2026-1117', 'name' => 'Ocampo, Leah Patricia M.', 'program' => 'JHS', 'year' => 'Grade 9', 'status' => 'For Exam', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 8:04 AM', 'dob' => 'October 15, 2011', 'gender' => 'Female', 'email' => 'ocampo.family@gmail.com', 'phone' => '0917 856 3728', 'address' => 'Lipa City, Batangas', 'exam' => 'Jun 21, 2026 · 9:00 AM', 'paid' => null],
-            ['id' => 'IS-2026-1118', 'name' => 'Salazar, Marco Antonio G.', 'program' => 'SHS', 'year' => 'Grade 11 · ABM', 'status' => 'Pending', 'applied' => '2026-05-09', 'updated' => 'Jun 5, 9:11 AM', 'dob' => 'April 2, 2009', 'gender' => 'Male', 'email' => 'salazar.family@gmail.com', 'phone' => '0918 897 4461', 'address' => 'Batangas City, Batangas', 'exam' => null, 'paid' => null],
-            // Graduate Programs (as in the Program Chair's mockup). 'undergrad': the degree they hold.
-            ['id' => 'APP-2026-G006', 'name' => 'Villanueva, Rosario Anne B.', 'program' => 'MBA', 'year' => "Master's", 'status' => 'Pending', 'applied' => '2026-05-18', 'updated' => 'May 18, 9:45 AM', 'dob' => 'July 14, 1994', 'gender' => 'Female', 'email' => 'ra.villanueva@dlsl.edu.ph', 'phone' => '0912 400 6666', 'address' => 'Calamba, Laguna', 'undergrad' => 'BS Accountancy — DLSL, 2016', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-G003', 'name' => 'Garcia, Eduardo M.', 'program' => 'MIT', 'year' => "Master's", 'status' => 'Pending', 'applied' => '2026-05-12', 'updated' => 'May 12, 4:15 PM', 'dob' => 'September 11, 1992', 'gender' => 'Male', 'email' => 'e.garcia@dlsl.edu.ph', 'phone' => '0919 700 3333', 'address' => 'Tanauan City, Batangas', 'undergrad' => 'BS Computer Science — DLSL, 2014', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-G002', 'name' => 'Fernandez, Maricel D.', 'program' => 'MEd', 'year' => "Master's", 'status' => 'For Exam', 'applied' => '2026-05-08', 'updated' => 'Jun 3, 2:00 PM', 'dob' => 'March 22, 1988', 'gender' => 'Female', 'email' => 'm.fernandez@dlsl.edu.ph', 'phone' => '0918 900 2222', 'address' => 'Batangas City, Batangas', 'undergrad' => 'Bachelor of Secondary Education — DLSL, 2010', 'exam' => 'Jun 14, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-G005', 'name' => 'Torres, Andrei Benedict V.', 'program' => 'PhD', 'year' => 'Doctoral', 'status' => 'For Exam', 'applied' => '2026-05-06', 'updated' => 'Jun 4, 3:30 PM', 'dob' => 'April 28, 1978', 'gender' => 'Male', 'email' => 'ab.torres@dlsl.edu.ph', 'phone' => '0921 500 5555', 'address' => 'Lipa City, Batangas', 'undergrad' => 'Master of Education — DLSL, 2005', 'exam' => 'Jun 16, 2026 · 1:00 PM', 'paid' => null],
-            ['id' => 'APP-2026-G001', 'name' => 'Bautista, Ramon Jose A.', 'program' => 'MBA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 9:00 AM', 'dob' => 'June 15, 1990', 'gender' => 'Male', 'email' => 'rj.bautista@dlsl.edu.ph', 'phone' => '0917 800 1111', 'address' => 'Lipa City, Batangas', 'undergrad' => 'BS Business Administration — DLSL, 2012', 'exam' => 'Jun 10, 2026 · 9:00 AM', 'paid' => 'Jun 1, 2026', 'amount' => '₱3,000.00'],
-            ['id' => 'APP-2026-G004', 'name' => 'Mendoza, Luisa Patricia C.', 'program' => 'MPA', 'year' => "Master's", 'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 30, 11:00 AM', 'dob' => 'January 5, 1985', 'gender' => 'Female', 'email' => 'lp.mendoza@dlsl.edu.ph', 'phone' => '0920 600 4444', 'address' => 'Santo Tomas, Batangas', 'undergrad' => 'BS Political Science — DLSL, 2007', 'exam' => 'Jun 8, 2026 · 8:00 AM', 'paid' => 'May 30, 2026', 'amount' => '₱3,000.00'],
-            // College of Law (as in the Dean's mockup). 'bar': whether they passed the Bar.
-            ['id' => 'APP-2026-L006', 'name' => 'Mendoza, Clarissa Joy T.', 'program' => 'JD', 'status' => 'Pending', 'applied' => '2026-05-20', 'updated' => 'May 20, 8:45 AM', 'dob' => 'September 19, 2000', 'gender' => 'Female', 'email' => 'cj.mendoza@dlsl.edu.ph', 'phone' => '0912 666 7777', 'address' => 'Calamba, Laguna', 'undergrad' => 'BS Psychology — DLSL, 2022', 'bar' => 'N/A (Pre-Law)', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-L004', 'name' => 'Dela Torre, Maria Josefa P.', 'program' => 'JD', 'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'May 14, 3:00 PM', 'dob' => 'November 22, 1999', 'gender' => 'Female', 'email' => 'mj.delatorre@dlsl.edu.ph', 'phone' => '0920 444 5555', 'address' => 'Tanauan City, Batangas', 'undergrad' => 'BS Criminology — PLM, 2021', 'bar' => 'N/A (Pre-Law)', 'exam' => null, 'paid' => null],
-            ['id' => 'APP-2026-L005', 'name' => 'Cruz, Benigno Antonio R.', 'program' => 'JSD', 'status' => 'For Exam', 'applied' => '2026-05-07', 'updated' => 'Jun 5, 11:00 AM', 'dob' => 'January 8, 1982', 'gender' => 'Male', 'email' => 'ba.cruz@dlsl.edu.ph', 'phone' => '0921 555 6666', 'address' => 'Lipa City, Batangas', 'undergrad' => 'Master of Laws — DLSL, 2010', 'bar' => 'Passed — 2006 Bar Examinations', 'exam' => 'Jun 14, 2026 · 1:00 PM', 'paid' => null],
-            ['id' => 'APP-2026-L002', 'name' => 'Reyes, Carmela Diaz S.', 'program' => 'JD', 'status' => 'For Exam', 'applied' => '2026-05-06', 'updated' => 'Jun 4, 2:00 PM', 'dob' => 'August 3, 1997', 'gender' => 'Female', 'email' => 'cd.reyes@dlsl.edu.ph', 'phone' => '0918 222 3333', 'address' => 'Batangas City, Batangas', 'undergrad' => 'AB Philosophy — DLSL, 2019', 'bar' => 'N/A (Pre-Law)', 'exam' => 'Jun 12, 2026 · 10:00 AM', 'paid' => null],
-            ['id' => 'APP-2026-L001', 'name' => 'Aquino, Rafael Miguel B.', 'program' => 'JD', 'status' => 'Paid', 'applied' => '2026-05-04', 'updated' => 'May 28, 10:00 AM', 'dob' => 'May 10, 1998', 'gender' => 'Male', 'email' => 'rm.aquino@dlsl.edu.ph', 'phone' => '0917 111 2222', 'address' => 'Lipa City, Batangas', 'undergrad' => 'BS Political Science — DLSL, 2020', 'bar' => 'N/A (Pre-Law)', 'exam' => 'Jun 8, 2026 · 9:00 AM', 'paid' => 'May 28, 2026', 'amount' => '₱3,500.00'],
-            ['id' => 'APP-2026-L003', 'name' => 'Santos, Victorino L.', 'program' => 'LLM', 'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 25, 9:00 AM', 'dob' => 'March 15, 1990', 'gender' => 'Male', 'email' => 'v.santos@dlsl.edu.ph', 'phone' => '0919 333 4444', 'address' => 'San Jose, Batangas', 'undergrad' => 'Juris Doctor — DLSL, 2016', 'bar' => 'Passed — 2017 Bar Examinations', 'exam' => 'Jun 6, 2026 · 8:00 AM', 'paid' => 'May 25, 2026', 'amount' => '₱3,500.00'],
-        ];
-
-        return array_values(array_filter($all, fn ($a) => isset($scope[$a['program']])));
-    }
 }
