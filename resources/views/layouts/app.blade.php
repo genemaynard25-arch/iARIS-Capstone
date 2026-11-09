@@ -4,11 +4,13 @@
 
 <head>
     @include('partials.head')
+    @stack('styles')
     <title>@yield('title', 'iARIS')</title>
 </head>
 
-<body>
-    <div class="d-flex min-vh-100">
+<body class="@yield('body-class')">
+    @yield('app-banner')
+    <div class="app-shell d-flex min-vh-100">
         {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /executive and /college pages use theirs too,
              so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)
              TODO (RBAC): keep these users out of the admin pages. --}}
@@ -28,7 +30,7 @@
             @include('layouts.partials.sidebar')
         @endif
 
-        <main class="flex-grow-1 p-3 p-sm-4 p-lg-5" style="min-width: 0;">
+        <main class="app-main flex-grow-1 p-3 p-sm-4 p-lg-5" style="min-width: 0;">
             {{-- Maintenance notice for everyone (TOIC turns it on in System Overview) --}}
             @include('partials.maintenance-banner')
             @include('layouts.partials.topbar')

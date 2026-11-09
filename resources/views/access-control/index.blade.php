@@ -2,27 +2,38 @@
 
 @section('title', 'iARIS — Access Control')
 @section('page-title', 'Access Control')
+@section('body-class', 'access-control-page')
+@section('page-breadcrumb', 'Access & Security')
+@push('styles')
+    <link href="{{ asset('css/access-control.css') }}" rel="stylesheet">
+@endpush
+@section('sidebar-brand')
+    @include('partials.auth-logo', ['size' => 44, 'variant' => 'glass'])
+@endsection
+@section('app-banner')
+    <div class="ac-institution-bar"><span><strong>De La Salle Lipa</strong><span class="mx-2 opacity-50">|</span>Institutional Admissions and Testing Office</span><span class="d-none d-md-inline">iARIS · Administration</span></div>
+@endsection
 @section('page-subtitle', 'Manage role permissions and temporary admin access across all iARIS modules')
 
 @section('content')
             {{-- Permanent administrator / Temporary Admin --}}
             @if ($permanentAdmin['isRealAdmin'])
-                <div class="bg-iaris text-white rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
-                    <div class="icon-circle rounded-3 bg-white bg-opacity-10 border border-white border-opacity-25 fs-5 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-star-fill"></i>
+                <div class="ac-admin-banner text-white d-flex flex-wrap align-items-center gap-3">
+                    <div class="ac-admin-icon d-flex align-items-center justify-content-center">
+                        <i class="bi bi-star-fill" aria-hidden="true"></i>
                     </div>
                     <div class="flex-grow-1">
                         <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Super Admin</h2>
                         <p class="small text-white-50 mb-0">The only Super Admin account · Full system access · Cannot be restricted · Access Control is managed only by this account</p>
                     </div>
                     <span class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2">
-                        <i class="bi bi-lock-fill text-iaris-pale me-1"></i> Full Access · Sole Super Admin
+                        <i class="bi bi-lock-fill text-iaris-pale me-1" aria-hidden="true"></i> Full Access · Sole Super Admin
                     </span>
                 </div>
             @elseif ($myActiveTempGrant)
                 <div class="bg-warning-subtle border border-warning rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
                     <div class="icon-circle rounded-3 bg-warning text-dark fs-5 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-clock-history"></i>
+                        <i class="bi bi-clock-history" aria-hidden="true"></i>
                     </div>
                     <div class="flex-grow-1">
                         <h2 class="fs-6 fw-bold mb-1">{{ $permanentAdmin['name'] }} — Temporary Admin Access</h2>
@@ -32,7 +43,7 @@
             @endif
 
     {{-- Temporary admin access --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="ac-temp-card card border-0">
         <div class="card-body p-4">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                 <div>
@@ -41,13 +52,13 @@
                 </div>
                 @if ($permanentAdmin['isRealAdmin'])
                     <button type="button" class="btn btn-primary btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#tempModal">
-                        <i class="bi bi-person-plus-fill me-1"></i> Assign Temporary Admin
+                        <i class="bi bi-person-plus-fill me-1" aria-hidden="true"></i> Assign Temporary Admin
                     </button>
                 @endif
             </div>
 
             {{-- The active temporary admin. Always in the page so the script can fill it in; hidden when there is none. --}}
-            <div class="d-flex flex-wrap align-items-center gap-3 p-3 rounded-3 bg-warning-subtle border border-warning-subtle {{ $tempAdmin ? '' : 'd-none' }}" id="tempRow">
+            <div class="ac-temp-row d-flex flex-wrap align-items-center gap-3 {{ $tempAdmin ? '' : 'd-none' }}" id="tempRow">
                 <div class="icon-circle rounded-circle bg-warning text-dark fw-bold d-flex align-items-center justify-content-center" data-temp="initials">{{ $tempAdmin['initials'] ?? '' }}</div>
                 <div class="flex-grow-1">
                     <div class="fw-bold"><span data-temp="name">{{ $tempAdmin['name'] ?? '' }}</span> — <span data-temp="role">{{ $tempAdmin['role'] ?? '' }}</span></div>
@@ -58,193 +69,146 @@
                     </div>
                 </div>
                 <span class="badge rounded-pill bg-white text-warning-emphasis border border-warning-subtle px-3 py-2">
-                    <i class="bi bi-clock me-1"></i> Expires <span data-temp="expires">{{ $tempAdmin['expires'] ?? '' }}</span>
+                    <i class="bi bi-clock me-1" aria-hidden="true"></i> Expires <span data-temp="expires">{{ $tempAdmin['expires'] ?? '' }}</span>
                 </span>
                 {{-- TODO (backend): a route that moves expires_at later. Until then Extend is shown but disabled. --}}
                 <span class="d-inline-block" tabindex="0" title="Extend is coming soon">
-                    <button type="button" class="btn btn-sm btn-light border fw-semibold" disabled><i class="bi bi-calendar-plus me-1"></i> Extend</button>
+                    <button type="button" class="btn btn-sm btn-light border fw-semibold" disabled><i class="bi bi-calendar-plus me-1" aria-hidden="true"></i> Extend</button>
                 </span>
                 <button type="button" class="btn btn-sm btn-outline-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#revokeModal">
-                    <i class="bi bi-slash-circle me-1"></i> Revoke
+                    <i class="bi bi-slash-circle me-1" aria-hidden="true"></i> Revoke
                 </button>
             </div>
 
-            <div class="small text-body-secondary p-3 rounded-3 bg-body-tertiary border {{ $tempAdmin ? 'd-none' : '' }}" id="tempEmpty">
-                <i class="bi bi-info-circle me-1"></i> No temporary admin is active. Use <strong>Assign Temporary Admin</strong> to cover an absence.
+            <div class="ac-temp-empty small text-body-secondary {{ $tempAdmin ? 'd-none' : '' }}" id="tempEmpty">
+                <i class="bi bi-info-circle me-1" aria-hidden="true"></i> No temporary admin is active. Use <strong>Assign Temporary Admin</strong> to cover an absence.
             </div>
         </div>
     </div>
 
 
-    {{-- Permission matrix --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h2 class="fs-6 fw-bold mb-1">Role Permissions</h2>
-                    <p class="small text-body-secondary mb-0">Pick a role to see and change what it can open, or compare all roles. Changes take effect when you save.</p>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2 d-none" id="unsavedBadge"></span>
-                    <button type="button" class="btn btn-light border fw-semibold" id="discardButton" disabled>Discard</button>
-                    <button type="button" class="btn btn-primary fw-semibold" id="saveButton" disabled>
-                        <i class="bi bi-floppy me-1"></i> Save Changes
-                    </button>
-                </div>
+    {{-- Both permission views share the database-backed controls below. --}}
+    <section class="ac-permissions card border-0" aria-labelledby="permissionsTitle">
+        <div class="ac-permissions-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h2 id="permissionsTitle">Role Permissions</h2>
+                <p>Choose a role and set its module access. Staff editor access also allows changes to records.</p>
             </div>
-
-            {{-- Two views of the same switches: one role at a time, or every role side by side --}}
-            <div class="btn-group mb-3" role="group" aria-label="Permission view">
+            <div class="ac-view-switch btn-group" role="group" aria-label="Permission view">
                 <input type="radio" class="btn-check" name="permView" id="viewByRole" value="role" checked>
-                <label class="btn btn-sm btn-outline-primary fw-semibold" for="viewByRole"><i class="bi bi-person me-1"></i> By role</label>
+                <label class="btn btn-sm" for="viewByRole"><i class="bi bi-person-gear me-1" aria-hidden="true"></i> By role</label>
                 <input type="radio" class="btn-check" name="permView" id="viewCompare" value="compare">
-                <label class="btn btn-sm btn-outline-primary fw-semibold" for="viewCompare"><i class="bi bi-grid-3x3 me-1"></i> Compare all roles</label>
+                <label class="btn btn-sm" for="viewCompare"><i class="bi bi-grid-3x3 me-1" aria-hidden="true"></i> Compare all roles</label>
             </div>
+        </div>
 
-            {{-- By role: its switches only pass clicks on to the matrix below, so Save / Discard work the same --}}
-            <div id="byRoleView">
-                <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Choose a role">
-                    @foreach ($roles as $role)
-                        <button type="button" class="btn btn-sm rounded-pill fw-semibold {{ $loop->index === 1 ? 'btn-primary' : 'btn-light border' }}" data-pick-role="{{ $role['key'] }}" aria-pressed="{{ $loop->index === 1 ? 'true' : 'false' }}">
-                            <i class="bi {{ $role['icon'] }} me-1"></i> {{ $role['name'] }}
-                        </button>
-                    @endforeach
-                </div>
+        <div class="ac-permissions-body" id="byRoleView">
+            <nav class="ac-roles" aria-label="Choose a role">
                 @foreach ($roles as $role)
-                    <div class="{{ $loop->index === 1 ? '' : 'd-none' }}" data-role-panel="{{ $role['key'] }}">
+                    @php
+                        $moduleCount = collect($modules)->flatten(1)->filter(fn ($module) => $role['key'] === 'admin' || in_array($role['key'], $module['on']))->count();
+                    @endphp
+                    <button type="button" class="ac-role-button {{ $loop->index === 1 ? 'is-selected' : '' }}" data-pick-role="{{ $role['key'] }}" aria-pressed="{{ $loop->index === 1 ? 'true' : 'false' }}" aria-controls="role-panel-{{ $role['key'] }}">
+                        <span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span>
+                        <span class="ac-role-text"><strong>{{ $role['name'] }}</strong><small>{{ $role['key'] === 'admin' ? 'Permanent administrator' : ($role['key'] === 'iato_staff' ? 'Module access & editing' : 'Module access') }}</small></span>
+                        <span class="ac-role-count" data-role-count="{{ $role['key'] }}" aria-label="Enabled modules">{{ $moduleCount }}</span>
+                        <span class="ac-role-dirty d-none" data-role-dirty="{{ $role['key'] }}" aria-label="Unsaved changes"></span>
+                    </button>
+                @endforeach
+            </nav>
+
+            <div class="ac-role-details">
+                @foreach ($roles as $role)
+                    <section class="{{ $loop->index === 1 ? '' : 'd-none' }}" id="role-panel-{{ $role['key'] }}" data-role-panel="{{ $role['key'] }}" aria-labelledby="role-title-{{ $role['key'] }}">
+                        <div class="ac-role-heading d-flex align-items-start gap-3">
+                            <span class="ac-role-icon ac-role-icon-lg bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span>
+                            <div>
+                                <h3 id="role-title-{{ $role['key'] }}">{{ $role['name'] }}</h3>
+                                <p>{{ $role['key'] === 'admin' ? 'Full system access. The Super Admin’s module permissions cannot be restricted.' : ($role['key'] === 'iato_staff' ? 'Choose None, View, or Edit for supported modules. Edit applies to staff assigned Level Editor access.' : 'Choose which modules this role can open. Individual account editing permissions also apply.') }}</p>
+                                <div class="ac-role-meta"><span><i class="bi bi-grid" aria-hidden="true"></i> <b data-role-count="{{ $role['key'] }}">{{ collect($modules)->flatten(1)->filter(fn ($module) => $role['key'] === 'admin' || in_array($role['key'], $module['on']))->count() }}</b> modules enabled</span><a href="{{ url('/accounts') }}">Manage accounts <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div>
+                            </div>
+                        </div>
+
                         @foreach ($modules as $section => $sectionModules)
-                            <div class="small fw-bold tracking-wide text-primary text-uppercase mt-3 mb-2">{{ $section }}</div>
-                            <div class="list-group">
-                                @foreach ($sectionModules as $module)
+                            <h4 class="ac-module-section">{{ $section }}</h4>
+                            @foreach ($sectionModules as $module)
+                                @php
+                                    $isAdmin = $role['key'] === 'admin';
+                                    $locked = $isAdmin || ! empty($module['adminOnly']);
+                                    $supportsEditing = $role['key'] === 'iato_staff' && collect($editableModules)->contains('key', $module['key']);
+                                    $on = $isAdmin || in_array($role['key'], $module['on']);
+                                    $canEdit = $supportsEditing && (bool) collect($editableModules)->firstWhere('key', $module['key'])['can_edit'];
+                                    $level = ! $on ? 0 : ($canEdit ? 2 : 1);
+                                @endphp
+                                <div class="ac-module-row" data-permission-row data-row-role="{{ $role['key'] }}" data-row-module="{{ $module['key'] }}">
+                                    <div class="ac-module-text"><strong>{{ $module['name'] }}</strong><small>{{ $module['description'] }}</small></div>
+                                    @if ($locked)
+                                        <span class="ac-locked"><i class="bi bi-lock-fill" aria-hidden="true"></i> {{ $isAdmin ? 'Full access' : 'Super Admin only' }}</span>
+                                    @else
+                                        <div class="ac-levels btn-group" role="group" aria-label="{{ $role['name'] }}: {{ $module['name'] }}">
+                                            @foreach ($supportsEditing ? [0 => 'None', 1 => 'View', 2 => 'Edit'] : [0 => 'None', 1 => 'Access'] as $value => $label)
+                                                <button type="button" class="btn {{ $level === $value ? 'is-selected' : '' }}" data-level-choice="{{ $value }}" data-choice-role="{{ $role['key'] }}" data-choice-module="{{ $module['key'] }}" aria-pressed="{{ $level === $value ? 'true' : 'false' }}">{{ $label }}</button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endforeach
+                    </section>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="table-responsive d-none ac-compare" id="compareView">
+            <table class="table align-middle mb-0 matrix-table">
+                <caption class="visually-hidden">Module access by role. IATO Staff editing is configured in the By role view.</caption>
+                <thead><tr><th scope="col">Module</th>
+                    @foreach ($roles as $role)
+                        <th scope="col" class="text-center"><span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis mx-auto mb-1"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span><span class="d-block">{{ $role['name'] }}</span></th>
+                    @endforeach
+                </tr></thead>
+                <tbody>
+                    @foreach ($modules as $section => $sectionModules)
+                        <tr class="ac-matrix-section"><th scope="rowgroup">{{ $section }}</th><td colspan="{{ count($roles) }}"></td></tr>
+                        @foreach ($sectionModules as $module)
+                            <tr><th scope="row"><strong>{{ $module['name'] }}</strong><small>{{ $module['description'] }}</small></th>
+                                @foreach ($roles as $role)
                                     @php
                                         $isAdmin = $role['key'] === 'admin';
                                         $locked = $isAdmin || ! empty($module['adminOnly']);
                                         $on = $isAdmin || in_array($role['key'], $module['on']);
                                     @endphp
-                                    <label class="list-group-item d-flex align-items-center gap-3 {{ $locked ? 'bg-body-tertiary' : '' }}">
-                                        <span class="flex-grow-1">
-                                            <span class="d-block fw-semibold">{{ $module['name'] }}</span>
-                                            <span class="d-block small text-body-secondary">{{ $module['description'] }}</span>
-                                        </span>
-                                        @if ($locked)
-                                            <i class="bi bi-lock-fill small text-body-secondary" title="{{ $isAdmin ? 'IATO Admin always has access' : 'Only the IATO Admin can have this' }}"></i>
-                                        @endif
-                                        <span class="form-switch m-0 p-0">
-                                            <input class="form-check-input m-0" type="checkbox" role="switch" {{ $on ? 'checked' : '' }} {{ $locked ? 'disabled' : '' }}
-                                                aria-label="{{ $role['name'] }}: {{ $module['name'] }}"
-                                                @unless ($locked) data-proxy-role="{{ $role['key'] }}" data-proxy-module="{{ $module['key'] }}" @endunless>
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        @endforeach
-                    </div>
-                @endforeach
-            </div>
-
-            <div class="table-responsive d-none" id="compareView">
-                <table class="table align-middle mb-0 matrix-table">
-                    <thead>
-                        <tr>
-                            <th class="small text-uppercase text-body-secondary fw-bold align-bottom">Module</th>
-                            @foreach ($roles as $role)
-                                <th class="text-center">
-                                    <div class="icon-circle rounded-3 bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis d-flex align-items-center justify-content-center mx-auto mb-1">
-                                        <i class="bi {{ $role['icon'] }}"></i>
-                                    </div>
-                                    <div class="small fw-bold text-nowrap">{{ $role['name'] }}</div>
-                                </th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($modules as $section => $sectionModules)
-                            {{-- Section label in its own cell so it stays visible when the table scrolls sideways --}}
-                            <tr>
-                                <td class="bg-body-tertiary small fw-bold tracking-wide text-primary text-uppercase py-2">{{ $section }}</td>
-                                <td colspan="{{ count($roles) }}" class="bg-body-tertiary"></td>
-                            </tr>
-                            @foreach ($sectionModules as $module)
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold">{{ $module['name'] }}</div>
-                                        <div class="small text-body-secondary">{{ $module['description'] }}</div>
+                                    <td class="text-center">
+                                        <div class="form-switch d-inline-block p-0 m-0"><input class="form-check-input m-0" type="checkbox" role="switch" aria-label="{{ $role['name'] }}: {{ $module['name'] }}" {{ $on ? 'checked' : '' }}
+                                            @if ($locked) disabled title="{{ $isAdmin ? 'The Super Admin always has access' : 'Super Admin only' }}"
+                                            @else data-perm data-role="{{ $role['key'] }}" data-module="{{ $module['key'] }}" data-role-name="{{ $role['name'] }}" data-module-name="{{ $module['name'] }}"
+                                            @endif></div>
+                                        @if ($locked)<div class="ac-matrix-lock"><i class="bi bi-lock-fill" aria-hidden="true"></i></div>@endif
                                     </td>
-                                    @foreach ($roles as $role)
-                                        @php
-                                            $isAdmin = $role['key'] === 'admin';
-                                            $locked = $isAdmin || ! empty($module['adminOnly']);
-                                            $on = $isAdmin || in_array($role['key'], $module['on']);
-                                        @endphp
-                                        <td class="text-center">
-                                            <div class="form-switch d-inline-block p-0 m-0">
-                                                <input class="form-check-input m-0" type="checkbox" role="switch"
-                                                    aria-label="{{ $role['name'] }}: {{ $module['name'] }}"
-                                                    {{ $on ? 'checked' : '' }}
-                                                    @if ($locked)
-                                                        disabled title="{{ $isAdmin ? 'IATO Admin always has access' : 'Only the IATO Admin can have this' }}"
-                                                    @else
-                                                        data-perm
-                                                        data-role="{{ $role['key'] }}"
-                                                        data-module="{{ $module['key'] }}"
-                                                        data-role-name="{{ $role['name'] }}"
-                                                        data-module-name="{{ $module['name'] }}"
-                                                    @endif
-                                                >
-                                            </div>
-                                            @if ($locked)
-                                                <div><i class="bi bi-lock-fill small text-body-secondary" aria-hidden="true"></i></div>
-                                            @endif
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
+                                @endforeach
+                            </tr>
                         @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <p class="small text-body-secondary mt-3 mb-0">
-                <i class="bi bi-lock-fill me-1"></i> Locked: the Super Admin always has every module, and Access Control and User Accounts are for the IATO Admin only.
-            </p>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
-    </div>
 
-        {{-- Editor permissions for IATO Staff (Level Editor vs Level Viewer) --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h2 class="fs-6 fw-bold mb-1">IATO Staff — Editor Permissions</h2>
-                    <p class="small text-body-secondary mb-0">Which modules a "Level Editor" (vs a read-only "Level Viewer") can actually add, edit, or remove data in. Requires the module to already be turned on above.</p>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2 d-none" id="editUnsavedBadge"></span>
-                    <button type="button" class="btn btn-light border fw-semibold" id="editDiscardButton" disabled>Discard</button>
-                    <button type="button" class="btn btn-primary fw-semibold" id="editSaveButton" disabled>
-                        <i class="bi bi-floppy me-1"></i> Save Changes
-                    </button>
-                </div>
-            </div>
-
-            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
-                @foreach ($editableModules as $module)
-                    <div class="col">
-                        <label class="d-flex align-items-center justify-content-between gap-2 p-3 rounded-3 border w-100">
-                            <span class="fw-semibold small">{{ $module['name'] }}</span>
-                            <div class="form-switch d-inline-block p-0 m-0">
-                                <input class="form-check-input m-0" type="checkbox" role="switch"
-                                    data-edit-perm data-module="{{ $module['key'] }}"
-                                    {{ $module['can_edit'] ? 'checked' : '' }}>
-                            </div>
-                        </label>
-                    </div>
-                @endforeach
-            </div>
+        {{-- Canonical editor values come from the existing RolePermission records. --}}
+        <div hidden>
+            @foreach ($editableModules as $module)
+                <input type="checkbox" data-edit-perm data-module="{{ $module['key'] }}" data-module-name="{{ $module['name'] }}" {{ $module['can_edit'] ? 'checked' : '' }}>
+            @endforeach
         </div>
-    </div>
+        <div class="ac-permission-note"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i> Locked permissions are reserved for the Super Admin.</div>
+        <div class="ac-save-bar d-none" id="permissionSaveBar" aria-label="Unsaved permission changes">
+            <span id="unsavedBadge" role="status"></span>
+            <button type="button" class="btn btn-light border fw-semibold" id="discardButton" disabled>Discard</button>
+            <button type="button" class="btn btn-primary fw-semibold" id="saveButton" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i> Save Changes</button>
+        </div>
+    </section>
 
     {{-- Access change log --}}
-    <div class="card border-0 shadow-sm rounded-4">
+    <div class="ac-log-card card border-0">
         <div class="card-body p-4">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                 <div>
@@ -284,7 +248,7 @@
         </div>
     </div>
 
-    {{-- A template row, copied by the script when a (sample) change is made --}}
+    {{-- A template row, copied after a permission change is saved successfully --}}
     <template id="logRowTemplate">
         @include('access-control.partials.log-row', ['entry' => ['action' => '', 'meta' => '', 'affected' => '', 'module' => '', 'type' => '', 'by' => '', 'at' => '']])
     </template>
@@ -303,13 +267,13 @@
 
                 <div class="modal-body p-4">
                     <div class="alert alert-warning d-flex gap-2 small">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                         <div>Temporary admins have <strong>full system access</strong> during the period. Access ends on its own at 11:59 PM on the end date. Only one temporary admin can be active at a time.</div>
                     </div>
 
                     {{-- Shown only when someone already has temporary access --}}
                     <div class="alert alert-light border d-flex gap-2 small {{ $tempAdmin ? '' : 'd-none' }}" id="replaceNote">
-                        <i class="bi bi-arrow-repeat"></i>
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
                         <div><strong id="replaceName">{{ $tempAdmin['name'] ?? '' }}</strong>'s current temporary access will end when you assign someone new.</div>
                     </div>
 
@@ -347,7 +311,7 @@
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
                     <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary fw-semibold flex-fill">
-                        <i class="bi bi-person-fill-lock me-1"></i> Assign Access
+                        <i class="bi bi-person-fill-lock me-1" aria-hidden="true"></i> Assign Access
                     </button>
                 </div>
             </form>
@@ -360,7 +324,7 @@
             <div class="modal-content border-0 rounded-4">
                 <div class="modal-body p-4 text-center">
                     <div class="icon-circle rounded-circle bg-danger-subtle text-danger-emphasis fs-5 d-flex align-items-center justify-content-center mx-auto mb-3">
-                        <i class="bi bi-slash-circle"></i>
+                        <i class="bi bi-slash-circle" aria-hidden="true"></i>
                     </div>
                     <h3 class="fs-6 fw-bold mb-2" id="revokeModalTitle">Revoke temporary access?</h3>
                     <p class="small text-body-secondary mb-0"><span id="revokeName"></span> will lose admin access right away.</p>
@@ -385,11 +349,8 @@
 
 @section('scripts')
     <script>
-        // Front end only: nothing here is saved yet. Each action updates the page,
-        // adds a "Sample only — not saved" row to the log and shows a toast.
-        // TODO: send each action to a backend route instead.
+        // Permission and temporary-admin actions use the existing Laravel endpoints.
         const CURRENT_USER = @json(auth()->user()->name);
-        const STAFF = @json($staffOptions);
         const TYPES = @json($changeTypes);
 
         function toast(text) {
@@ -437,151 +398,129 @@
         }
         document.getElementById('typeFilter').addEventListener('change', applyTypeFilter);
 
-        // ---- Permission matrix ----
-        // A checkbox remembers the state it loaded with in .defaultChecked,
-        // so "changed" just means checked is different from defaultChecked.
+        // The comparison checkboxes and hidden editor controls are the source of truth.
         const switches = [...document.querySelectorAll('[data-perm]')];
+        const editSwitches = [...document.querySelectorAll('[data-edit-perm]')];
         const changed = () => switches.filter(input => input.checked !== input.defaultChecked);
+        const editChanged = () => editSwitches.filter(input => input.checked !== input.defaultChecked);
+        const matrixSwitch = (role, module) => switches.find(input => input.dataset.role === role && input.dataset.module === module);
+        const editorSwitch = module => editSwitches.find(input => input.dataset.module === module);
+        let saving = false;
 
         function updateChanges() {
-            syncByRole();
-            const count = changed().length;
-            switches.forEach(input => input.closest('td').classList.toggle('bg-warning-subtle', input.checked !== input.defaultChecked));
-            const badge = document.getElementById('unsavedBadge');
-            badge.textContent = `${count} unsaved change${count === 1 ? '' : 's'}`;
-            badge.classList.toggle('d-none', count === 0);
-            document.getElementById('saveButton').disabled = count === 0;
-            document.getElementById('discardButton').disabled = count === 0;
-        }
-        switches.forEach(input => input.addEventListener('change', updateChanges));
+            const accessChanges = changed();
+            const editorChanges = editChanged();
+            const count = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`)]).size;
 
-        // ---- "By role" view: its switches mirror the matrix switches ----
-        const matrixSwitch = (role, module) => switches.find(i => i.dataset.role === role && i.dataset.module === module);
-        const proxies = [...document.querySelectorAll('[data-proxy-role]')];
-        function syncByRole() {
-            proxies.forEach(p => {
-                const real = matrixSwitch(p.dataset.proxyRole, p.dataset.proxyModule);
-                if (!real) return;
-                p.checked = real.checked;
-                p.closest('.list-group-item').classList.toggle('bg-warning-subtle', real.checked !== real.defaultChecked);
+            document.querySelectorAll('[data-permission-row]').forEach(row => {
+                const input = matrixSwitch(row.dataset.rowRole, row.dataset.rowModule);
+                if (!input) return;
+                const editor = row.dataset.rowRole === 'iato_staff' ? editorSwitch(row.dataset.rowModule) : null;
+                const level = !input.checked ? 0 : editor?.checked ? 2 : 1;
+                const dirty = input.checked !== input.defaultChecked || (editor && editor.checked !== editor.defaultChecked);
+                row.classList.toggle('is-changed', !!dirty);
+                row.querySelectorAll('[data-level-choice]').forEach(button => {
+                    const selected = Number(button.dataset.levelChoice) === level;
+                    button.classList.toggle('is-selected', selected);
+                    button.setAttribute('aria-pressed', String(selected));
+                });
+                input.closest('td').classList.toggle('ac-cell-changed', !!dirty);
             });
+
+            document.querySelectorAll('[data-pick-role]').forEach(button => {
+                const role = button.dataset.pickRole;
+                if (role !== 'admin') {
+                    const enabled = switches.filter(input => input.dataset.role === role && input.checked).length;
+                    document.querySelectorAll('[data-role-count]').forEach(counter => {
+                        if (counter.dataset.roleCount === role) counter.textContent = enabled;
+                    });
+                }
+                const dirty = accessChanges.some(input => input.dataset.role === role) || (role === 'iato_staff' && editorChanges.length > 0);
+                button.querySelector('[data-role-dirty]').classList.toggle('d-none', !dirty);
+            });
+
+            document.getElementById('unsavedBadge').textContent = `${count} module${count === 1 ? '' : 's'} with unsaved changes`;
+            document.getElementById('permissionSaveBar').classList.toggle('d-none', count === 0);
+            document.getElementById('saveButton').disabled = saving || count === 0;
+            document.getElementById('discardButton').disabled = saving || count === 0;
+            document.getElementById('saveButton').setAttribute('aria-busy', String(saving));
         }
-        proxies.forEach(p => p.addEventListener('change', () => {
-            const real = matrixSwitch(p.dataset.proxyRole, p.dataset.proxyModule);
-            real.checked = p.checked;
-            real.dispatchEvent(new Event('change'));
+
+        switches.forEach(input => input.addEventListener('change', updateChanges));
+        document.querySelectorAll('[data-level-choice]').forEach(button => button.addEventListener('click', () => {
+            const input = matrixSwitch(button.dataset.choiceRole, button.dataset.choiceModule);
+            const editor = button.dataset.choiceRole === 'iato_staff' ? editorSwitch(button.dataset.choiceModule) : null;
+            const level = Number(button.dataset.levelChoice);
+            input.checked = level > 0;
+            if (editor) editor.checked = level === 2;
+            updateChanges();
         }));
-        document.querySelectorAll('[data-pick-role]').forEach(btn => btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-pick-role]').forEach(b => {
-                const on = b === btn;
-                b.classList.toggle('btn-primary', on);
-                b.classList.toggle('btn-light', !on);
-                b.classList.toggle('border', !on);
-                b.setAttribute('aria-pressed', on);
+
+        document.querySelectorAll('[data-pick-role]').forEach(button => button.addEventListener('click', () => {
+            document.querySelectorAll('[data-pick-role]').forEach(choice => {
+                const selected = choice === button;
+                choice.classList.toggle('is-selected', selected);
+                choice.setAttribute('aria-pressed', String(selected));
             });
-            document.querySelectorAll('[data-role-panel]').forEach(p => p.classList.toggle('d-none', p.dataset.rolePanel !== btn.dataset.pickRole));
+            document.querySelectorAll('[data-role-panel]').forEach(panel => panel.classList.toggle('d-none', panel.dataset.rolePanel !== button.dataset.pickRole));
         }));
-        document.querySelectorAll('[name="permView"]').forEach(r => r.addEventListener('change', () => {
-            document.getElementById('byRoleView').classList.toggle('d-none', r.value !== 'role' || !r.checked);
-            document.getElementById('compareView').classList.toggle('d-none', r.value !== 'compare' || !r.checked);
+
+        document.querySelectorAll('[name="permView"]').forEach(input => input.addEventListener('change', () => {
+            const byRole = document.getElementById('viewByRole').checked;
+            document.getElementById('byRoleView').classList.toggle('d-none', !byRole);
+            document.getElementById('compareView').classList.toggle('d-none', byRole);
         }));
 
         document.getElementById('discardButton').addEventListener('click', () => {
-            switches.forEach(input => input.checked = input.defaultChecked);
+            [...switches, ...editSwitches].forEach(input => input.checked = input.defaultChecked);
             updateChanges();
         });
 
         document.getElementById('saveButton').addEventListener('click', async () => {
-            const list = changed();
-            if (!list.length) return;
-
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            const payload = list.map(input => ({
-                role: input.dataset.role,
-                module: input.dataset.module,
-                enabled: input.checked,
+            if (saving) return;
+            const accessChanges = changed().map(input => ({ input, value: input.checked }));
+            const editorChanges = editChanged().map(input => ({ input, value: input.checked }));
+            if (!accessChanges.length && !editorChanges.length) return;
+            const changes = new Map();
+            accessChanges.forEach(({ input, value }) => changes.set(`${input.dataset.role}:${input.dataset.module}`, {
+                role: input.dataset.role, module: input.dataset.module, enabled: value,
             }));
-
-            const res = await fetch('{{ url('/access-control/permissions') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ changes: payload }),
+            editorChanges.forEach(({ input, value }) => {
+                const key = `iato_staff:${input.dataset.module}`;
+                changes.set(key, { ...changes.get(key), role: 'iato_staff', module: input.dataset.module, can_edit: value });
             });
 
-            if (!res.ok) {
-                toast('Something went wrong saving permissions.');
-                return;
-            }
-
-            list.forEach(input => {
-                const granted = input.checked;
-                addLog({
-                    action: `${input.dataset.moduleName} access ${granted ? 'granted' : 'revoked'}`,
-                    meta: `${input.dataset.roleName} role can ${granted ? 'now' : 'no longer'} access ${input.dataset.moduleName}`,
-                    affected: input.dataset.roleName,
-                    module: input.dataset.moduleName,
-                    type: granted ? 'Granted' : 'Revoked',
-                });
-                input.defaultChecked = input.checked;
-            });
+            saving = true;
             updateChanges();
-            toast(`${list.length} change${list.length === 1 ? '' : 's'} saved.`);
-        });
-        
-                // ---- IATO Staff editor permissions ----
-        const editSwitches = [...document.querySelectorAll('[data-edit-perm]')];
-        const editChanged = () => editSwitches.filter(input => input.checked !== input.defaultChecked);
-
-        function updateEditChanges() {
-            const count = editChanged().length;
-            const badge = document.getElementById('editUnsavedBadge');
-            badge.textContent = `${count} unsaved change${count === 1 ? '' : 's'}`;
-            badge.classList.toggle('d-none', count === 0);
-            document.getElementById('editSaveButton').disabled = count === 0;
-            document.getElementById('editDiscardButton').disabled = count === 0;
-        }
-        editSwitches.forEach(input => input.addEventListener('change', updateEditChanges));
-
-        document.getElementById('editDiscardButton').addEventListener('click', () => {
-            editSwitches.forEach(input => input.checked = input.defaultChecked);
-            updateEditChanges();
-        });
-
-        document.getElementById('editSaveButton').addEventListener('click', async () => {
-            const list = editChanged();
-            if (!list.length) return;
-
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            const payload = list.map(input => ({
-                role: 'iato_staff',
-                module: input.dataset.module,
-                can_edit: input.checked,
-            }));
-
-            const res = await fetch('{{ url('/access-control/permissions') }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify({ changes: payload }),
-            });
-
-            if (!res.ok) {
-                toast('Something went wrong saving editor permissions.');
-                return;
+            try {
+                const response = await fetch('{{ url('/access-control/permissions') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+                    body: JSON.stringify({ changes: [...changes.values()] }),
+                });
+                if (!response.ok) throw new Error('Permission save failed');
+                accessChanges.forEach(({ input, value }) => {
+                    addLog({ action: `${input.dataset.moduleName} access ${value ? 'granted' : 'revoked'}`, meta: `${input.dataset.roleName} role can ${value ? 'now' : 'no longer'} access ${input.dataset.moduleName}`, affected: input.dataset.roleName, module: input.dataset.moduleName, type: value ? 'Granted' : 'Revoked' });
+                    input.defaultChecked = value;
+                });
+                editorChanges.forEach(({ input, value }) => {
+                    addLog({ action: `${input.dataset.moduleName} editor access ${value ? 'granted' : 'revoked'}`, meta: `IATO Staff Level Editors ${value ? 'can now edit' : 'have view-only access to'} this module when module access is enabled.`, affected: 'IATO Staff', module: input.dataset.moduleName, type: 'Modified' });
+                    input.defaultChecked = value;
+                });
+                toast(`${changes.size} module permission${changes.size === 1 ? '' : 's'} saved.`);
+            } catch {
+                toast('Permissions could not be saved. Your changes are still here; please try again.');
+            } finally {
+                saving = false;
+                updateChanges();
             }
+        });
 
-            list.forEach(input => input.defaultChecked = input.checked);
-            updateEditChanges();
-            toast(`${list.length} editor permission${list.length === 1 ? '' : 's'} saved.`);
+        window.addEventListener('beforeunload', event => {
+            if (changed().length || editChanged().length) event.preventDefault();
         });
-        
-        // Warn before leaving the page with unsaved switches
-        window.addEventListener('beforeunload', e => {
-            if (changed().length) e.preventDefault();
-        });
+        updateChanges();
+        applyTypeFilter();
 
         // ---- Temporary admin ----
         const tempRow = document.getElementById('tempRow');

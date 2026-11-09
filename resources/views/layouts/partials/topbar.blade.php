@@ -1,9 +1,12 @@
-<div class="bg-white rounded-4 shadow-sm px-4 py-3 mb-4 d-flex align-items-center justify-content-between gap-3">
+<div class="app-topbar bg-white rounded-4 shadow-sm px-4 py-3 mb-4 d-flex align-items-center justify-content-between gap-3">
     <div class="d-flex align-items-center gap-3">
         <button class="btn btn-outline-primary btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Open menu">
             <i class="bi bi-list fs-5"></i>
         </button>
         <div>
+            @hasSection('page-breadcrumb')
+                <div class="ac-breadcrumb">System <i class="bi bi-chevron-right" aria-hidden="true"></i> <span>@yield('page-breadcrumb')</span></div>
+            @endif
             <h1 class="fs-5 fw-bold mb-0">@yield('page-title', 'Dashboard')</h1>
             <p class="small text-body-secondary mb-0">@yield('page-subtitle')</p>
         </div>
