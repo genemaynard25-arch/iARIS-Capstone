@@ -44,7 +44,10 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
 
     public function startRow(): int
     {
-        return 2;
+        // Some exports have a sheet title row above the real header ("list-of-applicants
+        // (96)"); others don't. Rather than assume a fixed position, start at row 1 and
+        // have model() skip the real header row (and any title row) wherever it lands.
+        return 1;
     }
 
     // Pinned explicitly: the sheet's many sparse rows (section headers, blank
@@ -62,6 +65,12 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
 
     public function model(array $row): ?Applicant
     {
+        // The real header row itself, wherever it lands (row 1 normally, row 2 if the
+        // file has a leading sheet-title row above it) - not data, not a section.
+        if (trim((string) ($row[0] ?? '')) === '#') {
+            return null;
+        }
+
         $fullName = trim((string) ($row[3] ?? ''));
 
         if ($fullName === '') {
