@@ -29,44 +29,45 @@
     // Fortify makes these when 2FA is confirmed. Each one can replace a code once (the login pop-up's "Use a recovery code").
     $recoveryCodes = $confirmed ? rescue(fn () => $user->recoveryCodes(), [], false) : [];
 
-    $steps = ['Verified', 'Get the App', 'Scan QR Code', 'Verify Code', 'Done'];
+    $steps = ['Verified', 'Get the App', 'Scan QR Code', 'Verify Code', 'Done!'];
     $initials = collect(explode(' ', $user->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('');
 @endphp
 
-@section('title', 'iARIS — Two-Factor Setup')
+@section('title', 'iARIS — MFA Setup')
+@section('body-class', 'auth-mfa-page')
 
 @section('content')
-    <div class="min-vh-100 d-flex flex-column align-items-center justify-content-center p-3 py-5">
-        <div class="w-100" style="max-width: 540px;">
+    <div class="mfa-shell min-vh-100 d-flex flex-column align-items-center justify-content-center">
+        <div class="mfa-container w-100">
 
             {{-- Top strip --}}
-            <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="mfa-top-strip d-flex align-items-center justify-content-between">
                 <a href="{{ url('/home') }}" class="d-flex align-items-center gap-2 text-decoration-none">
-                    @include('partials.logo-mark', ['size' => 40])
+                    @include('partials.auth-logo', ['size' => 36])
                     <span>
-                        <span class="d-block fw-bold fs-5 font-brand text-primary lh-1">iARIS</span>
-                        <span class="small text-body-secondary">De La Salle Lipa · IATO</span>
+                        <span class="mfa-wordmark d-block text-primary">iARIS</span>
+                        <span class="mfa-brand-subtitle">De La Salle Lipa · IATO</span>
                     </span>
                 </a>
-                <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle px-3 py-2">
+                <span class="mfa-secure-tag">
                     <i class="bi bi-lock-fill me-1"></i> Secure Setup
                 </span>
             </div>
 
-            <div class="card border-0 shadow rounded-4 overflow-hidden">
+            <div class="mfa-card card border-0 overflow-hidden">
                 {{-- Progress: one dot per step. The script colours them. --}}
-                <ol class="list-unstyled d-flex align-items-start px-4 pt-4 mb-0" id="progress" aria-label="Setup progress">
+                <ol class="mfa-progress list-unstyled d-flex align-items-start mb-0" id="progress" aria-label="Setup progress">
                     @foreach ($steps as $i => $label)
                         <li class="d-flex flex-column align-items-center text-center flex-fill" data-progress="{{ $i + 1 }}">
-                            <span class="rounded-circle border border-2 d-flex align-items-center justify-content-center fw-bold small" style="width: 32px; height: 32px;" data-dot>
+                            <span class="d-flex align-items-center justify-content-center fw-bold" data-dot>
                                 <span data-num>{{ $i + 1 }}</span><i class="bi bi-check-lg d-none" data-check></i>
                             </span>
-                            <span class="small fw-bold mt-1 lh-sm" style="font-size: 0.7rem;" data-label>{{ $label }}</span>
+                            <span class="mfa-step-label" data-label>{{ $label }}</span>
                         </li>
                     @endforeach
                 </ol>
 
-                <div class="card-body p-4 p-sm-5">
+                <div class="mfa-card-body card-body">
                     {{-- Anything else that went wrong (not the code) --}}
                     @if ($errors->any())
                         <div class="alert alert-danger small">
@@ -78,27 +79,27 @@
 
                     {{-- STEP 1: Verified --}}
                     <section data-step="1" class="d-none">
-                        <div class="icon-circle rounded-4 bg-primary-subtle text-primary-emphasis fs-3 d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <div class="mfa-step-icon mfa-step-icon--green d-flex align-items-center justify-content-center">
                             <i class="bi bi-patch-check-fill"></i>
                         </div>
-                        <h1 class="fs-4 fw-bold mb-2">Your account is verified</h1>
-                        <p class="text-body-secondary mb-4">
+                        <h1 class="mfa-step-title">Your account has been verified!</h1>
+                        <p class="mfa-description">
                             Welcome to iARIS. Next, set up <strong class="text-body">two-factor authentication (MFA)</strong>: after your password,
                             iARIS will also ask for a 6-digit code from your phone, so a stolen password alone isn't enough.
                         </p>
 
-                        <div class="d-flex align-items-center gap-3 rounded-3 bg-primary-subtle border border-primary-subtle p-3 mb-3 small">
+                        <div class="mfa-verified-banner d-flex align-items-center">
                             <i class="bi bi-envelope-check fs-4 text-primary-emphasis"></i>
                             <div>Signed in as <b>{{ $user->email }}</b>. This setup takes about two minutes.</div>
                         </div>
 
-                        <div class="d-flex align-items-center gap-3 rounded-3 bg-body-tertiary p-3 mb-4">
+                        <div class="mfa-user d-flex align-items-center">
                             <div class="icon-circle rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">{{ strtoupper($initials) }}</div>
                             <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="fw-bold">{{ $user->name }}</div>
-                                <div class="small text-body-secondary text-truncate">{{ $user->email }}</div>
+                                <div class="mfa-user-name">{{ $user->name }}</div>
+                                <div class="mfa-user-email text-body-secondary text-truncate">{{ $user->email }}</div>
                             </div>
-                            <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ $user->roleInfo()[0] }}</span>
+                            <span class="mfa-user-role badge bg-primary-subtle text-primary-emphasis">{{ $user->roleInfo()[0] }}</span>
                         </div>
 
                         <button type="button" class="btn btn-primary btn-lg w-100 fw-semibold" data-go="2">
@@ -109,24 +110,26 @@
 
                     {{-- STEP 2: Get the app --}}
                     <section data-step="2" class="d-none">
-                        <div class="icon-circle rounded-4 bg-info-subtle text-info-emphasis fs-3 d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <div class="mfa-step-icon mfa-step-icon--blue d-flex align-items-center justify-content-center">
                             <i class="bi bi-phone"></i>
                         </div>
-                        <h1 class="fs-4 fw-bold mb-2">Get an authenticator app</h1>
-                        <p class="text-body-secondary mb-4">You'll need an authenticator app on your phone to make the codes. Either of these works with iARIS.</p>
+                        <h1 class="mfa-step-title">Get an authenticator app</h1>
+                        <p class="mfa-description">You'll need an authenticator app on your phone to make the codes. Either of these works with iARIS.</p>
 
-                        <div class="row g-3 mb-4">
+                        <div class="row mfa-app-grid mb-4">
                             @foreach ([
                                 ['Google Authenticator', 'Simple and widely used', 'bi-google', 'danger', 'https://apps.apple.com/app/google-authenticator/id388497605', 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2'],
                                 ['Authy', 'Can back up to more than one device', 'bi-shield-lock', 'info', 'https://apps.apple.com/app/twilio-authy/id494168017', 'https://play.google.com/store/apps/details?id=com.authy.authy'],
                             ] as [$name, $desc, $icon, $tone, $ios, $android])
-                                <div class="col-sm-6">
-                                    <div class="border rounded-3 p-3 h-100 text-center">
-                                        <div class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis fs-4 d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px;">
-                                            <i class="bi {{ $icon }}"></i>
-                                        </div>
-                                        <div class="fw-bold small">{{ $name }}</div>
-                                        <div class="small text-body-secondary mb-2">{{ $desc }}</div>
+                                <div class="col-6">
+                                    <div class="mfa-app-card h-100 text-center {{ $loop->first ? 'is-selected' : '' }}">
+                                        <button type="button" class="mfa-app-choice w-100" data-authenticator aria-label="Select {{ $name }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                                            <div class="mfa-app-icon bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center mx-auto">
+                                                <i class="bi {{ $icon }}"></i>
+                                            </div>
+                                            <div class="mfa-app-name">{{ $name }}</div>
+                                            <div class="mfa-app-description text-body-secondary mb-2">{{ $desc }}</div>
+                                        </button>
                                         <div class="d-flex justify-content-center gap-1">
                                             <a href="{{ $ios }}" target="_blank" rel="noopener" class="btn btn-dark btn-sm py-0 px-2 small"><i class="bi bi-apple"></i> App Store</a>
                                             <a href="{{ $android }}" target="_blank" rel="noopener" class="btn btn-dark btn-sm py-0 px-2 small"><i class="bi bi-google-play"></i> Play</a>
@@ -154,14 +157,14 @@
 
                     {{-- STEP 3: Scan the QR code --}}
                     <section data-step="3" class="d-none">
-                        <div class="icon-circle rounded-4 bg-secondary-subtle text-secondary-emphasis fs-3 d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <div class="mfa-step-icon mfa-step-icon--purple d-flex align-items-center justify-content-center">
                             <i class="bi bi-qr-code"></i>
                         </div>
-                        <h1 class="fs-4 fw-bold mb-2">Scan the QR code</h1>
-                        <p class="text-body-secondary mb-4">Open your authenticator app, tap <strong class="text-body">Add account</strong> or <strong class="text-body">+</strong>, then scan this code.</p>
+                        <h1 class="mfa-step-title">Scan the QR code</h1>
+                        <p class="mfa-description">Open your authenticator app, tap <strong class="text-body">Add account</strong> or <strong class="text-body">+</strong>, then scan this code.</p>
 
                         <div class="d-flex flex-column flex-sm-row gap-4 align-items-center align-items-sm-start mb-4">
-                            <div class="qr-box border border-2 rounded-4 p-2 bg-white flex-shrink-0" style="width: 172px; height: 172px;" id="qrBox">
+                            <div class="mfa-qr bg-white flex-shrink-0" id="qrBox">
                                 {{-- SVG made by Fortify from this account's secret --}}
                                 {!! $qrCode !!}
                             </div>
@@ -184,11 +187,11 @@
 
                     {{-- STEP 4: Enter the code (sent as "code" to /two-factor/confirm) --}}
                     <section data-step="4" class="d-none">
-                        <div class="icon-circle rounded-4 bg-warning-subtle text-warning-emphasis fs-3 d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <div class="mfa-step-icon mfa-step-icon--orange d-flex align-items-center justify-content-center">
                             <i class="bi bi-key"></i>
                         </div>
-                        <h1 class="fs-4 fw-bold mb-2">Enter the verification code</h1>
-                        <p class="text-body-secondary mb-4">Type the <strong class="text-body">6-digit code</strong> your app shows for iARIS.</p>
+                        <h1 class="mfa-step-title">Enter the verification code</h1>
+                        <p class="mfa-description">Type the <strong class="text-body">6-digit code</strong> your app shows for iARIS.</p>
 
                         <form method="POST" action="/two-factor/confirm" id="confirmForm" novalidate>
                             @csrf
@@ -198,8 +201,8 @@
                             {{-- Six boxes for typing; the script joins them into "code". Pasting all 6 digits also works. --}}
                             <div class="d-flex gap-2 mb-2" id="otpBoxes">
                                 @for ($i = 1; $i <= 6; $i++)
-                                    <input type="text" inputmode="numeric" maxlength="1" id="otp{{ $i }}"
-                                        class="form-control text-center fs-4 fw-bold font-brand px-0 {{ $codeError ? 'is-invalid' : '' }}" style="height: 58px;"
+                                    <input type="text" inputmode="numeric" maxlength="{{ $i === 1 ? 6 : 1 }}" id="otp{{ $i }}"
+                                        class="form-control text-center fs-4 fw-bold font-brand px-0 {{ $codeError ? 'is-invalid' : '' }}"
                                         aria-label="Digit {{ $i }}" @if ($i === 1) autocomplete="one-time-code" @else autocomplete="off" @endif>
                                 @endfor
                             </div>
@@ -208,7 +211,7 @@
                                 <span>{{ $codeError ? 'That code didn\'t match. Use the newest code from your app.' : '' }}</span>
                             </div>
                             {{-- Codes change every 30 seconds; this counts down to the next one --}}
-                            <div class="small text-body-secondary mb-4">
+                            <div class="mfa-timer">
                                 <i class="bi bi-clock me-1"></i> Your app shows a new code in <b class="text-warning-emphasis" id="timer">30s</b>
                             </div>
 
@@ -222,7 +225,7 @@
 
                     {{-- STEP 5: Done --}}
                     <section data-step="5" class="d-none">
-                        <div class="rounded-circle bg-primary text-white fs-2 d-flex align-items-center justify-content-center mx-auto mb-3 shadow" style="width: 76px; height: 76px;">
+                        <div class="mfa-success-icon rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-4">
                             <i class="bi bi-shield-check"></i>
                         </div>
                         <h1 class="fs-4 fw-bold text-center mb-2">Two-factor authentication is on</h1>
@@ -256,7 +259,7 @@
                 </div>
             </div>
 
-            <p class="small text-body-secondary text-center mt-4 mb-0">
+            <p class="mfa-footer text-center mb-0">
                 <b>iARIS · De La Salle Lipa</b> · IATO Admissions Records and Information System
             </p>
         </div>
@@ -276,34 +279,53 @@
                 const i = Number(item.dataset.progress);
                 const dot = item.querySelector('[data-dot]');
                 const done = i < n || n === 5;
-                dot.className = `rounded-circle border border-2 d-flex align-items-center justify-content-center fw-bold small ${
-                    i <= n ? 'bg-primary border-primary text-white' : 'bg-white text-body-secondary'}`;
-                if (i === n && n !== 5) dot.classList.add('shadow-sm');
+                dot.classList.toggle('is-active', i === n && n !== 5);
+                dot.classList.toggle('is-done', done);
+                item.classList.toggle('is-complete', done);
                 item.querySelector('[data-num]').classList.toggle('d-none', done);
                 item.querySelector('[data-check]').classList.toggle('d-none', !done);
-                item.querySelector('[data-label]').className = `small fw-bold mt-1 lh-sm ${i <= n ? 'text-primary' : 'text-body-secondary'}`;
+                item.querySelector('[data-label]').className = `mfa-step-label ${done ? 'is-done' : i === n ? 'is-active' : ''}`;
                 if (i === n) item.setAttribute('aria-current', 'step'); else item.removeAttribute('aria-current');
             });
             if (n === 4) document.getElementById('otp1').focus();
+            else if (n !== START) {
+                const heading = document.querySelector(`[data-step="${n}"] h1`);
+                heading.setAttribute('tabindex', '-1');
+                heading.focus({ preventScroll: true });
+            }
         }
         document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => goTo(Number(b.dataset.go))));
 
+        document.querySelectorAll('[data-authenticator]').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('[data-authenticator]').forEach(choice => {
+                    const selected = choice === button;
+                    choice.setAttribute('aria-pressed', String(selected));
+                    choice.closest('.mfa-app-card').classList.toggle('is-selected', selected);
+                });
+            });
+        });
+
         // Show a spinner and stop double-clicks while a form is sending
-        document.querySelectorAll('#enableForm, #confirmForm').forEach(form => form.addEventListener('submit', () => {
+        document.querySelectorAll('#enableForm, #confirmForm').forEach(form => form.addEventListener('submit', event => {
             if (form.dataset.blocked) return;
+            if (form.dataset.submitting) { event.preventDefault(); return; }
+            form.dataset.submitting = '1';
             const btn = form.querySelector('[type="submit"]');
             btn.disabled = true;
             btn.querySelector('.spinner-border').classList.remove('d-none');
         }));
 
         // ---- Copy helpers ----
-        function copyText(text, button) {
-            const done = () => {
-                const old = button.innerHTML;
-                button.innerHTML = '<i class="bi bi-check-lg"></i>' + (button.textContent.trim() ? ' Copied' : '');
-                setTimeout(() => button.innerHTML = old, 1500);
-            };
-            navigator.clipboard?.writeText(text).then(done, done) ?? done();
+        async function copyText(text, button) {
+            const old = button.innerHTML;
+            try {
+                await navigator.clipboard.writeText(text);
+                button.innerHTML = '<i class="bi bi-check-lg"></i> Copied';
+            } catch {
+                button.innerHTML = '<i class="bi bi-exclamation-circle"></i> Copy unavailable';
+            }
+            setTimeout(() => { button.innerHTML = old; }, 1800);
         }
         document.getElementById('copyKey')?.addEventListener('click', e =>
             copyText(document.getElementById('setupKey').textContent.replace(/\s/g, ''), e.currentTarget));
@@ -325,10 +347,15 @@
         function showError(text) {
             otpError.querySelector('span').textContent = text;
             otpError.classList.toggle('d-none', !text);
-            boxes.forEach(b => b.classList.toggle('is-invalid', !!text));
+            boxes.forEach(b => {
+                b.classList.toggle('is-invalid', !!text);
+                b.classList.toggle('is-filled', !!b.value);
+                b.setAttribute('aria-invalid', String(!!text));
+            });
         }
 
         boxes.forEach((box, i) => {
+            box.addEventListener('focus', () => box.select());
             box.addEventListener('input', () => {
                 const digits = box.value.replace(/\D/g, '');
                 // Typing (or the phone auto-filling) several digits spreads them across the boxes

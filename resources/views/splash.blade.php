@@ -1,25 +1,28 @@
 @extends('layouts.guest')
 
 @section('title', 'iARIS — Loading')
-@section('body-class', 'bg-iaris bg-iaris-circles text-white text-center min-vh-100 d-flex flex-column align-items-center justify-content-center p-3')
+@section('body-class', 'auth-splash-page text-white text-center min-vh-100 d-flex flex-column align-items-center justify-content-center p-3')
 
 @section('content')
     <noscript><meta http-equiv="refresh" content="0;url={{ $next }}"></noscript>
 
-    <div class="d-inline-flex mb-4 rounded-4 shadow-lg">
-        @include('partials.logo-mark', ['size' => 96])
-    </div>
+    <div class="auth-splash-circle auth-splash-circle--one" aria-hidden="true"></div>
+    <div class="auth-splash-circle auth-splash-circle--two" aria-hidden="true"></div>
+    <div class="auth-splash-circle auth-splash-circle--three" aria-hidden="true"></div>
 
-    <h1 class="display-3 fw-bold font-brand mb-1">iARIS</h1>
-    <p class="small text-white-50 mb-1">IATO Admissions Records and Information System</p>
-    <p class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-5">De La Salle Lipa</p>
+    <main class="auth-splash-content d-flex flex-column align-items-center">
+        @include('partials.auth-logo', ['size' => 100, 'variant' => 'glass'])
 
-    <div class="progress bg-white bg-opacity-10 mb-2" style="width: 240px; height: 3px;" role="progressbar" aria-label="Loading">
-        <div class="progress-bar bg-white" id="loadingBar" style="width: 0%;"></div>
-    </div>
-    <div class="small text-white-50" id="loadingText" aria-live="polite">Initializing system...</div>
+        <h1 class="font-brand">iARIS</h1>
+        <p class="auth-splash-system">IATO Admissions Records and Information System</p>
+        <p class="auth-splash-school font-brand text-uppercase text-iaris-pale">De La Salle Lipa</p>
 
-    <div class="position-absolute bottom-0 mb-4 px-3 small text-white-50">© 2026 Institutional Admissions and Testing Office · De La Salle Lipa</div>
+        <div class="auth-splash-loader progress" id="loadingProgress" role="progressbar" aria-label="Loading iARIS" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-bar" id="loadingBar" style="width: 0%;"></div>
+        </div>
+        <div class="auth-splash-status" id="loadingText" aria-live="polite">Initializing system...</div>
+    </main>
+    <footer class="auth-splash-footer">© {{ date('Y') }} Institutional Admissions and Testing Office · De La Salle Lipa</footer>
 @endsection
 
 @section('scripts')
@@ -37,6 +40,7 @@
         steps.forEach((step, i) => {
             setTimeout(() => {
                 bar.style.width = step.width + '%';
+                document.getElementById('loadingProgress').setAttribute('aria-valuenow', step.width);
                 text.textContent = step.text;
             }, i * 700);
         });
