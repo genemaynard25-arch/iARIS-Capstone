@@ -1,6 +1,6 @@
-{{-- Shared v2 frame for the remaining admin screens; all page data stays with its existing view. --}}
+{{-- Shared v2 frame for admin and IATO Staff screens; all page data stays with its existing view. --}}
 @section('body-class', 'iaris-workspace admin-page ' . $workspacePage)
-@section('page-breadcrumb-root', $workspaceGroup)
+@section('page-breadcrumb-root', auth()->user()->role === 'iato_staff' ? match ($workspaceGroup) { 'Admin' => 'Staff', 'System' => 'My Work', default => $workspaceGroup } : $workspaceGroup)
 @section('page-breadcrumb', $workspaceLabel)
 @push('styles')
     <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">

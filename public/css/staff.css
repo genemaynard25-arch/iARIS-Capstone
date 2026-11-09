@@ -1,0 +1,30 @@
+/* Staff share the admin workspace; only their review and submission surfaces differ. */
+.staff-workspace .staff-dashboard-strip .card-body { padding: 16px 20px !important; }
+.staff-workspace .staff-dashboard-strip .card { border-left: 3px solid #00674f !important; }
+.staff-workspace .staff-dashboard-strip small { font-size: 11px; }
+.staff-workspace .staff-dashboard-strip .alert { border-radius: 12px !important; }
+.staff-workspace .staff-submission-flow { border-left: 3px solid #00674f !important; }
+.staff-workspace .staff-submission-flow > .card-body { padding: 16px !important; }
+.staff-workspace .staff-submission-flow .text-body-secondary { font-size: 11px; line-height: 1.5; }
+.staff-workspace .staff-submission-help .card-header > button { padding: 16px 22px; font-size: 13px; color: #1a2b26; }
+.staff-workspace .staff-submission-help .card-header > button[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+.staff-workspace .staff-submission-help h2 { display: none; }
+.staff-workspace .staff-submission-help .rounded-4 { border-radius: 10px !important; }
+.staff-workspace #statCards .admin-stat-card[aria-pressed="true"] { outline: 2px solid #00674f; outline-offset: 2px; }
+.staff-workspace #submissionList { border-radius: 0 0 12px 12px !important; }
+.staff-workspace #submissionList .list-group-item { border-color: #e2ecea; }
+.staff-workspace #submissionList .list-group-item > button { padding: 18px 22px !important; }
+.staff-workspace #submissionList .badge { font-size: 10.5px; border-radius: 6px !important; padding: 5px 9px; white-space: normal; }
+.staff-workspace .staff-submission-title { min-width: 180px; overflow-wrap: anywhere; }
+.staff-workspace #submissionList table { font-size: 12px; }
+.staff-workspace #submissionList table td { padding: 10px 14px; }
+.staff-workspace #statusPills .btn-outline-secondary { color: rgba(26,43,38,.52); border-color: #e2ecea; }
+@media (max-width: 575.98px) {
+    .staff-workspace #submissionList .list-group-item > button { padding: 16px !important; gap: 10px !important; }
+    .staff-workspace .staff-submission-title { min-width: 0; flex-basis: calc(100% - 60px); }
+    .staff-workspace #submissionList .list-group-item > div { padding: 0 16px 16px !important; }
+    .staff-workspace #submissionList .text-nowrap { white-space: normal !important; }
+}
+
+.staff-workspace .staff-submission-help { overflow: hidden; }
+.staff-workspace #submissionList .list-group-item.border-start { border-width: 0 0 1px 4px !important; border-bottom-color: #e2ecea !important; }

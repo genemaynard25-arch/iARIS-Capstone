@@ -11,9 +11,12 @@
 @section('page-title', 'My Submissions')
 @section('page-subtitle', 'Edits, new records, removals, and imports you sent to the Review Queue')
 
+@include('partials.admin-workspace', ['workspacePage' => 'submissions-page', 'workspaceGroup' => 'My Work', 'workspaceLabel' => 'My Submissions'])
+
 @section('content')
+    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview submissions · Fix, resubmit, and withdraw actions stay on this page until reload. The review workflow is not connected yet.</p>
     {{-- How a submission moves --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="staff-submission-flow card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3 row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-2 small mx-0">
             @foreach ([
                 ['1', 'You submit', 'Edits, new applicants, removals, imports', 'primary'],
@@ -31,9 +34,12 @@
         </div>
     </div>
 
-    {{-- How to submit --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
+    {{-- How to submit: the same compact help card as the admin workflows. --}}
+    <div class="staff-submission-help card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 p-0">
+            <button type="button" class="btn w-100 text-start d-flex align-items-center justify-content-between" data-bs-toggle="collapse" data-bs-target="#submissionHelp" aria-expanded="false" aria-controls="submissionHelp"><span><i class="bi bi-question-circle me-2 text-primary" aria-hidden="true"></i>How to submit</span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+        </div>
+        <div class="collapse" id="submissionHelp"><div class="card-body p-4">
             <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-question-circle me-1 text-primary"></i> How to submit</h2>
             <p class="small text-body-secondary mb-3">There is no separate form. Every change you make in iARIS is sent here automatically when you press <b>Submit for review</b>.</p>
             <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
@@ -59,8 +65,10 @@
         </div>
     </div>
 
+    </div>
+
     {{-- Counts; clicking one filters the list --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -198,8 +206,9 @@
                 ['withdrawn', 'Withdrawn', 'secondary', 'Taken back by you'],
             ].map(([key, label, tone, sub]) => {
                 const col = el('div', 'col');
-                const card = el('button', `card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100 w-100 text-start ${filter === key ? 'bg-body-tertiary' : ''}`);
+                const card = el('button', `admin-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100 w-100 text-start ${filter === key ? 'bg-body-tertiary' : ''}`);
                 card.type = 'button';
+                card.setAttribute('aria-pressed', filter === key);
                 card.innerHTML = `<div class="card-body"><div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2"></div><div class="fs-3 fw-bold text-${tone}-emphasis"></div><div class="small text-body-secondary"></div></div>`;
                 const [l, v, s] = card.querySelectorAll('.card-body > div');
                 l.textContent = label; v.textContent = count(key); s.textContent = sub;
@@ -216,6 +225,7 @@
             ].map(([key, label, n]) => {
                 const pill = el('button', `btn btn-sm rounded-pill px-3 fw-semibold ${filter === key ? 'btn-primary' : 'btn-outline-secondary'}`);
                 pill.type = 'button';
+                pill.setAttribute('aria-pressed', filter === key);
                 pill.append(label, el('span', 'ms-2 opacity-75', String(n)));
                 pill.addEventListener('click', () => { filter = key; draw(); });
                 return pill;
@@ -242,7 +252,7 @@
             ic.style.width = ic.style.height = '40px';
             ic.innerHTML = `<i class="bi ${icon}"></i>`;
             const text = el('div', 'flex-grow-1');
-            text.style.minWidth = '220px';
+            text.classList.add('staff-submission-title');
             const title = el('div', 'fw-bold', x.title);
             title.appendChild(el('span', 'small fw-normal text-body-secondary font-monospace ms-2', x.id));
             text.append(title, el('div', 'small text-body-secondary', `${x.subject} · ${x.ref} · ${x.unit}`));

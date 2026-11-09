@@ -6,10 +6,13 @@
     @include('partials.head')
     @stack('styles')
     <link href="{{ asset('css/sidebar.css') }}" rel="stylesheet">
+    @if (auth()->user()->role === 'iato_staff')
+        <link href="{{ asset('css/staff.css') }}" rel="stylesheet">
+    @endif
     <title>@yield('title', 'iARIS')</title>
 </head>
 
-<body class="@yield('body-class')">
+<body class="@yield('body-class') {{ auth()->user()->role === 'iato_staff' ? 'staff-workspace' : '' }}">
     @yield('app-banner')
     <div class="app-shell d-flex min-vh-100">
         {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /executive and /college pages use theirs too,
