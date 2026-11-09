@@ -29,7 +29,7 @@ class IpaceRecordController extends Controller
             'scope' => 'ipace',
             'academicYear' => '2025–2026',
             'periodLabel' => 'June 2026',
-            'applicants' => self::sample(),
+            'applicants' => \App\Support\RegistrarData::forRecords(self::sample(), 'ipace'),
             'groupOrder' => array_keys(self::PROGRAMS),
         ]);
     }

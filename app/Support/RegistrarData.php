@@ -45,6 +45,40 @@ class RegistrarData
         return ($scope ?? self::scope()) === 'is' ? self::IS_UNITS : self::UNITS;
     }
 
+    /** Registrar records contain only passing applicants with a paid reservation. */
+    public static function forRecords(array $records, string $scope): array
+    {
+        if (auth()->user()?->role !== 'registrar') {
+            return $records;
+        }
+
+        $allowed = self::scope() === 'is' ? ['is'] : ['college', 'graduate', 'law', 'ipace', 'eteeap'];
+        abort_unless(in_array($scope, $allowed), 403);
+        $preview = in_array($scope, ['law', 'ipace']);
+
+        return collect($records)
+            ->filter(fn (array $record) => self::isReadyRecord($record, $preview))
+            ->map(fn (array $record) => array_merge($record, ['exam_status' => self::recordExamStatus($record, $preview)]))
+            ->values()
+            ->all();
+    }
+
+    public static function isReadyRecord(array $record, bool $preview = false): bool
+    {
+        return in_array(self::recordExamStatus($record, $preview), ['passed', 'qualified_other_degree', 'reconsidered'])
+            && self::hasReservation($record);
+    }
+
+    private static function recordExamStatus(array $record, bool $preview): ?string
+    {
+        return $record['exam_status'] ?? ($preview && in_array($record['status'], ['Passed', 'Paid', 'Enrolled']) ? 'passed' : null);
+    }
+
+    private static function hasReservation(array $record): bool
+    {
+        return ($record['amount'] ?? null) !== null || ($record['paid'] ?? null) !== null || in_array($record['status'], ['Paid', 'Enrolled']);
+    }
+
     /** Every applicant in the Registrar's units. */
     public static function rows(?string $scope = null): array
     {
@@ -58,9 +92,9 @@ class RegistrarData
             foreach ($list as $a) {
                 $preview = in_array($source, ['law', 'ipace']);
                 // Only the unconnected sample divisions infer a sample result from their sample status.
-                $examStatus = $a['exam_status'] ?? ($preview && in_array($a['status'], ['Passed', 'Paid', 'Enrolled']) ? 'passed' : null);
+                $examStatus = self::recordExamStatus($a, $preview);
                 $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);
-                $reserved = $a['amount'] !== null || $a['paid'] !== null || in_array($a['status'], ['Paid', 'Enrolled']);
+                $reserved = self::hasReservation($a);
                 $rows[] = [
                     'id' => $a['id'],
                     'name' => trim("{$a['last']}, {$a['first']}" . (($a['mi'] ?? '') ? " {$a['mi']}." : '')),

@@ -155,7 +155,7 @@
 
 @section('title', 'iARIS — ' . $page['title'])
 @section('page-title', $page['title'])
-@section('page-subtitle', $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
+@section('page-subtitle', $isRegistrar ? 'Applicants who passed the exam and paid the reservation fee · AY ' . $academicYear . ' · View only' : $page['subtitle'])
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -207,6 +207,9 @@
         ['label' => 'Passed', 'value' => $rows->whereIn('exam_result', ['passed', 'reconsidered', 'qualified_other_degree'])->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
         ['label' => 'Reservation paid', 'value' => $rows->where('reserved', true)->count(), 'sub' => 'Ready for enrollment', 'tone' => 'info'],
     ];
+    if ($isRegistrar) {
+        $stats = array_values(array_filter($stats, fn ($stat) => $stat['label'] !== 'Exam fee paid'));
+    }
     $recordColumns = match ($scope) {
         'college' => ['group' => 'College', 'program' => 'Program', 'year' => 'Year Level'],
         'is' => ['group' => 'Level', 'level' => 'Grade', 'program' => 'Strand'],
@@ -220,7 +223,7 @@
     $categoryLabel = match ($scope) { 'college' => 'College', 'is' => 'Level', 'ipace' => 'Delivery Mode', default => 'Program' };
     $categoryOptions = collect($groupOrder ?? [])->merge($rows->pluck($categoryField))->filter(fn ($v) => $v && $v !== '—')->unique()->values();
     if ($scope === 'ipace') $categoryOptions = collect(['Online', 'Blended']);
-    $recordColumnCount = count($recordColumns) + 6;
+    $recordColumnCount = count($recordColumns) + ($isRegistrar ? 5 : 6);
 
 @endphp
 
@@ -235,7 +238,7 @@
         <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview records · This division is not connected to applicant imports yet.</p>
     @endunless
     {{-- Stat cards --}}
-    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-{{ count($stats) }} g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
                 <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
@@ -304,6 +307,7 @@
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
             <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All <span class="records-pill-count">{{ $rows->count() }}</span></button>
             @foreach ($examResults as $result => [$label, $tone])
+                @continue($isRegistrar && ! in_array($result, ['passed', 'reconsidered', 'qualified_other_degree']))
                 @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
                 <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }} <span class="records-pill-count">{{ $rows->where('exam_result', $result)->count() }}</span></button>
             @endforeach
@@ -326,7 +330,7 @@
                         @foreach ($recordColumns as $key => $label)
                             <th class="text-body-secondary fw-bold" @if ($key === 'group') id="groupHeading" @elseif ($key === 'program') id="programHeading" @endif>{{ $label }}</th>
                         @endforeach
-                        <th scope="col">Exam Fee</th><th scope="col">Exam Result</th><th scope="col">Reservation</th>
+                        @unless ($isRegistrar)<th scope="col">Exam Fee</th>@endunless<th scope="col">Exam Result</th><th scope="col">Reservation</th>
                         <th scope="col">{{ $scope === 'eteeap' ? 'Updated' : 'Date Applied' }}</th>
                         <th class="pe-4 text-end" scope="col"><span class="{{ $scope === 'is' ? '' : 'visually-hidden' }}">Actions</span></th>
                     </tr>
@@ -354,7 +358,9 @@
                                     @endif
                                 </td>
                             @endforeach
+                            @unless ($isRegistrar)
                             <td><span class="records-payment badge bg-{{ $a['exam_fee_tone'] }}-subtle text-{{ $a['exam_fee_tone'] }}-emphasis">{{ $a['exam_fee_label'] }}</span></td>
+                            @endunless
                             <td><span class="badge bg-{{ $a['exam_result_tone'] }}-subtle text-{{ $a['exam_result_tone'] }}-emphasis">{{ $a['exam_result_label'] }}</span></td>
                             <td><span class="records-payment badge bg-{{ $a['reservation_tone'] }}-subtle text-{{ $a['reservation_tone'] }}-emphasis">{{ $a['reservation_label'] }}</span>@if ($a['paid_label'])<small class="d-block text-body-secondary mt-1">{{ $a['paid_label'] }}</small>@endif</td>
                             <td class="small text-body-secondary text-nowrap">{{ $scope === 'eteeap' ? $a['updated_label'] : $a['applied_label'] }}</td>
@@ -373,7 +379,9 @@
                         <tr>
                             <td colspan="{{ $recordColumnCount }}" class="text-center text-body-secondary py-5">
                                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                                @if ($fromDatabase)
+                                @if ($isRegistrar)
+                                    No applicants have both passed the exam and paid the reservation fee.
+                                @elseif ($fromDatabase)
                                     No applicants imported yet for AY {{ $academicYear }}.
                                     @if (auth()->user()->canAccess('import'))
                                         <a href="{{ url('/import') }}" class="d-block mt-1 fw-semibold text-decoration-none">Import applicants from Excel</a>
@@ -713,10 +721,11 @@
             const labels = currentLabels();
             // Same columns, in the same order, as the table
             const columns = @json($recordColumns);
-            const header = ['App No.', 'Name', ...Object.values(columns), 'Exam Fee', 'Exam Result', 'Reservation', SCOPE === 'eteeap' ? 'Updated' : 'Date Applied'];
+            const includeExamFee = @json(! $isRegistrar);
+            const header = ['App No.', 'Name', ...Object.values(columns), ...(includeExamFee ? ['Exam Fee'] : []), 'Exam Result', 'Reservation', SCOPE === 'eteeap' ? 'Updated' : 'Date Applied'];
             const lines = currentMatches.map(row => {
                 const a = APPLICANTS[row.dataset.index];
-                return [a.id, a.name, ...Object.keys(columns).map(key => a[key]), a.exam_fee_label, a.exam_result_label, a.reservation_label, SCOPE === 'eteeap' ? a.updated_label : a.applied_label];
+                return [a.id, a.name, ...Object.keys(columns).map(key => a[key]), ...(includeExamFee ? [a.exam_fee_label] : []), a.exam_result_label, a.reservation_label, SCOPE === 'eteeap' ? a.updated_label : a.applied_label];
             });
             // Wrap every value in quotes (and double any quotes inside) so commas in names don't break columns
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');

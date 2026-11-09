@@ -40,7 +40,7 @@ class IsRecordController extends Controller
             'scope' => 'is',
             'academicYear' => ApplicantRecords::academicYear(),
             'periodLabel' => now()->format('F Y'),
-            'applicants' => $students,
+            'applicants' => \App\Support\RegistrarData::forRecords($students, 'is'),
             'groupOrder' => $subLevels,
         ]);
     }

@@ -32,7 +32,7 @@ class CollegeRecordController extends Controller
             "scope" => "college",
             "academicYear" => ApplicantRecords::academicYear(),
             "periodLabel" => now()->format("F Y"),
-            "applicants" => $students,
+            "applicants" => \App\Support\RegistrarData::forRecords($students, 'college'),
             'groupOrder' => ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
         ]);
     }

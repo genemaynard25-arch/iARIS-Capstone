@@ -21,7 +21,7 @@ class EteeapRecordController extends Controller
             'scope' => 'eteeap',
             'academicYear' => ApplicantRecords::academicYear(),
             'periodLabel' => now()->format('F Y'),
-            'applicants' => ApplicantRecords::forLevel('eteeap'),
+            'applicants' => \App\Support\RegistrarData::forRecords(ApplicantRecords::forLevel('eteeap'), 'eteeap'),
             'groupOrder' => [],
         ]);
     }
