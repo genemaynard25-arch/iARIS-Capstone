@@ -7,7 +7,7 @@
         ['label' => 'Paid entrance exam', 'value' => $yesNoBreakdown['paidExam'], 'icon' => 'bi-cash-coin', 'tone' => 'green'],
         ['label' => 'Paid reservation', 'value' => $reservedIndex === false ? 0 : $charts['funnel']['values'][$reservedIndex], 'icon' => 'bi-bookmark-check', 'tone' => 'blue'],
         ['label' => 'NOA issued', 'value' => $yesNoBreakdown['noaIssued'], 'icon' => 'bi-patch-check', 'tone' => 'green'],
-        ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-universal-access', 'tone' => 'orange'],
+        ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-person-wheelchair', 'tone' => 'orange'],
         ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge', 'tone' => 'orange'],
     ];
 @endphp
