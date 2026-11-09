@@ -6,33 +6,43 @@
     four tiles, then four tabs — Overview (trend and funnel), Programs (sortable table),
     Compare years, AI insights. Everything is worked out by the script from $programs,
     the same numbers as the Briefing. Tabs follow the address: #overview, #programs, #years, #insights.
+    Looks like the admin Analytics & Reports page (public/css/analytics.css): tab bar with a "Showing" chip, four tiles,
+    and the Applicant field counts ($fieldCounts).
 --}}
 
 @section('title', 'iARIS — Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', "{$label} admissions and enrollment, with AI-generated insights")
+@section('body-class', 'analytics-page')
+@push('styles')
+    <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
+@endpush
+
+{{-- Like the admin page's "Generate from this view": the one action, top right --}}
+@section('page-actions')
+    <button type="button" class="ar-generate-view btn btn-primary fw-semibold no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i> Export PDF</button>
+@endsection
 
 @section('content')
     {{-- Same id as the Executive Analytics, so "Export PDF" prints every tab (iaris.css section 9) --}}
     <div id="executiveReport">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
-            <button type="button" class="btn btn-primary fw-semibold ms-sm-auto no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1"></i> Export PDF</button>
-        </div>
-
-        <ul class="nav nav-pills gap-2 mb-3 no-print" role="tablist" id="analyticsTabs">
+        <div class="ar-tab-bar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+        <ul class="ar-tabs nav nav-pills gap-1" role="tablist" id="analyticsTabs">
             <li class="nav-item" role="presentation"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tabOverview" type="button" role="tab" data-hash="overview"><i class="bi bi-graph-up me-1"></i> Overview <span class="small fw-normal opacity-75 d-none d-md-inline">· trend and funnel</span></button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabPrograms" type="button" role="tab" data-hash="programs"><i class="bi bi-layers me-1"></i> {{ ucfirst($word) }}s</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabYears" type="button" role="tab" data-hash="years"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights</button></li>
         </ul>
+        <span class="ar-scope-chip badge rounded-pill text-wrap text-start"><i class="bi bi-funnel me-1"></i> Showing: <span class="text-body">{{ $label }} · AY {{ \App\Support\ApplicantRecords::academicYear() }} · View only</span></span>
+        </div>
 
         {{-- Four tiles, above every tab --}}
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
+        <div class="ar-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
 
         <div class="tab-content">
             {{-- Overview: applicants vs enrolled, and the funnel --}}
             <div class="tab-pane fade show active" id="tabOverview" role="tabpanel">
+                @include('college.partials.field-counts')
                 <div class="row g-4">
                     <div class="col-12 col-xl-7">
                         <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -114,14 +124,14 @@
         $('kpis').innerHTML = [
             ['Total applicants', fm(app[3]), pc(app[2], app[3]), '%', 'primary'],
             ['Paid reservations', fm(paidNow), pc(paidPrev, paidNow), '%', 'info'],
-            ['Enrolled', fm(enr[3]), pc(enr[2], enr[3]), '%', 'dark'],
+            ['Enrolled', fm(enr[3]), pc(enr[2], enr[3]), '%', 'primary'],
             ['Applied → Enrolled', conv[3].toFixed(1) + '%', dConv, ' pts', 'warning'],
         ].map(([label, value, d, suffix, tone]) => `
             <div class="col">
-                <div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100">
+                <div class="ar-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div>
-                        <div class="fs-2 fw-bold">${value}</div>
+                        <div class="small fw-bold text-body-secondary mb-2">${label}</div>
+                        <div class="fs-3 fw-bold mb-1">${value}</div>
                         <span class="small fw-bold ${d >= 0 ? 'text-success' : 'text-danger'}">${signed(d, 1, suffix)} vs last AY</span>
                     </div>
                 </div>
@@ -200,6 +210,23 @@
                     </div>
                 </div>
             </div>`).join('');
+
+        // ---- Applicant field counts: Cards / Table, and CSV ----
+        document.querySelectorAll('[data-field-view]').forEach(b => b.addEventListener('click', () => {
+            const cards = b.dataset.fieldView === 'cards';
+            $('fieldCountCards').classList.toggle('d-none', !cards);
+            $('fieldCountTable').classList.toggle('d-none', cards);
+            document.querySelectorAll('[data-field-view]').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b); });
+        }));
+        $('exportFieldCounts').addEventListener('click', () => {
+            const rows = [...document.querySelectorAll('#fieldCountTable tbody tr')].map(tr => [tr.children[0].textContent.trim(), tr.children[1].textContent.trim()]);
+            const csv = [['Field', 'Current school year'], ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
+            link.download = 'iaris-applicant-field-counts.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
 
         // Tabs follow the address (#overview, #programs, #years, #insights)
         document.querySelectorAll('#analyticsTabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => history.replaceState(null, '', '#' + b.dataset.hash)));

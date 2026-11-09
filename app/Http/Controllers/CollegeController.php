@@ -256,6 +256,8 @@ class CollegeController extends Controller
                 'name' => "{$a->last_name}, {$a->first_name}",
                 'program' => $byName[$a->program_or_track],
                 'status' => $statusLabel($a->application_status),
+                // Yes on the scholarship question (the type stays with LAMP)
+                'scholar' => (bool) $a->applying_for_scholarship,
                 'applied' => optional($a->created_at)->toDateString(),
                 'updated' => optional($a->updated_at)->format('M j, g:i A'),
                 'dob' => optional($a->date_of_birth)->format('F j, Y'),
@@ -350,7 +352,33 @@ class CollegeController extends Controller
     // Analytics: Overview (trend and funnel), Programs, Compare years, AI insights. Worked out by the page from $programs.
     public function analytics()
     {
-        return view('college.analytics', $this->common());
+        $common = $this->common();
+
+        return view('college.analytics', $common + ['fieldCounts' => self::fieldCounts($common)]);
+    }
+
+    /**
+     * "Applicant field counts" (the same eight cards as the admin Analytics page), for the applicants in these programs:
+     * what the import reads from the portal file, and the payments. Directors' sample units have no database rows, so 0.
+     */
+    private static function fieldCounts(array $common): array
+    {
+        $names = collect($common['programs'])->pluck('name')->all();
+        $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))
+            ->whereIn('program_or_track', $names)->get();
+        $ids = $applicants->pluck('id');
+        $paid = fn ($fee) => $ids->intersect(array_keys(\App\Support\ApplicantRecords::paidFees($fee)))->count();
+
+        return [
+            ['label' => 'Male', 'value' => $applicants->where('gender', 'male')->count(), 'icon' => 'bi-gender-male', 'tone' => 'blue'],
+            ['label' => 'Female', 'value' => $applicants->where('gender', 'female')->count(), 'icon' => 'bi-gender-female', 'tone' => 'red'],
+            ['label' => 'Applying for scholarship', 'value' => $applicants->where('applying_for_scholarship', true)->count(), 'icon' => 'bi-award', 'tone' => 'purple'],
+            ['label' => 'Paid entrance exam', 'value' => $paid('application_fee'), 'icon' => 'bi-cash-coin', 'tone' => 'green'],
+            ['label' => 'Paid reservation', 'value' => $paid('reservation_fee'), 'icon' => 'bi-bookmark-check', 'tone' => 'blue'],
+            ['label' => 'NOA issued', 'value' => $applicants->where('noa_issued', true)->count(), 'icon' => 'bi-patch-check', 'tone' => 'green'],
+            ['label' => 'PWD', 'value' => $applicants->where('pwd', true)->count(), 'icon' => 'bi-person-wheelchair', 'tone' => 'orange'],
+            ['label' => 'SSEN', 'value' => $applicants->where('ssen', true)->count(), 'icon' => 'bi-person-badge', 'tone' => 'orange'],
+        ];
     }
 
     // Reports: what IATO sent, four reports you can generate, and the ones you generated

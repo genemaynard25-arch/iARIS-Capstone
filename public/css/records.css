@@ -48,3 +48,9 @@
 .records-eteeap #applicantDrawer > .nav .nav-link { white-space: nowrap; }
 
 :is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card.border-info .fs-3 { color: #2558d9 !important; }
+/* Dean / Program Chair / Principal / Director Applicants (college/applicants.blade.php): fewer columns than the admin Records */
+.records-page.college-records .records-table-card table { min-width: 900px; }
+.records-page.college-records #statusBar { background: #fbfcfc; }
+.records-page.college-records #statusPills { background: transparent; }
+.records-page.college-records .pagination .page-link { color: var(--admin-muted); border-color: var(--admin-border); }
+.records-page.college-records .pagination .active .page-link { background: #00674f; border-color: #00674f; color: #fff; }

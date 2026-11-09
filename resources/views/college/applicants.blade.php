@@ -10,6 +10,8 @@
     Graduate Programs: programs have a 'level' (Master's or Doctoral: a Level column and filter), applicants have an
     'undergrad' degree (a column), and "For Exam" is shown as $middle ("For Exam / Interview").
     "Download list" saves the rows you see as a CSV file.
+    Looks like the admin Records pages (partials/admin-workspace): summary cards, a toolbar, status pills with counts,
+    a Scholarship column, and 10 applicants a page.
 --}}
 
 @section('title', 'iARIS — Applicants')
@@ -17,23 +19,26 @@
 @section('page-subtitle', "{$label} applicants for AY " . \App\Support\ApplicantRecords::academicYear() . ' · View only')
 
 @php
+    // "Principal · Integrated School", "Dean · CITE": the office in the breadcrumb
+    $office = auth()->user()->roleInfo();
     $hasLevels = collect($programs)->contains(fn ($p) => isset($p['level']));
     $hasDegrees = collect($rows)->contains(fn ($r) => isset($r['undergrad']));
     $hasBar = collect($rows)->contains(fn ($r) => isset($r['bar']));
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'records-page college-records', 'workspaceGroup' => $office[0] . ' · ' . $office[1], 'workspaceLabel' => 'Applicants'])
+
+@push('styles')
+    <link href="{{ asset('css/records.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
-    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
-        <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
-        <button type="button" class="btn btn-sm btn-primary fw-semibold" id="downloadButton"><i class="bi bi-download me-1"></i> Download list</button>
-    </div>
-
     {{-- Every applicant this AY, by status --}}
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="tiles"></div>
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="tiles"></div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-        {{-- Search, program, status --}}
-        <div class="card-header bg-white border-bottom rounded-top-4 d-flex flex-wrap align-items-center gap-2 p-3">
+    <div class="records-table-card card border-0 shadow-sm rounded-4">
+        {{-- Search, program, Download list --}}
+        <div class="d-flex flex-wrap align-items-center gap-2 p-3">
             <div class="input-group" style="max-width: 320px;">
                 <span class="input-group-text bg-body-tertiary"><i class="bi bi-search"></i></span>
                 <input type="search" class="form-control bg-body-tertiary" id="search" placeholder="Search name or applicant number…" aria-label="Search">
@@ -54,7 +59,13 @@
                     @endforeach
                 </select>
             @endif
-            <div class="d-flex flex-wrap gap-1 ms-lg-auto" id="statusPills" role="group" aria-label="Status"></div>
+            <button type="button" class="btn btn-light border fw-semibold ms-auto" id="downloadButton"><i class="bi bi-download me-1"></i> Download list</button>
+        </div>
+
+        {{-- Status, with how many in each --}}
+        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-top border-bottom" id="statusBar">
+            <span class="small fw-bold text-body-secondary me-1">Status:</span>
+            <div class="d-flex flex-wrap gap-2" id="statusPills" role="group" aria-label="Status"></div>
         </div>
 
         <div class="table-responsive">
@@ -72,6 +83,7 @@
                         @if ($hasBar)
                             <th class="text-body-secondary fw-bold">Bar exam passer</th>
                         @endif
+                        <th class="text-body-secondary fw-bold">Scholarship</th>
                         <th class="text-body-secondary fw-bold">Status</th>
                         <th class="text-body-secondary fw-bold">Date applied</th>
                         <th class="text-body-secondary fw-bold">Exam</th>
@@ -81,7 +93,10 @@
                 <tbody id="rows"></tbody>
             </table>
         </div>
-        <div class="card-footer bg-white border-top rounded-bottom-4 small text-body-secondary px-4 py-3" id="footer"></div>
+        <div class="card-footer bg-white border-top rounded-bottom-4 d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-3">
+            <span class="small text-body-secondary" id="footer"></span>
+            <nav aria-label="Applicant pages"><ul class="pagination pagination-sm mb-0" id="pager"></ul></nav>
+        </div>
     </div>
     <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Records are managed by IATO. If something looks wrong, tell IATO in <a href="{{ $base }}/messages" class="fw-semibold text-decoration-none">Messages</a>.</p>
 
@@ -114,7 +129,8 @@
         const MIDDLE = @json($middle), HAS_LEVELS = @json($hasLevels), HAS_DEGREES = @json($hasDegrees), HAS_BAR = @json($hasBar);
         const labelOf = s => s === 'For Exam' ? MIDDLE : s;
         const TONES = { Pending: 'danger', 'For Exam': 'warning', Paid: 'primary' };
-        let status = 'All';
+        let status = 'All', page = 1;
+        const PER_PAGE = 10;
         ROWS.sort((a, b) => b.applied.localeCompare(a.applied));
 
         // How many applicants (all of them, not only the samples) in the chosen programs
@@ -128,48 +144,61 @@
         // ---- Tiles (every applicant in your programs) ----
         (() => {
             const t = totals('');
-            $('tiles').innerHTML = [['Applicants', t.All, 'success'], ['Pending', t.Pending, 'danger'], [MIDDLE === 'For Exam' ? 'For Exam / Assessment' : MIDDLE, t['For Exam'], 'warning'], ['Paid', t.Paid, 'primary']]
+            $('tiles').innerHTML = [['Applicants', t.All, 'primary'], ['Pending', t.Pending, 'danger'], [MIDDLE === 'For Exam' ? 'For Exam / Assessment' : MIDDLE, t['For Exam'], 'warning'], ['Paid', t.Paid, 'info']]
                 .map(([label, n, tone]) => `
                 <div class="col">
-                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="admin-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100">
                         <div class="card-body">
                             <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div>
-                            <div class="fs-3 fw-bold text-${tone}">${fm(n)}</div>
-                            <div class="small text-body-secondary">${(n / t.All * 100).toFixed(1)}% of applicants</div>
+                            <div class="fs-3 fw-bold text-${tone}-emphasis">${fm(n)}</div>
+                            <div class="small text-body-secondary">${t.All ? (n / t.All * 100).toFixed(1) : '0.0'}% of applicants</div>
                         </div>
                     </div>
                 </div>`).join('');
         })();
 
         // ---- Table ----
-        function shown() {
+        // Every filter except the status pills (the pill counts follow them)
+        function filtered() {
             const q = $('search').value.trim().toLowerCase(), p = program();
             const level = $('levelFilter')?.value || '';
-            return ROWS.filter(r => (status === 'All' || r.status === status) && (!p || r.program === p) && (!level || PROGRAMS[r.program].level === level)
+            return ROWS.filter(r => (!p || r.program === p) && (!level || PROGRAMS[r.program].level === level)
                 && (!q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)));
         }
+        const shown = () => filtered().filter(r => status === 'All' || r.status === status);
         function draw() {
-            $('statusPills').innerHTML = ['All', ...STATUSES].map(s => `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${labelOf(s)}</button>`).join('');
-            $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; draw(); }));
-            const rows = shown();
+            const base = filtered();
+            const count = s => s === 'All' ? base.length : base.filter(r => r.status === s).length;
+            $('statusPills').innerHTML = ['All', ...STATUSES].map(s => `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${labelOf(s)} <span class="ms-1 opacity-75">${count(s)}</span></button>`).join('');
+            $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; page = 1; draw(); }));
+            const all = shown(), pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+            page = Math.min(page, pages);
+            const rows = all.slice((page - 1) * PER_PAGE, page * PER_PAGE);
             $('rows').innerHTML = rows.length ? rows.map(r => `
                 <tr role="button" tabindex="0" data-id="${r.id}">
-                    <td class="ps-4"><div class="fw-semibold">${esc(r.name)}</div><div class="small text-body-secondary">${r.id}</div></td>
-                    <td class="small">${esc(PROGRAMS[r.program].name)}</td>
+                    <td class="ps-4"><div class="fw-semibold">${esc(r.name)}</div><div class="small text-body-secondary font-monospace">${r.id}</div></td>
+                    <td><span class="badge border text-body fw-semibold bg-white">${esc(PROGRAMS[r.program].name)}</span></td>
                     ${HAS_LEVELS ? `<td class="small">${esc(PROGRAMS[r.program].level)}</td>` : ''}
                     ${HAS_DEGREES ? `<td class="small">${esc(r.undergrad || '—')}</td>` : ''}
                     ${HAS_BAR ? `<td class="small">${esc(r.bar || '—')}</td>` : ''}
+                    <td>${r.scholar ? '<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis"><i class="bi bi-award me-1"></i>Scholar</span>' : '<span class="text-body-tertiary">—</span>'}</td>
                     <td><span class="badge rounded-pill bg-${TONES[r.status]}-subtle text-${TONES[r.status]}-emphasis">${labelOf(r.status)}</span></td>
-                    <td class="small text-nowrap">${longDate(r.applied)}</td>
+                    <td class="small text-nowrap text-body-secondary">${longDate(r.applied)}</td>
                     <td class="small">${esc(r.exam || 'Not yet scheduled')}</td>
                     <td class="pe-4 text-end text-body-tertiary"><i class="bi bi-chevron-right"></i></td>
                 </tr>`).join('')
-                : '<tr><td colspan="9" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
+                : '<tr><td colspan="10" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>';
             $('rows').querySelectorAll('tr[data-id]').forEach(tr => {
                 tr.addEventListener('click', () => openApplicant(tr.dataset.id));
                 tr.addEventListener('keydown', e => { if (e.key === 'Enter') openApplicant(tr.dataset.id); });
             });
-            $('footer').textContent = `Showing ${rows.length} sample record${rows.length === 1 ? '' : 's'} of ${fm(totals(program())[status])} applicants`;
+            $('footer').textContent = all.length ? `Showing ${(page - 1) * PER_PAGE + 1}–${(page - 1) * PER_PAGE + rows.length} of ${fm(all.length)} applicants` : 'Showing 0 applicants';
+            // Pager: previous, 1 2 3 …, next
+            const item = (label, target, { active = false, disabled = false } = {}) => `<li class="page-item ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}"><button type="button" class="page-link" data-page="${target}" ${disabled ? 'disabled' : ''} ${active ? 'aria-current="page"' : ''}>${label}</button></li>`;
+            $('pager').innerHTML = pages > 1 ? item('<i class="bi bi-chevron-left"></i>', page - 1, { disabled: page === 1 })
+                + Array.from({ length: pages }, (_, i) => item(i + 1, i + 1, { active: i + 1 === page })).join('')
+                + item('<i class="bi bi-chevron-right"></i>', page + 1, { disabled: page === pages }) : '';
+            $('pager').querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { page = +b.dataset.page; draw(); }));
         }
 
         // ---- One applicant ----
@@ -190,8 +219,8 @@
 
         // ---- Download the rows you see ----
         $('downloadButton').addEventListener('click', () => {
-            const head = ['Applicant No.', 'Name', 'Unit', WORD[0].toUpperCase() + WORD.slice(1), 'Status', 'Date applied', 'Exam', 'Paid on'];
-            const csv = [head, ...shown().map(r => [r.id, r.name, COLLEGE, PROGRAMS[r.program].name, labelOf(r.status), longDate(r.applied), r.exam || 'Not yet scheduled', r.paid || '—'])]
+            const head = ['Applicant No.', 'Name', 'Unit', WORD[0].toUpperCase() + WORD.slice(1), 'Scholarship', 'Status', 'Date applied', 'Exam', 'Paid on'];
+            const csv = [head, ...shown().map(r => [r.id, r.name, COLLEGE, PROGRAMS[r.program].name, r.scholar ? 'Scholar' : '—', labelOf(r.status), longDate(r.applied), r.exam || 'Not yet scheduled', r.paid || '—'])]
                 .map(cols => cols.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
             link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
@@ -200,9 +229,10 @@
             URL.revokeObjectURL(link.href);
         });
 
-        $('search').addEventListener('input', draw);
-        $('programFilter')?.addEventListener('change', draw);
-        $('levelFilter')?.addEventListener('change', draw);
+        const redraw = () => { page = 1; draw(); };
+        $('search').addEventListener('input', redraw);
+        $('programFilter')?.addEventListener('change', redraw);
+        $('levelFilter')?.addEventListener('change', redraw);
         draw();
     </script>
 @endsection
