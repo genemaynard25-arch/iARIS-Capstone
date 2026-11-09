@@ -18,6 +18,7 @@ class Applicant extends Model
         'feeder_school',
         'program_or_track',
         'applicant_type',
+        'scholarship_type',
         'admission_test_status',
         'noa_issued',
         'application_status',

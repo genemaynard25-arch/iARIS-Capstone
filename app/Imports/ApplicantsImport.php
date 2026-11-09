@@ -27,6 +27,7 @@ class ApplicantsImport implements ToModel, WithHeadingRow
             'feeder_school' => $row['feeder_school'] ?? null,
             'program_or_track' => $row['program_or_track'] ?? null,
             'applicant_type' => $row['applicant_type'] ?? 'regular',
+            'scholarship_type' => $row['scholarship_type'] ?? null,
             'admission_test_status' => $row['admission_test_status'] ?? 'not_taken',
             'application_status' => $row['application_status'] ?? 'pooling',
         ]);

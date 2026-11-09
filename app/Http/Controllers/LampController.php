@@ -22,9 +22,6 @@ class LampController extends Controller
      * these routes are limited to users whose role is 'lamp' (plus IATO admins).
      */
 
-    // Matching records LAMP has already confirmed. The other matching ones are "Pending Check".
-    private const CONFIRMED = ['APP-2026-0381', 'APP-2026-0382', 'APP-2026-0384', 'APP-2026-0391', 'APP-IS-2026-0105'];
-
     public function dashboard()
     {
         return view('lamp.dashboard', $this->shared() + [
@@ -65,11 +62,9 @@ class LampController extends Controller
     // What all three pages (and the LAMP sidebar) need
     private function shared(): array
     {
-        $scholars = ScholarController::sample()->map(fn ($s) => $s + [
-            'lamp_status' => $s['lamp'] === 'Match'
-                ? (in_array($s['id'], self::CONFIRMED) ? 'Confirmed Match' : 'Pending Check')
-                : $s['lamp'],
-        ]);
+        // lamp_status is just an alias of 'lamp' here (kept separate for the badge-order
+        // keys in lampBadges below, in case a real LAMP-side comparison is added later).
+        $scholars = ScholarController::sample()->map(fn ($s) => $s + ['lamp_status' => $s['lamp']]);
 
         return [
             'academicYear' => '2025–2026',

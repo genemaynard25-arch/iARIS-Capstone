@@ -71,57 +71,54 @@ class ScholarController extends Controller
         return $parts ? $last . ', ' . implode(' ', $parts) : $last;
     }
 
+    // Real scholars (applicant_type = 'scholar') from imported data. 'lamp'/'lamp_record' stay
+    // "Pending Check" / "Not in LAMP records" for every row: iARIS has no second dataset
+    // representing LAMP's own records to actually cross-check against yet.
     public static function sample(): Collection
     {
-        // App number => [scholarship type, scholarship status, LAMP Office's record]
-        $scholarships = [
-            'APP-2026-0381' => ['DLSL Scholar', 'Active', 'DLSL Scholar'],
-            'APP-2026-0385' => ['Academic Scholar', 'Active', null],
-            'APP-2026-0382' => ['DOST Scholar', 'Active', 'DOST Scholar'],
-            'APP-2026-0387' => ['Athletic Scholar', 'Probationary', 'Athletic Scholar'],
-            'APP-2026-0389' => ['CHED Scholar', 'Active', 'DLSL Scholar'],
-            'APP-2026-0383' => ['DLSL Scholar', 'Cancelled', null],
-            'APP-2026-0384' => ['Academic Scholar', 'Active', 'Academic Scholar'],
-            'APP-2026-0391' => ['Other Government', 'Active', 'Other Government'],
-            'APP-2026-0390' => ['DOST Scholar', 'Active', 'DOST Scholar'],
-            'APP-IS-2026-0101' => ['Academic Scholar', 'Active', 'Athletic Scholar'],
-            'APP-IS-2026-0105' => ['DLSL Scholar', 'Probationary', 'DLSL Scholar'],
-        ];
-
         $date = fn ($value, $format) => $value ? Carbon::parse($value)->format($format) : null;
 
-        return collect(ApplicantController::sample())
-            ->filter(fn ($a) => isset($scholarships[$a['id']]))
-            ->map(function ($a) use ($scholarships, $date) {
-                [$type, $scholarshipStatus, $lampRecord] = $scholarships[$a['id']];
+        $statusLabels = [
+            'pooling' => 'Pending',
+            'not_submitted' => 'Pending',
+            'submitted' => 'For Exam',
+            'completed' => 'Enrolled',
+        ];
+
+        return \App\Models\Applicant::where('applicant_type', 'scholar')
+            ->get()
+            ->map(function (\App\Models\Applicant $a) use ($date, $statusLabels) {
+                $unit = match ($a->level) {
+                    'is' => 'Integrated School · ' . ucfirst($a->sub_level ?? ''),
+                    'college' => $a->college ?? $a->program_or_track,
+                    'graduate_school' => 'Graduate Programs',
+                    'eteeap' => 'ETEEAP',
+                    default => $a->program_or_track,
+                };
 
                 return [
-                    'id' => $a['id'],
-                    'name' => "{$a['last']}, {$a['first']} {$a['mi']}.",
-                    'initials' => $a['first'][0] . $a['last'][0],
-                    'unit' => $a['unit'] === 'college' ? $a['college'] : "Integrated School · {$a['level']}",
-                    'program' => $a['program'],
-                    'type' => $type,
-                    'type_group' => self::TYPES[$type],
-                    'scholarship_status' => $scholarshipStatus,
-                    'lamp_record' => $lampRecord ?? 'Not in LAMP records',
-                    'lamp' => match (true) {
-                        $lampRecord === null => 'Not Found',
-                        $lampRecord === $type => 'Match',
-                        default => 'Discrepancy',
-                    },
-                    'status' => $a['status'],
-                    'applied' => $a['applied'],
-                    'applied_label' => $date($a['applied'], 'M j, Y'),
-                    'updated_label' => $date($a['updated'], 'M j, g:i A'),
-                    'dob_label' => $date($a['dob'], 'F j, Y'),
-                    'gender' => $a['gender'],
-                    'email' => $a['email'],
-                    'contact' => $a['contact'],
-                    'address' => $a['address'],
-                    'exam' => $a['exam'],
-                    'paid_label' => $date($a['paid'], 'M j, Y'),
-                    'amount_label' => $a['amount'] ? '₱' . number_format($a['amount'], 2) : null,
+                    'id' => $a->reference_number,
+                    'name' => "{$a->last_name}, {$a->first_name}",
+                    'initials' => mb_substr($a->first_name, 0, 1) . mb_substr($a->last_name, 0, 1),
+                    'unit' => $unit,
+                    'program' => $a->program_or_track,
+                    'type' => $a->scholarship_type,
+                    'type_group' => self::TYPES[$a->scholarship_type] ?? null,
+                    'scholarship_status' => $a->archived_at ? 'Cancelled' : 'Active',
+                    'lamp_record' => 'Not in LAMP records',
+                    'lamp' => 'Pending Check',
+                    'status' => $statusLabels[$a->application_status] ?? 'Pending',
+                    'applied' => optional($a->created_at)->toDateString(),
+                    'applied_label' => $date($a->created_at, 'M j, Y'),
+                    'updated_label' => $date($a->updated_at, 'M j, g:i A'),
+                    'dob_label' => $date($a->date_of_birth ?? null, 'F j, Y'),
+                    'gender' => $a->gender,
+                    'email' => $a->email,
+                    'contact' => $a->contact_number,
+                    'address' => $a->address,
+                    'exam' => $a->admission_test_status,
+                    'paid_label' => null,
+                    'amount_label' => null,
                 ];
             })
             ->values();
