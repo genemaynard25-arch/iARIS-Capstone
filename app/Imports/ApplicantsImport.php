@@ -93,10 +93,19 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
             ? trim((string) $row[12])
             : (trim((string) ($row[11] ?? '')) ?: null);
 
-        $applicant = new Applicant([
+        // The portal export is a full snapshot, not an incremental one (see the class
+        // doc comment) - the same applicant reappears, unchanged or updated (a new exam
+        // result, a payment that's now in), on every re-export. Upsert on the portal's
+        // own APP. NO. so re-importing refreshes that person instead of duplicating them.
+        $externalAppNo = trim((string) ($row[1] ?? '')) ?: null;
+        $applicant = $externalAppNo ? Applicant::where('external_app_no', $externalAppNo)->first() : null;
+        $isNew = $applicant === null;
+        $applicant ??= new Applicant;
+
+        $applicant->fill([
             'imported_batch_id' => $this->batch->id,
-            'reference_number' => $this->generateReferenceNumber($this->schoolYear, $classified['level']),
-            'external_app_no' => trim((string) ($row[1] ?? '')) ?: null,
+            'reference_number' => $isNew ? $this->generateReferenceNumber($this->schoolYear, $classified['level']) : $applicant->reference_number,
+            'external_app_no' => $externalAppNo,
             'permit_no' => trim((string) ($row[7] ?? '')) ?: null,
             'gwa' => is_numeric($row[8] ?? null) ? (float) $row[8] : null,
             'age' => is_numeric($row[9] ?? null) ? (int) $row[9] : null,
