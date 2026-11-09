@@ -28,3 +28,80 @@
 
 .staff-workspace .staff-submission-help { overflow: hidden; }
 .staff-workspace #submissionList .list-group-item.border-start { border-width: 0 0 1px 4px !important; border-bottom-color: #e2ecea !important; }
+
+/* Staff submissions mockup: separate workflow tiles and fully visible help. */
+.submissions-page .staff-submission-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; border: 0 !important; }
+.submissions-page .staff-flow-tile { flex: 1; min-width: 170px; padding: 12px 14px; border-radius: 12px; background: #fff; box-shadow: var(--admin-shadow); display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+.submissions-page .staff-flow-mark { grid-row: span 2; width: 28px; height: 28px; border-radius: 50%; background: #e6f5ef; color: #00674f; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.submissions-page .staff-flow-tile strong { font-size: 13px; }
+.submissions-page .staff-flow-tile small { font-size: 11.5px; color: var(--admin-muted); line-height: 1.5; }
+.submissions-page .staff-flow-sent .staff-flow-mark { background: #fde9e9; color: #b91c1c; }
+.submissions-page .staff-flow-arrow { align-self: center; font-size: 12px; color: #b2c5bf; }
+.submissions-page .staff-submission-help { margin-bottom: 18px !important; }
+.submissions-page .staff-submission-help .card-body { padding: 18px 20px !important; }
+.submissions-page .staff-submission-help h2 { display: block; font-size: 15px !important; font-weight: 800 !important; }
+.submissions-page .staff-submission-help .card-body > p { font-size: 13px; line-height: 1.5; margin-bottom: 14px !important; }
+.submissions-page .staff-submission-help .row { --bs-gutter-x: 12px; --bs-gutter-y: 12px; }
+.submissions-page .staff-submission-help .col > .border { border-width: 1.5px !important; border-color: #e2ecea !important; border-radius: 12px !important; padding: 14px !important; gap: 6px; }
+.submissions-page .staff-submission-help .col .fw-bold { font-size: 13.5px; }
+.submissions-page .staff-submission-help .col .small { font-size: 12px; line-height: 1.5; }
+.submissions-page .staff-submission-help .col .rounded-3 { width: 32px !important; height: 32px !important; font-size: 13px; margin: 0 !important; }
+.submissions-page .staff-lamp-help { background: #f3eaff; color: #5b21b6; font-size: 12.5px; margin-top: 12px !important; line-height: 1.5; }
+.submissions-page .bg-purple-subtle { background: #f3eaff; }
+.submissions-page .text-purple-emphasis { color: #7c3aed; }
+.submissions-page #statCards { margin-bottom: 18px !important; --bs-gutter-x: 14px; }
+.submissions-page #statCards .card-body { padding: 16px 18px !important; }
+.submissions-page #statCards .fs-3 { font-family: Montserrat, Inter, sans-serif; font-size: 28px !important; font-weight: 800 !important; margin: 4px 0 2px; }
+.submissions-page #statCards .border-warning { border-color: #b96000 !important; }
+.submissions-page #statCards .text-warning-emphasis { color: #b96000 !important; }
+.submissions-page #statCards .border-danger { border-color: #b91c1c !important; }
+.submissions-page #statCards .text-danger-emphasis { color: #b91c1c !important; }
+.submissions-page #statCards .border-success { border-color: #00674f !important; }
+.submissions-page #statCards .text-success-emphasis { color: #00674f !important; }
+.submissions-page #statusPills { padding: 0 !important; }
+.submissions-page #statusPills .btn { padding: 7px 14px; font-size: 13px; border-width: 1.5px; }
+.submissions-page #submissionList .staff-submission-row { display: grid !important; grid-template-columns: auto minmax(0,1fr) auto auto; gap: 14px !important; padding: 14px 18px !important; align-items: center; font-weight: 400; }
+.submissions-page #submissionList .staff-submission-icon { width: 38px !important; height: 38px !important; font-size: 14px; }
+.submissions-page #submissionList .staff-icon-edit { background: #eaf1ff !important; color: #2558d9 !important; }
+.submissions-page #submissionList :is(.staff-icon-import, .staff-icon-lamp) { background: #f3eaff !important; color: #7c3aed !important; }
+.submissions-page #submissionList .staff-icon-add { background: #e6f5ef !important; color: #00674f !important; }
+.submissions-page #submissionList .staff-icon-remove { background: #fde9e9 !important; color: #b91c1c !important; }
+.submissions-page .staff-submission-title { min-width: 0; }
+.submissions-page .staff-submission-title > .fw-bold { font-size: 14px; }
+.submissions-page .staff-submission-title .font-monospace { font-family: Inter, sans-serif !important; font-size: 11.5px; font-weight: 700 !important; }
+.submissions-page .staff-submission-title > .small { font-size: 12.5px; margin-top: 2px; line-height: 1.5; }
+.submissions-page .staff-submission-when { font-size: 12px; text-align: right; }
+.submissions-page .staff-submission-when i { margin-left: 12px; color: #b2c5bf !important; }
+.submissions-page #submissionList .badge { padding: 4px 10px; border-radius: 7px !important; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.submissions-page #submissionList .staff-status-waiting, .submissions-page #submissionList .staff-status-lt_waiting { background: #fff3e6 !important; color: #b96000 !important; }
+.submissions-page #submissionList .staff-status-lt_replied { background: #f3eaff !important; color: #7c3aed !important; }
+.submissions-page #submissionList .staff-needs-fix { background: #fffbfb; }
+.submissions-page #submissionList .staff-needs-fix > button { box-shadow: inset 3px 0 #b91c1c; }
+.submissions-page #submissionList .staff-submission-body { padding: 0 18px 18px 70px !important; }
+.submissions-page .staff-submission-reason { margin-bottom: 12px; padding: 12px 14px !important; background: #fde9e9; color: #7f1d1d; border: 0; border-radius: 10px; font-size: 13px; line-height: 1.55; }
+.submissions-page .staff-submission-note { background: #f8fafa; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+.submissions-page .staff-submission-note > span { display: block; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: .5px; margin-bottom: 2px; }
+.submissions-page #submissionList table { max-width: none !important; width: 100%; border: 1px solid #e2ecea; font-size: 13px; }
+.submissions-page #submissionList .staff-change-before { text-decoration: line-through; }
+.submissions-page #submissionList .staff-change-after { color: #005c46; }
+.submissions-page #fixModal .modal-header { background: #fff; color: #1a2b26; border-bottom: 1px solid #e2ecea !important; padding: 20px 24px 14px !important; }
+.submissions-page #fixModal .modal-header p { color: var(--admin-muted) !important; }
+.submissions-page #fixModal .modal-footer > .btn { flex: 1; }
+@media (max-width: 1200px) { .submissions-page .staff-submission-help .row > .col { width: 50%; } }
+@media (max-width: 1000px) {
+    .submissions-page #submissionList .staff-submission-row { grid-template-columns: auto minmax(0,1fr) auto; }
+    .submissions-page .staff-submission-when { display: none; }
+    .submissions-page #submissionList .staff-submission-body { padding-left: 18px !important; }
+}
+@media (max-width: 575.98px) {
+    .submissions-page .staff-submission-help .row > .col { width: 100%; }
+    .submissions-page .staff-flow-arrow { display: none; }
+    .submissions-page #submissionList .staff-submission-row { grid-template-columns: auto minmax(0,1fr); }
+    .submissions-page #submissionList .staff-submission-row > .badge { grid-column: 2; justify-self: start; white-space: normal; }
+}
+.submissions-page #fixModal .modal-header { background: #fff !important; }
+.staff-workspace.submissions-page .modal:not(#mfaReminder):not(#twoFactorModal) .modal-header p { color: var(--admin-muted) !important; }
+
+.submissions-page .staff-submission-reason { display: flex; gap: 12px; }
+.submissions-page .staff-submission-reason > i { margin-top: 3px; }
+.submissions-page .staff-submission-help .col:first-child .rounded-3 { background: #eaf1ff !important; color: #2558d9 !important; }

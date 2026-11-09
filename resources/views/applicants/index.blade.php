@@ -224,7 +224,7 @@
 
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => 'Admin', 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin', 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
 
 @push('styles')
     <link href="{{ asset('css/records.css') }}" rel="stylesheet">

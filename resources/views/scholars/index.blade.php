@@ -19,7 +19,7 @@
     ];
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'scholars-page', 'workspaceGroup' => 'Admin', 'workspaceLabel' => 'Records · Scholarships'])
+@include('partials.admin-workspace', ['workspacePage' => 'scholars-page', 'workspaceGroup' => auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin', 'workspaceLabel' => 'Records · Scholarships'])
 
 @push('styles')
     <link href="{{ asset('css/records.css') }}" rel="stylesheet">
