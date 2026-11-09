@@ -82,6 +82,11 @@ class RegistrarData
                 $examStatus = self::recordExamStatus($a, $preview);
                 $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);
                 $reserved = self::hasReservation($a);
+                $programOrGrade = in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']);
+                if ($source === 'is') {
+                    $placement = array_filter([$a['level'] ?? null, $a['program'] ?? null], fn ($value) => $value && $value !== '—');
+                    $programOrGrade = implode(' · ', array_unique($placement)) ?: '—';
+                }
                 $rows[] = [
                     'id' => $a['id'],
                     'name' => trim("{$a['last']}, {$a['first']}" . (($a['mi'] ?? '') ? " {$a['mi']}." : '')),
@@ -89,7 +94,7 @@ class RegistrarData
                     // College: the college (CITE…); IS: the level (Junior High…); the others: the program code (MBA, JD, BSIT…)
                     'dept' => $a['college'] ?? $a['sub_level'] ?? $a['group'] ?? '—',
                     // College / IS: the program or grade as imported; the others: the program's full name
-                    'program' => in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']),
+                    'program' => $programOrGrade,
                     'status' => $a['status'],
                     'exam_status' => $examStatus,
                     'exam_result' => $examStatus ? ApplicantRecords::testLabel($examStatus) : 'Not recorded',
