@@ -8,7 +8,7 @@
     The page tells the form where its things are with window.RECORD_FORM (set in the page's script):
       items (the people), rows (table rows), tbody (its id), render(), drawer, current() (the person in the drawer),
       labels() ({group, program}), groupOrder, statuses, statusLabels, noun, toForm(person) (fields for the form).
-    Used by the Records pages (applicants/index) and Scholars. Scholars passes $scholarFields for its two extra selects.
+    Used by the Records pages (applicants/index) and Scholars. Scholars passes $scholarFields for its extra Scholarship Status select.
 --}}
 
 {{-- Add / Edit form --}}
@@ -78,16 +78,6 @@
                         <div class="invalid-feedback">Enter the program.</div>
                     </div>
                     @isset($scholarFields)
-                        <div class="col-sm-6">
-                            <label for="recType" class="form-label small fw-bold text-uppercase">Scholarship Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="recType" required>
-                                <option value="">Choose…</option>
-                                @foreach ($scholarFields['types'] as $type)
-                                    <option>{{ $type }}</option>
-                                @endforeach
-                            </select>
-                            <div class="invalid-feedback">Choose the scholarship type.</div>
-                        </div>
                         <div class="col-sm-6">
                             <label for="recScholarship" class="form-label small fw-bold text-uppercase">Scholarship Status <span class="text-danger">*</span></label>
                             <select class="form-select" id="recScholarship" required>
@@ -238,7 +228,7 @@
                 set('recGender', f.gender); set('recEmail', f.email); set('recContact', f.contact);
                 set('recAddress', f.address); set('recGroup', f.group); set('recProgram', f.program);
                 set('recStatus', f.status); set('recApplied', f.applied);
-                if ($('recType')) { set('recType', f.type); set('recScholarship', f.scholarship); }
+                if ($('recScholarship')) set('recScholarship', f.scholarship);
             } else {
                 $('recApplied').value = new Date().toISOString().slice(0, 10);
             }

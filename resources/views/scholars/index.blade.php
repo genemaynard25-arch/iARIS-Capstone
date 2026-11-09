@@ -8,11 +8,13 @@
     // Records that don't match the LAMP Office (a different type, or missing from LAMP's list)
     $needsReview = $scholars->where('lamp', '!=', 'Match')->count();
 
+    // Admissions' own job here is just "did they check Yes for scholarship, and did they
+    // pass or fail the exam" — the specific scholarship type is LAMP's call, not shown here.
     $stats = [
-        ['label' => 'Total Scholars', 'value' => $scholars->count(), 'sub' => 'All scholarship types', 'tone' => 'primary'],
-        ['label' => 'DLSL Scholar', 'value' => $scholars->where('type_group', 'DLSL')->count(), 'sub' => 'Institutional grant', 'tone' => 'primary'],
-        ['label' => 'Academic / Athletic', 'value' => $scholars->where('type_group', 'Merit')->count(), 'sub' => 'Merit-based', 'tone' => 'info'],
-        ['label' => 'Government', 'value' => $scholars->where('type_group', 'Government')->count(), 'sub' => 'CHED / DOST / Other', 'tone' => 'warning'],
+        ['label' => 'Total Scholars', 'value' => $scholars->count(), 'sub' => 'Applied for a scholarship', 'tone' => 'primary'],
+        ['label' => 'Passed Exam', 'value' => $scholars->whereIn('exam', ['passed', 'qualified_other_degree', 'reconsidered'])->count(), 'sub' => 'Cleared the entrance exam', 'tone' => 'primary'],
+        ['label' => 'Awaiting Result', 'value' => $scholars->whereIn('exam', ['not_taken', 'took_test', 'waitlisted'])->count(), 'sub' => 'Not yet taken or pending', 'tone' => 'warning'],
+        ['label' => 'Failed Exam', 'value' => $scholars->where('exam', 'failed')->count(), 'sub' => 'Did not pass', 'tone' => 'danger'],
         ['label' => 'LAMP Discrepancies', 'value' => $needsReview, 'sub' => 'Records need review', 'tone' => 'danger'],
     ];
 @endphp
@@ -60,10 +62,10 @@
                 <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search by name or app number…" aria-label="Search scholars">
             </div>
-            <select class="form-select w-auto" id="typeFilter" aria-label="Filter by scholarship type">
-                <option value="">All Scholarship Types</option>
-                @foreach ($types as $type)
-                    <option>{{ $type }}</option>
+            <select class="form-select w-auto" id="examFilter" aria-label="Filter by exam result">
+                <option value="">All Exam Results</option>
+                @foreach ($examStatuses as $key => [$tone, $label])
+                    <option value="{{ $key }}">{{ $label }}</option>
                 @endforeach
             </select>
             <select class="form-select w-auto" id="scholarshipFilter" aria-label="Filter by scholarship status">
@@ -107,7 +109,7 @@
                     <tr class="small text-uppercase">
                         <th class="ps-4 text-body-secondary fw-bold">Applicant</th>
                         <th class="text-body-secondary fw-bold">Program</th>
-                        <th class="text-body-secondary fw-bold">Scholarship Type</th>
+                        <th class="text-body-secondary fw-bold">Exam Result</th>
                         <th class="text-body-secondary fw-bold">Scholarship Status</th>
                         <th class="text-body-secondary fw-bold">Admission</th>
                         <th class="text-body-secondary fw-bold">LAMP Check</th>
@@ -119,11 +121,10 @@
                 <tbody id="scholarRows">
                     @foreach ($scholars as $i => $s)
                         @php
-                            $typeTone = $typeTones[$s['type_group']];
                             [$lampTone, $lampIcon] = $lampBadges[$s['lamp']];
                         @endphp
                         <tr class="scholar-row" style="cursor: pointer;" tabindex="0"
-                            data-index="{{ $i }}" data-status="{{ $s['status'] }}" data-type="{{ $s['type'] }}"
+                            data-index="{{ $i }}" data-status="{{ $s['status'] }}" data-exam="{{ $s['exam'] }}"
                             data-scholarship="{{ $s['scholarship_status'] }}" data-lamp="{{ $s['lamp'] }}"
                             data-search="{{ strtolower($s['name'] . ' ' . $s['id']) }}"
                             data-applied="{{ $s['applied'] }}" data-name="{{ $s['name'] }}">
@@ -135,7 +136,7 @@
                                 <div>{{ $s['program'] }}</div>
                                 <div class="small text-body-secondary">{{ $s['unit'] }}</div>
                             </td>
-                            <td><span class="badge rounded-pill bg-{{ $typeTone }}-subtle text-{{ $typeTone }}-emphasis">{{ $s['type'] }}</span></td>
+                            <td><span class="badge rounded-pill bg-{{ $s['exam_tone'] }}-subtle text-{{ $s['exam_tone'] }}-emphasis">{{ $s['exam_label'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $scholarshipTones[$s['scholarship_status']] }}-subtle text-{{ $scholarshipTones[$s['scholarship_status']] }}-emphasis"><i class="bi bi-circle-fill me-1" style="font-size: 0.45rem; vertical-align: middle;"></i>{{ $s['scholarship_status'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $statusTones[$s['status']] }}-subtle text-{{ $statusTones[$s['status']] }}-emphasis">{{ $s['status'] }}</span></td>
                             <td>
@@ -178,7 +179,7 @@
             <div class="flex-grow-1">
                 <h2 class="offcanvas-title fs-5 fw-bold mb-1" id="drawerName"></h2>
                 <div class="small text-white-50 mb-2" id="drawerSub"></div>
-                <span class="badge rounded-pill bg-white text-body" id="drawerType"></span>
+                <span class="badge rounded-pill bg-white text-body" id="drawerExam"></span>
                 <span class="badge rounded-pill" id="drawerScholarship"></span>
             </div>
             <button type="button" class="btn-close btn-close-white no-print" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -212,8 +213,9 @@
             {{-- Scholarship + LAMP cross-check --}}
             <div class="tab-pane fade" id="tabScholarship" role="tabpanel">
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Scholarship Details</div>
+                <p class="small text-body-secondary">The specific scholarship type is LAMP's call once they process the secondary application stage — Admissions only tracks whether the applicant checked Yes for a scholarship.</p>
                 <div class="row g-3 mb-4">
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Scholarship Type</div><div class="fw-semibold" data-field="type"></div></div>
+                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Exam Result</div><div class="fw-semibold" data-field="exam_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Scholarship Status</div><div class="fw-semibold" data-field="scholarship_status"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">College / Unit</div><div class="fw-semibold" data-field="unit"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Program</div><div class="fw-semibold" data-field="program"></div></div>
@@ -224,7 +226,7 @@
                     <div class="fw-bold mb-2" id="lampHeading"></div>
                     <table class="table table-sm small mb-0 bg-transparent">
                         <thead><tr><th class="bg-transparent">Field</th><th class="bg-transparent">IATO Record</th><th class="bg-transparent">LAMP Record</th></tr></thead>
-                        <tbody><tr><td class="bg-transparent">Scholarship Type</td><td class="bg-transparent fw-semibold" data-field="type"></td><td class="bg-transparent fw-semibold" data-field="lamp_record" id="lampRecord"></td></tr></tbody>
+                        <tbody><tr><td class="bg-transparent">Scholar Status</td><td class="bg-transparent fw-semibold">Yes</td><td class="bg-transparent fw-semibold" data-field="lamp_record" id="lampRecord"></td></tr></tbody>
                     </table>
                 </div>
                 {{-- Ask LAMP to check, or the conversation with LAMP (scholars/partials/ask-lamp) --}}
@@ -266,7 +268,7 @@
 
     {{-- Add / Edit / Remove (front end only), shared with the Records pages --}}
     @if ($canEdit)
-        @include('applicants.partials.record-modals', ['scholarFields' => ['types' => array_keys(\App\Http\Controllers\ScholarController::TYPES), 'statuses' => array_keys($scholarshipTones)]])
+        @include('applicants.partials.record-modals', ['scholarFields' => ['statuses' => array_keys($scholarshipTones)]])
     @endif
 
     {{-- Ask LAMP to check, and the conversations with LAMP --}}
@@ -276,12 +278,11 @@
 @section('scripts')
     <script>
         const SCHOLARS = @json($scholars);
-        const TYPE_TONES = @json($typeTones);
         const SCHOLARSHIP_TONES = @json($scholarshipTones);
         const PAGE_SIZE = 10;
         const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
 
-        const state = { status: 'All', type: '', scholarship: '', lamp: '', search: '', sort: 'newest', page: 1 };
+        const state = { status: 'All', exam: '', scholarship: '', lamp: '', search: '', sort: 'newest', page: 1 };
         const tbody = document.getElementById('scholarRows');
         const rows = [...tbody.querySelectorAll('.scholar-row')];
         let currentMatches = [];   // rows passing the filters (all pages), used by Export
@@ -293,7 +294,7 @@
 
             const matches = rows.filter(r =>
                 (state.status === 'All' || r.dataset.status === state.status) &&
-                (!state.type || r.dataset.type === state.type) &&
+                (!state.exam || r.dataset.exam === state.exam) &&
                 (!state.scholarship || r.dataset.scholarship === state.scholarship) &&
                 lampMatches(r) &&
                 r.dataset.search.includes(state.search)
@@ -345,7 +346,7 @@
 
         const setFilter = (key, value) => { state[key] = value; state.page = 1; render(); };
         document.getElementById('search').addEventListener('input', e => setFilter('search', e.target.value.trim().toLowerCase()));
-        document.getElementById('typeFilter').addEventListener('change', e => setFilter('type', e.target.value));
+        document.getElementById('examFilter').addEventListener('change', e => setFilter('exam', e.target.value));
         document.getElementById('scholarshipFilter').addEventListener('change', e => setFilter('scholarship', e.target.value));
         document.getElementById('lampFilter').addEventListener('change', e => setFilter('lamp', e.target.value));
         document.getElementById('sort').addEventListener('change', e => setFilter('sort', e.target.value));
@@ -370,10 +371,10 @@
 
         // ---- Export: the filtered rows as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
-            const header = ['App No.', 'Name', 'College / Unit', 'Program', 'Scholarship Type', 'Scholarship Status', 'Admission', 'LAMP Check', 'LAMP Record', 'Updated'];
+            const header = ['App No.', 'Name', 'College / Unit', 'Program', 'Exam Result', 'Scholarship Status', 'Admission', 'LAMP Check', 'LAMP Record', 'Updated'];
             const lines = currentMatches.map(row => {
                 const s = SCHOLARS[row.dataset.index];
-                return [s.id, s.name, s.unit, s.program, s.type, s.scholarship_status, s.status, s.lamp, s.lamp_record, s.updated_label];
+                return [s.id, s.name, s.unit, s.program, s.exam_label, s.scholarship_status, s.status, s.lamp, s.lamp_record, s.updated_label];
             });
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
@@ -392,6 +393,8 @@
             'Match': { alert: 'success', icon: 'bi-check-circle-fill', heading: 'Records match', record: 'text-success-emphasis' },
             'Discrepancy': { alert: 'danger', icon: 'bi-exclamation-circle-fill', heading: 'Discrepancy detected', record: 'text-danger-emphasis' },
             'Not Found': { alert: 'secondary', icon: 'bi-question-circle-fill', heading: 'Not found in LAMP records', record: 'text-danger-emphasis' },
+            // Every real scholar today — iARIS has no real LAMP dataset to compare against yet.
+            'Pending Check': { alert: 'warning', icon: 'bi-clock-fill', heading: 'Waiting on LAMP to confirm', record: 'text-warning-emphasis' },
         };
 
         let drawerScholar = null;   // the scholar in the drawer (Edit / Remove use it)
@@ -401,7 +404,7 @@
             document.getElementById('drawerInitials').textContent = s.initials.toUpperCase();
             document.getElementById('drawerName').textContent = s.name;
             document.getElementById('drawerSub').textContent = `${s.id} · ${s.program}`;
-            document.getElementById('drawerType').textContent = s.type;
+            document.getElementById('drawerExam').textContent = s.exam_label;
             const sch = document.getElementById('drawerScholarship');
             const tone = SCHOLARSHIP_TONES[s.scholarship_status];
             sch.textContent = s.scholarship_status;
@@ -431,7 +434,7 @@
             const matched = s.lamp === 'Match';
             const steps = [
                 { title: 'Application Submitted', date: s.applied_label, icon: 'bi-file-earmark-plus', tone: 'secondary', done: true },
-                { title: 'Scholarship Verified by IATO', date: `${s.type} · ${s.scholarship_status}`, icon: 'bi-award', tone: 'primary', done: true },
+                { title: 'Scholarship Verified by IATO', date: s.scholarship_status, icon: 'bi-award', tone: 'primary', done: true },
                 { title: 'Entrance Exam Scheduled', date: s.exam ?? 'Not yet scheduled', icon: 'bi-calendar-check', tone: 'warning', done: reached >= 1 },
                 { title: 'Reservation Payment', date: s.paid_label ? `${s.paid_label} · ${s.amount_label}` : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 2 },
                 matched
