@@ -1,7 +1,7 @@
-<div class="row g-4 mb-4">
+<div class="dashboard-stat-grid row g-4 mb-4">
     @foreach ($stats as $stat)
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="dashboard-stat-card card border-0 shadow-sm rounded-4 h-100" data-stat-tone="{{ $stat['tone'] }}">
                 <div class="card-body p-4">
                     <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-3">{{ $stat['label'] }}</div>
                     <div class="fs-2 fw-bold mb-1">{{ number_format($stat['value']) }}</div>

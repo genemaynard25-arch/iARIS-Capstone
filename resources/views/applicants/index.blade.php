@@ -195,12 +195,14 @@
     }
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => 'Records', 'workspaceLabel' => $page['title']])
+
 @section('content')
     {{-- Stat cards --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-{{ count($stats) }} g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-3 row-cols-xl-{{ count($stats) }} g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold text-{{ $stat['tone'] === 'primary' ? 'body' : $stat['tone'] . '-emphasis' }}">{{ number_format($stat['value']) }}</div>
@@ -550,7 +552,7 @@
 
             rows.forEach(r => r.classList.add('d-none'));
             pageRows.forEach(r => { r.classList.remove('d-none'); tbody.insertBefore(r, document.getElementById('noResults')); });
-            document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
+            document.getElementById('noResults').classList.toggle('d-none', matches.length > 0 || APPLICANTS.length === 0);
 
             document.getElementById('showingText').textContent = matches.length
                 ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} ${PAGE.noun}${matches.length === 1 ? '' : 's'}`

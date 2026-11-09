@@ -4,6 +4,8 @@
 @section('page-title', 'Admissions Overview')
 @section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
 
+@include('partials.admin-workspace', ['workspacePage' => 'dashboard-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Dashboard'])
+
 @section('content')
     @includeWhen($staffStrip, 'home.partials.staff-strip')
     @include('home.partials.stats')
@@ -20,8 +22,15 @@
 @endsection
 
 @section('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        new Chart(document.getElementById('dashboardLocationChart'), {
+            type: 'doughnut',
+            data: { labels: ['Lipa City', 'Batangas', 'CALABARZON', 'Others'], datasets: [{ data: [1377, 895, 723, 447], backgroundColor: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC'], borderWidth: 0, hoverOffset: 4 }] },
+            options: { maintainAspectRatio: false, cutout: '76%', plugins: { legend: { display: false } } },
+        });
+    </script>
     @if (array_sum($weekChart['college']) + array_sum($weekChart['is']) > 0)
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
         <script>
             // Applications this week: two series side by side, same look as the Analytics charts
             const WEEK = @json($weekChart);

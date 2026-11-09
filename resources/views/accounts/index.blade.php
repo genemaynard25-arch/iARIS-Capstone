@@ -5,6 +5,13 @@
 @section('page-subtitle', 'Add, edit, suspend or delete iARIS accounts across all roles')
 
 @php
+    $roles = array_replace($roles, [
+        'admin' => ['name' => 'Super Admin', 'tone' => 'primary'],
+        'principal' => ['name' => 'Integrated School Principal', 'tone' => 'secondary'],
+        'program_chair' => ['name' => 'Program Chair, Graduate Programs', 'tone' => 'info'],
+        'director' => ['name' => 'iPACE Director', 'tone' => 'warning'],
+        'toic' => ['name' => 'TOIC (System Support)', 'tone' => 'dark'],
+    ]);
     // The numbers are filled in by the script, so they stay right after changes
     $stats = [
         ['key' => 'total', 'label' => 'Total Accounts', 'sub' => 'All roles combined', 'tone' => 'primary'],
@@ -15,12 +22,14 @@
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'accounts-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'User Accounts'])
+
 @section('content')
     {{-- Stat cards --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold text-{{ $stat['tone'] === 'primary' ? 'body' : $stat['tone'] . '-emphasis' }}" data-stat="{{ $stat['key'] }}">0</div>
@@ -35,11 +44,11 @@
     @php($waitingRequests = collect($accessRequests)->where('status', 'waiting')->count())
     <ul class="nav nav-pills gap-1 mb-3" role="tablist">
         <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#paneAccounts" role="tab" aria-controls="paneAccounts" aria-selected="true"><i class="bi bi-people me-1"></i> Accounts</button>
+            <button type="button" class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#paneAccounts" role="tab" aria-controls="paneAccounts" aria-selected="true"><i class="bi bi-people me-1" aria-hidden="true"></i> Accounts</button>
         </li>
         <li class="nav-item" role="presentation">
             <button type="button" class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#paneRequests" role="tab" aria-controls="paneRequests" aria-selected="false" id="requestsTab">
-                <i class="bi bi-person-plus me-1"></i> Access Requests
+                <i class="bi bi-person-plus me-1" aria-hidden="true"></i> Access Requests
                 <span class="badge rounded-pill bg-warning text-dark ms-1 {{ $waitingRequests ? '' : 'd-none' }}" id="requestsCount">{{ $waitingRequests }}</span>
             </button>
         </li>
@@ -51,7 +60,7 @@
         {{-- Search and filters --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search name or email…" aria-label="Search accounts">
             </div>
             <select class="form-select w-auto" id="roleFilter" aria-label="Filter by role">
@@ -78,18 +87,18 @@
                 @endforeach
             </select>
             <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" id="addUserButton">
-                <i class="bi bi-plus-lg me-1"></i> Add User
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add User
             </button>
         </div>
 
         {{-- Bulk actions: shown when at least one row is ticked --}}
         <div class="d-none flex-wrap align-items-center gap-2 px-4 py-2 bg-primary-subtle border-bottom" id="bulkBar">
             <span class="fw-bold text-primary-emphasis me-2" id="bulkLabel"></span>
-            <button type="button" class="btn btn-sm btn-light border" data-bulk="reset"><i class="bi bi-key me-1"></i> Force Password Reset</button>
-            <button type="button" class="btn btn-sm btn-light border" data-bulk="suspend"><i class="bi bi-slash-circle me-1"></i> Suspend</button>
-            <button type="button" class="btn btn-sm btn-light border" data-bulk="deactivate"><i class="bi bi-toggle-off me-1"></i> Deactivate</button>
-            <button type="button" class="btn btn-sm btn-light border text-danger" data-bulk="delete"><i class="bi bi-trash me-1"></i> Delete</button>
-            <button type="button" class="btn btn-sm btn-light border ms-auto" id="clearSelection"><i class="bi bi-x-lg me-1"></i> Clear</button>
+            <button type="button" class="btn btn-sm btn-light border" data-bulk="reset"><i class="bi bi-key me-1" aria-hidden="true"></i> Force Password Reset</button>
+            <button type="button" class="btn btn-sm btn-light border" data-bulk="suspend"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i> Suspend</button>
+            <button type="button" class="btn btn-sm btn-light border" data-bulk="deactivate"><i class="bi bi-toggle-off me-1" aria-hidden="true"></i> Deactivate</button>
+            <button type="button" class="btn btn-sm btn-light border text-danger" data-bulk="delete"><i class="bi bi-trash me-1" aria-hidden="true"></i> Delete</button>
+            <button type="button" class="btn btn-sm btn-light border ms-auto" id="clearSelection"><i class="bi bi-x-lg me-1" aria-hidden="true"></i> Clear</button>
         </div>
 
         {{-- Table (rows are drawn by the script from the USERS list) --}}
@@ -111,7 +120,7 @@
             </table>
         </div>
         <div class="text-center text-body-secondary py-5 d-none" id="noResults">
-            <i class="bi bi-person-x fs-2 d-block mb-2"></i> No accounts match your search or filters.
+            <i class="bi bi-person-x fs-2 d-block mb-2" aria-hidden="true"></i> No accounts match your search or filters.
         </div>
 
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-3 border-top">
@@ -153,22 +162,22 @@
             <td class="small text-body-secondary text-nowrap" data-cell="joined"></td>
             <td class="pe-4 text-end text-nowrap">
                 {{-- Edit, plus a "more" menu. The script shows only the menu items that fit the account's status. --}}
-                <button type="button" class="btn btn-sm btn-light border" data-action="edit" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn btn-sm btn-light border" data-action="edit" title="Edit"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                 <div class="dropdown d-inline-block" data-cell="menu">
                     {{-- strategy "fixed" stops the menu from being cut off by the scrolling table --}}
                     <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="More actions">
-                        <i class="bi bi-three-dots-vertical"></i>
+                        <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li><button type="button" class="dropdown-item" data-action="reset"><i class="bi bi-key me-2"></i>Force password reset</button></li>
-                        <li><button type="button" class="dropdown-item" data-action="resend"><i class="bi bi-send me-2"></i>Resend invitation</button></li>
-                        <li><button type="button" class="dropdown-item" data-action="reactivate"><i class="bi bi-arrow-counterclockwise me-2"></i>Reactivate</button></li>
-                        <li><button type="button" class="dropdown-item text-danger" data-action="suspend"><i class="bi bi-slash-circle me-2"></i>Suspend</button></li>
-                        <li><button type="button" class="dropdown-item text-danger" data-action="delete"><i class="bi bi-trash me-2"></i>Delete</button></li>
+                        <li><button type="button" class="dropdown-item" data-action="reset"><i class="bi bi-key me-2" aria-hidden="true"></i>Force password reset</button></li>
+                        <li><button type="button" class="dropdown-item" data-action="resend"><i class="bi bi-send me-2" aria-hidden="true"></i>Resend invitation</button></li>
+                        <li><button type="button" class="dropdown-item" data-action="reactivate"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>Reactivate</button></li>
+                        <li><button type="button" class="dropdown-item text-danger" data-action="suspend"><i class="bi bi-slash-circle me-2" aria-hidden="true"></i>Suspend</button></li>
+                        <li><button type="button" class="dropdown-item text-danger" data-action="delete"><i class="bi bi-trash me-2" aria-hidden="true"></i>Delete</button></li>
                     </ul>
                 </div>
                 <span class="badge rounded-pill bg-body-tertiary text-body-secondary border" data-cell="locked" title="The permanent administrator can't be changed here">
-                    <i class="bi bi-lock-fill me-1"></i> Protected
+                    <i class="bi bi-lock-fill me-1" aria-hidden="true"></i> Protected
                 </span>
             </td>
         </tr>
@@ -217,6 +226,7 @@
                                     @continue($key === 'admin')
                                     <option value="{{ $key }}">{{ $role['name'] }}</option>
                                 @endforeach
+                                <option disabled>Assistant Principal — preview role (not available for live accounts yet)</option>
                             </select>
                             <div class="invalid-feedback">Choose a role.</div>
                         </div>
@@ -454,9 +464,9 @@
                 li.appendChild(btn);
                 ul.appendChild(li);
             };
-            item('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
+            item('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
             for (let p = 1; p <= pages; p++) item(p, p, { active: p === state.page });
-            item('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
+            item('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
         function renderStats() {
@@ -697,8 +707,8 @@
                 ? 'Update role, department or account status'
                 : 'The new user gets an invitation email to set up their account';
             field('userSubmit').innerHTML = user
-                ? '<i class="bi bi-floppy me-1"></i> Save Changes'
-                : '<i class="bi bi-send me-1"></i> Send Invitation';
+                ? '<i class="bi bi-floppy me-1" aria-hidden="true"></i> Save Changes'
+                : '<i class="bi bi-send me-1" aria-hidden="true"></i> Send Invitation';
             field('userEmailHint').textContent = user
                 ? 'Email addresses can\'t be changed. Contact IT support if a change is needed.'
                 : 'An invitation link goes to this address. The user must set up MFA before their first login.';

@@ -20,23 +20,26 @@
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'review-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Review Queue'])
+
 @section('content')
+    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview queue · Approvals and corrections stay on this page until reload; publishing is not connected yet.</p>
     {{-- How data moves --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="admin-review-flow card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3 d-flex flex-wrap align-items-center gap-2 small">
             @foreach ([
                 ['bi-inbox', 'Staff edits, imports, LAMP updates, applicant updates'],
                 ['bi-person-check', 'You review and correct'],
                 ['bi-eye', 'Approved data becomes visible to Deans, Registrar, LAMP, and leadership'],
             ] as [$icon, $text])
-                <span class="d-flex align-items-center gap-2 rounded-pill bg-body-tertiary border px-3 py-2 fw-semibold"><i class="bi {{ $icon }} text-primary"></i> {{ $text }}</span>
-                @unless ($loop->last)<i class="bi bi-arrow-right text-body-secondary"></i>@endunless
+                <span class="d-flex align-items-center gap-2 rounded-pill bg-body-tertiary border px-3 py-2 fw-semibold"><i class="bi {{ $icon }} text-primary" aria-hidden="true"></i> {{ $text }}</span>
+                @unless ($loop->last)<i class="bi bi-arrow-right text-body-secondary" aria-hidden="true"></i>@endunless
             @endforeach
         </div>
     </div>
 
     {{-- Stat cards (filled in by the script) --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4">
         @foreach ([
             ['waiting', 'Waiting for review', 'warning', 'Not visible to other users yet'],
             ['approvedToday', 'Approved today', 'primary', 'Published to other users'],
@@ -44,7 +47,7 @@
             ['oldest', 'Oldest waiting', 'info', ''],
         ] as [$key, $label, $tone, $sub])
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $label }}</div>
                         <div class="fs-3 fw-bold text-{{ $tone }}-emphasis" data-stat="{{ $key }}">0</div>
@@ -58,7 +61,7 @@
     <div class="card border-0 shadow-sm rounded-4">
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 320px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search applicant, file, or ID…" aria-label="Search the queue">
             </div>
             <select class="form-select w-auto" id="typeFilter" aria-label="Filter by source">
@@ -78,8 +81,8 @@
         {{-- Bulk approve: shown when waiting items are ticked --}}
         <div class="d-none align-items-center gap-2 px-4 py-2 bg-primary-subtle border-bottom" id="bulkBar">
             <span class="fw-bold text-primary-emphasis me-2" id="bulkLabel"></span>
-            <button type="button" class="btn btn-sm btn-primary fw-semibold" id="bulkApprove"><i class="bi bi-check2-all me-1"></i> Approve &amp; publish</button>
-            <button type="button" class="btn btn-sm btn-light border ms-auto" id="bulkClear"><i class="bi bi-x-lg me-1"></i> Clear</button>
+            <button type="button" class="btn btn-sm btn-primary fw-semibold" id="bulkApprove"><i class="bi bi-check2-all me-1" aria-hidden="true"></i> Approve &amp; publish</button>
+            <button type="button" class="btn btn-sm btn-light border ms-auto" id="bulkClear"><i class="bi bi-x-lg me-1" aria-hidden="true"></i> Clear</button>
         </div>
 
         <div class="table-responsive">
@@ -101,7 +104,7 @@
         </div>
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-3 border-top small text-body-secondary">
             <span id="footerText"></span>
-            <span><i class="bi bi-info-circle me-1"></i> Front end only for now: approvals and send-backs aren't saved yet.</span>
+            <span><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Front end only for now: approvals and send-backs aren't saved yet.</span>
         </div>
     </div>
 
@@ -119,8 +122,8 @@
         <div class="offcanvas-body p-4" id="drawerBody"></div>
         {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
         <div class="d-flex flex-wrap gap-2 border-top p-3" id="drawerActions">
-            <button type="button" class="btn btn-primary fw-semibold" id="approveButton"><i class="bi bi-check2-circle me-1"></i> Approve &amp; publish</button>
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#sendBackModal"><i class="bi bi-arrow-counterclockwise me-1"></i> Send back</button>
+            <button type="button" class="btn btn-primary fw-semibold" id="approveButton"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Approve &amp; publish</button>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#sendBackModal"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Send back</button>
         </div>
     </div>
 
@@ -198,15 +201,15 @@
                 return `<tr role="button" tabindex="0" data-id="${x.id}">
                     <td class="ps-4">${x.status === 'waiting' ? `<input type="checkbox" class="form-check-input row-check" data-id="${x.id}" aria-label="Select ${esc(x.id)}" ${state.selected.has(x.id) ? 'checked' : ''}>` : ''}</td>
                     <td><div class="d-flex align-items-center gap-3">
-                        <span class="icon-circle rounded-3 bg-${tone}-subtle text-${tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi ${icon}"></i></span>
+                        <span class="icon-circle rounded-3 bg-${tone}-subtle text-${tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi ${icon}" aria-hidden="true"></i></span>
                         <div><div class="fw-semibold">${esc(x.title)} · ${esc(x.subject)}</div><div class="small text-body-secondary">${esc(x.id)} · ${esc(label)} · ${esc(x.ref)}</div></div></div></td>
                     <td class="small">${esc(x.unit)}</td>
                     <td><div class="small fw-semibold">${esc(x.by)}</div><div class="small text-body-secondary">${esc(x.role)}</div></td>
                     <td class="small text-nowrap">${size(x)}${x.type === 'import' && x.summary.errors ? ` <span class="text-danger">· ${x.summary.errors} errors</span>` : ''}</td>
                     <td class="small text-body-secondary text-nowrap">${when(x.at)}</td>
-                    <td><span class="badge rounded-pill bg-${stTone}-subtle text-${stTone}-emphasis"><i class="bi ${stIcon} me-1"></i>${stLabel}</span></td>
-                    <td class="pe-4 text-end"><i class="bi bi-chevron-right text-body-secondary"></i></td></tr>`;
-            }).join('') : `<tr><td colspan="8" class="text-center text-body-secondary py-5"><i class="bi bi-check2-circle fs-3 d-block mb-2 text-primary"></i>${state.status === 'waiting' ? 'Nothing is waiting for review. Everything other users see is approved.' : 'No items match these filters.'}</td></tr>`;
+                    <td><span class="badge rounded-pill bg-${stTone}-subtle text-${stTone}-emphasis"><i class="bi ${stIcon} me-1" aria-hidden="true"></i>${stLabel}</span></td>
+                    <td class="pe-4 text-end"><i class="bi bi-chevron-right text-body-secondary" aria-hidden="true"></i></td></tr>`;
+            }).join('') : `<tr><td colspan="8" class="text-center text-body-secondary py-5"><i class="bi bi-check2-circle fs-3 d-block mb-2 text-primary" aria-hidden="true"></i>${state.status === 'waiting' ? 'Nothing is waiting for review. Everything other users see is approved.' : 'No items match these filters.'}</td></tr>`;
             $('footerText').textContent = `Showing ${list.length} of ${ITEMS.length} items`;
 
             const waitingShown = list.filter(x => x.status === 'waiting');
@@ -257,7 +260,7 @@
                 : q.status === 'sent'
                     ? ['danger', 'bi-arrow-counterclockwise', `<b>Sent back.</b> ${esc(q.reviewed)}. Reason: ${esc(q.reason)}`]
                     : ['warning', 'bi-eye-slash', '<b>Not visible to other users yet.</b> Approve it to publish, or send it back with a reason.'];
-            let html = `<div class="alert alert-${visibility[0]} small d-flex gap-2"><i class="bi ${visibility[1]} mt-1"></i><div>${visibility[2]}</div></div>
+            let html = `<div class="alert alert-${visibility[0]} small d-flex gap-2"><i class="bi ${visibility[1]} mt-1" aria-hidden="true"></i><div>${visibility[2]}</div></div>
                 <dl class="row g-2 small mb-3">
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Submitted by</dt><dd class="fw-bold mb-0">${esc(q.by)} · ${esc(q.role)}</dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Submitted</dt><dd class="fw-bold mb-0">${when(q.at)}</dd></div>

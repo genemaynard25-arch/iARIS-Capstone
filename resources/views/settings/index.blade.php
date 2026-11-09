@@ -25,8 +25,10 @@
     $openSection = $passwordErrors->any() || session('status') === 'password-updated' ? 'security' : $sections[0];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'settings-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Settings'])
+
 @section('content')
-    <div class="row g-4">
+    <div class="admin-settings-grid row g-4">
         {{-- Section menu --}}
         <div class="col-12 col-lg-3">
             <div class="card border-0 shadow-sm rounded-4 sticky-lg-top" style="top: 1.5rem;">
@@ -38,7 +40,7 @@
                                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary px-3 pt-3 pb-1 d-none d-lg-block">System</div>
                             @endif
                             <button class="nav-link text-start fw-semibold {{ $key === $openSection ? 'active' : '' }}" data-bs-toggle="pill" data-bs-target="#section-{{ $key }}" type="button" role="tab" data-section="{{ $key }}">
-                                <i class="bi {{ $sectionInfo[$key][1] }} me-2"></i>{{ $sectionInfo[$key][0] }}
+                                <i class="bi {{ $sectionInfo[$key][1] }} me-2" aria-hidden="true"></i>{{ $sectionInfo[$key][0] }}
                             </button>
                         @endforeach
                     </nav>
@@ -64,9 +66,9 @@
                                         <div class="small text-body-secondary mb-2">{{ $profile['title'] }} · {{ $profile['office'] }}</div>
                                         <div class="d-flex flex-wrap align-items-center gap-2">
                                             <input type="file" class="d-none" id="photoInput" accept="image/*">
-                                            <button type="button" class="btn btn-sm btn-light border" onclick="document.getElementById('photoInput').click()"><i class="bi bi-camera me-1"></i> Change photo</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger d-none" id="photoRemove"><i class="bi bi-trash me-1"></i> Remove</button>
-                                            <span class="small text-body-secondary"><i class="bi bi-lock me-1"></i>Name and title managed by IATO Admin</span>
+                                            <button type="button" class="btn btn-sm btn-light border" onclick="document.getElementById('photoInput').click()"><i class="bi bi-camera me-1" aria-hidden="true"></i> Change photo</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger d-none" id="photoRemove"><i class="bi bi-trash me-1" aria-hidden="true"></i> Remove</button>
+                                            <span class="small text-body-secondary"><i class="bi bi-lock me-1" aria-hidden="true"></i>Name and title managed by IATO Admin</span>
                                         </div>
                                     </div>
                                 </div>
@@ -77,12 +79,12 @@
                                             <label class="form-label small fw-bold text-uppercase text-body-secondary" for="profile{{ $loop->index }}">{{ $label }}</label>
                                             <div class="input-group">
                                                 <input type="text" class="form-control bg-body-tertiary" id="profile{{ $loop->index }}" value="{{ $value }}" readonly>
-                                                <span class="input-group-text bg-body-tertiary text-body-secondary"><i class="bi bi-lock"></i></span>
+                                                <span class="input-group-text bg-body-tertiary text-body-secondary"><i class="bi bi-lock" aria-hidden="true"></i></span>
                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
-                                <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Your photo is saved in this browser for now.</p>
+                                <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Your photo is saved in this browser for now.</p>
                             </div>
                         </div>
 
@@ -122,7 +124,7 @@
                                 <h2 class="fs-6 fw-bold mb-0">Change password</h2>
                                 <p class="small text-body-secondary">Use at least 8 characters with a mix of letters and numbers.</p>
                                 @if (session('status') === 'password-updated')
-                                    <div class="alert alert-success small py-2"><i class="bi bi-check-circle me-1"></i> Your password was updated.</div>
+                                    <div class="alert alert-success small py-2"><i class="bi bi-check-circle me-1" aria-hidden="true"></i> Your password was updated.</div>
                                 @endif
                                 <div class="row g-3">
                                     <div class="col-12">
@@ -149,7 +151,7 @@
                                 </div>
                             </div>
                             <div class="card-footer bg-transparent border-top d-flex justify-content-end p-3">
-                                <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-key me-1"></i> Update password</button>
+                                <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-key me-1" aria-hidden="true"></i> Update password</button>
                             </div>
                         </form>
 
@@ -159,7 +161,7 @@
                                 <p class="small text-body-secondary">A code from your phone, asked for after your password.</p>
                                 <div class="d-flex flex-wrap align-items-center gap-3 rounded-3 border p-3 mb-3 {{ $twoFactorOn ? 'border-primary-subtle bg-primary-subtle' : 'border-warning-subtle bg-warning-subtle' }}">
                                     <div class="icon-circle rounded-3 bg-white d-flex align-items-center justify-content-center {{ $twoFactorOn ? 'text-primary' : 'text-warning-emphasis' }}">
-                                        <i class="bi {{ $twoFactorOn ? 'bi-shield-check' : 'bi-shield-exclamation' }} fs-5"></i>
+                                        <i class="bi {{ $twoFactorOn ? 'bi-shield-check' : 'bi-shield-exclamation' }} fs-5" aria-hidden="true"></i>
                                     </div>
                                     <div class="flex-grow-1">
                                         @if ($twoFactorOn)
@@ -171,10 +173,10 @@
                                         @endif
                                     </div>
                                     <a href="{{ url('/two-factor') }}" class="btn btn-sm {{ $twoFactorOn ? 'btn-light border' : 'btn-primary' }} fw-semibold">
-                                        <i class="bi bi-phone me-1"></i> {{ $twoFactorOn ? 'View recovery codes' : 'Set up two-factor' }}
+                                        <i class="bi bi-phone me-1" aria-hidden="true"></i> {{ $twoFactorOn ? 'View recovery codes' : 'Set up two-factor' }}
                                     </a>
                                 </div>
-                                <div class="small text-body-secondary d-flex gap-2"><i class="bi bi-info-circle"></i>
+                                <div class="small text-body-secondary d-flex gap-2"><i class="bi bi-info-circle" aria-hidden="true"></i>
                                     <span>Lost your phone? Use one of your recovery codes to sign in, or contact the IATO Admin to reset two-factor.</span></div>
                             </div>
                         </div>
@@ -213,9 +215,9 @@
                                 </table>
                             </div>
                             <div class="card-footer bg-transparent border-top d-flex flex-wrap align-items-center gap-2 p-3">
-                                <span class="small text-body-secondary me-auto"><i class="bi bi-clock me-1"></i>You are signed out automatically after a period of inactivity.</span>
+                                <span class="small text-body-secondary me-auto"><i class="bi bi-clock me-1" aria-hidden="true"></i>You are signed out automatically after a period of inactivity.</span>
                                 {{-- TODO (backend): a route that calls Auth::logoutOtherDevices($password) --}}
-                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Coming soon"><i class="bi bi-box-arrow-right me-1"></i> Sign out of other devices</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Coming soon"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Sign out of other devices</button>
                             </div>
                         </div>
                     </div>
@@ -329,7 +331,7 @@
                                 @include('settings.partials.switch', ['name' => 'button', 'label' => 'Show the AI button on every page', 'description' => 'The round button at the bottom-right of your pages. Turn it off to hide it.', 'checked' => true])
                                 @include('settings.partials.switch', ['name' => 'takeaways', 'label' => 'Show AI-written takeaways', 'description' => 'AI summaries on your pages, such as Key Takeaways on the Dashboard and AI Insights on Analytics.', 'checked' => true])
                                 <div class="small text-body-secondary bg-body-tertiary rounded-3 p-3 mt-3 d-flex gap-2">
-                                    <i class="bi bi-info-circle"></i>
+                                    <i class="bi bi-info-circle" aria-hidden="true"></i>
                                     <span>The assistant only reads the figures on the page you are viewing. It never changes data, and each page starts a new chat. AI answers can contain mistakes, so verify important figures.</span>
                                 </div>
                             </div>
@@ -380,7 +382,7 @@
     <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3">
         <div class="toast align-items-center text-bg-dark border-0" id="settingsToast" role="status" aria-live="polite">
             <div class="d-flex">
-                <div class="toast-body"><i class="bi bi-check-circle me-1"></i> <span id="settingsToastText"></span></div>
+                <div class="toast-body"><i class="bi bi-check-circle me-1" aria-hidden="true"></i> <span id="settingsToastText"></span></div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>

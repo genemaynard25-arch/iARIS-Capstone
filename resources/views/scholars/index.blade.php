@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — Scholar Records')
-@section('page-title', 'Scholar Records')
+@section('title', 'iARIS — Scholarship Applicants')
+@section('page-title', 'Scholarship Applicants')
 @section('page-subtitle', "Scholar applicants for AY {$academicYear} — cross-checked against LAMP Office records")
 
 @php
@@ -19,13 +19,15 @@
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'scholars-page', 'workspaceGroup' => 'Records', 'workspaceLabel' => 'Scholarships'])
+
 @section('content')
     {{-- Stat cards --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
                 {{-- Clicking the LAMP Discrepancies card does the same as "View Discrepancies" --}}
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100"
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100"
                      @if ($stat['label'] === 'LAMP Discrepancies' && $needsReview) data-show-review role="button" tabindex="0" style="cursor: pointer;" title="Show the scholars that don't match LAMP" @endif>
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
@@ -40,7 +42,7 @@
     {{-- LAMP notice, only when something needs review --}}
     @if ($needsReview > 0)
         <div class="alert alert-warning d-flex flex-wrap flex-md-nowrap align-items-center gap-3 rounded-4 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <i class="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true"></i>
             <div class="flex-grow-1 small">
                 <strong>{{ $needsReview }} {{ $needsReview === 1 ? 'record doesn\'t' : 'records don\'t' }} match LAMP Office data.</strong>
                 {{-- The two numbers are kept up to date by the Ask LAMP script --}}
@@ -50,7 +52,7 @@
                 @endif
             </div>
             <button type="button" class="btn btn-warning btn-sm fw-semibold text-nowrap" id="showReview">
-                <i class="bi bi-eye me-1"></i> View Discrepancies
+                <i class="bi bi-eye me-1" aria-hidden="true"></i> View Discrepancies
             </button>
         </div>
     @endif
@@ -59,7 +61,7 @@
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search by name or app number…" aria-label="Search scholars">
             </div>
             <select class="form-select w-auto" id="examFilter" aria-label="Filter by exam result">
@@ -87,10 +89,10 @@
                 <option value="review">Sort: Discrepancies First</option>
             </select>
             <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
-                <i class="bi bi-download me-1"></i> Export
+                <i class="bi bi-download me-1" aria-hidden="true"></i> Export
             </button>
             @if ($canEdit)
-                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1"></i> Add Scholar</button>
+                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add Scholar</button>
             @endif
         </div>
 
@@ -140,24 +142,24 @@
                             <td><span class="badge rounded-pill bg-{{ $scholarshipTones[$s['scholarship_status']] }}-subtle text-{{ $scholarshipTones[$s['scholarship_status']] }}-emphasis"><i class="bi bi-circle-fill me-1" style="font-size: 0.45rem; vertical-align: middle;"></i>{{ $s['scholarship_status'] }}</span></td>
                             <td><span class="badge rounded-pill bg-{{ $statusTones[$s['status']] }}-subtle text-{{ $statusTones[$s['status']] }}-emphasis">{{ $s['status'] }}</span></td>
                             <td>
-                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1"></i>{{ $s['lamp'] }}</span>
+                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1" aria-hidden="true"></i>{{ $s['lamp'] }}</span>
                                 {{-- "Waiting for LAMP" / "LAMP replied" / "Resolved" (filled in by the Ask LAMP script) --}}
                                 <div data-thread-tag></div>
                             </td>
                             <td class="small text-body-secondary text-nowrap">{{ $s['updated_label'] }}</td>
                             <td class="pe-4 text-end text-nowrap">
                                 @if ($canEdit)
-                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye"></i></button>
-                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                                 @else
-                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></span>
+                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
                         <td colspan="8" class="text-center text-body-secondary py-5">
-                            <i class="bi bi-search fs-3 d-block mb-2"></i>
+                            <i class="bi bi-search fs-3 d-block mb-2" aria-hidden="true"></i>
                             No scholars match your search or filters.
                         </td>
                     </tr>
@@ -258,10 +260,10 @@
 
         {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
         <div class="d-flex flex-wrap gap-2 border-top p-3 no-print">
-            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i> Print</button>
             @if ($canEdit)
-                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1"></i> Remove</button>
-                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1" aria-hidden="true"></i> Remove</button>
+                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit Record</button>
             @endif
         </div>
     </div>
@@ -339,9 +341,9 @@
                 li.appendChild(btn);
                 ul.appendChild(li);
             };
-            item('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
+            item('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
             for (let p = 1; p <= pages; p++) item(p, p, { active: p === state.page });
-            item('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
+            item('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
         const setFilter = (key, value) => { state[key] = value; state.page = 1; render(); };
@@ -418,7 +420,7 @@
 
             const card = LAMP_CARD[s.lamp];
             document.getElementById('lampCard').className = `alert alert-${card.alert} mb-0`;
-            document.getElementById('lampHeading').innerHTML = `<i class="bi ${card.icon} me-1"></i>`;
+            document.getElementById('lampHeading').innerHTML = `<i class="bi ${card.icon} me-1" aria-hidden="true"></i>`;
             document.getElementById('lampHeading').append(card.heading);
             document.getElementById('lampRecord').className = `bg-transparent fw-semibold ${card.record}`;
 
@@ -448,7 +450,7 @@
                 li.className = `d-flex gap-3 ${i < steps.length - 1 ? 'pb-4' : ''} ${step.done ? '' : 'opacity-50'}`;
                 li.innerHTML = `
                     <div class="icon-circle rounded-circle bg-${step.tone}-subtle text-${step.tone}-emphasis d-flex align-items-center justify-content-center">
-                        <i class="bi ${step.icon}"></i>
+                        <i class="bi ${step.icon}" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="fw-bold small"></div>
