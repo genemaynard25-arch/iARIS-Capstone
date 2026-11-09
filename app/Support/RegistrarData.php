@@ -45,28 +45,15 @@ class RegistrarData
         return ($scope ?? self::scope()) === 'is' ? self::IS_UNITS : self::UNITS;
     }
 
-    /** Registrar records contain only passing applicants with a paid reservation. */
+    /** Preserve every record in the registrar's assigned units, regardless of result or payment. */
     public static function forRecords(array $records, string $scope): array
     {
-        if (auth()->user()?->role !== 'registrar') {
-            return $records;
+        if (auth()->user()?->role === 'registrar') {
+            $allowed = self::scope() === 'is' ? ['is'] : ['college', 'graduate', 'law', 'ipace', 'eteeap'];
+            abort_unless(in_array($scope, $allowed), 403);
         }
 
-        $allowed = self::scope() === 'is' ? ['is'] : ['college', 'graduate', 'law', 'ipace', 'eteeap'];
-        abort_unless(in_array($scope, $allowed), 403);
-        $preview = in_array($scope, ['law', 'ipace']);
-
-        return collect($records)
-            ->filter(fn (array $record) => self::isReadyRecord($record, $preview))
-            ->map(fn (array $record) => array_merge($record, ['exam_status' => self::recordExamStatus($record, $preview)]))
-            ->values()
-            ->all();
-    }
-
-    public static function isReadyRecord(array $record, bool $preview = false): bool
-    {
-        return in_array(self::recordExamStatus($record, $preview), ['passed', 'qualified_other_degree', 'reconsidered'])
-            && self::hasReservation($record);
+        return $records;
     }
 
     private static function recordExamStatus(array $record, bool $preview): ?string

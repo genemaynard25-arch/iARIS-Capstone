@@ -155,7 +155,7 @@
 
 @section('title', 'iARIS — ' . $page['title'])
 @section('page-title', $page['title'])
-@section('page-subtitle', $isRegistrar ? 'Applicants who passed the exam and paid the reservation fee · AY ' . $academicYear . ' · View only' : $page['subtitle'])
+@section('page-subtitle', $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -207,9 +207,6 @@
         ['label' => 'Passed', 'value' => $rows->whereIn('exam_result', ['passed', 'reconsidered', 'qualified_other_degree'])->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
         ['label' => 'Reservation paid', 'value' => $rows->where('reserved', true)->count(), 'sub' => 'Ready for enrollment', 'tone' => 'info'],
     ];
-    if ($isRegistrar) {
-        $stats = array_values(array_filter($stats, fn ($stat) => $stat['label'] !== 'Exam fee paid'));
-    }
     $recordColumns = match ($scope) {
         'college' => ['group' => 'College', 'program' => 'Program', 'year' => 'Year Level'],
         'is' => ['group' => 'Level', 'level' => 'Grade', 'program' => 'Strand'],
@@ -307,7 +304,6 @@
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
             <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All</button>
             @foreach ($examResults as $result => [$label, $tone])
-                @continue($isRegistrar && ! in_array($result, ['passed', 'reconsidered', 'qualified_other_degree']))
                 @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
                 <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }}</button>
             @endforeach
@@ -379,9 +375,7 @@
                         <tr>
                             <td colspan="{{ $recordColumnCount }}" class="text-center text-body-secondary py-5">
                                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                                @if ($isRegistrar)
-                                    No applicants have both passed the exam and paid the reservation fee.
-                                @elseif ($fromDatabase)
+                                @if ($fromDatabase)
                                     No applicants imported yet for AY {{ $academicYear }}.
                                     @if (auth()->user()->canAccess('import'))
                                         <a href="{{ url('/import') }}" class="d-block mt-1 fw-semibold text-decoration-none">Import applicants from Excel</a>
