@@ -1,359 +1,258 @@
 @extends('layouts.app')
 
-@php
-    $stats = [
-        ['key' => 'total', 'label' => 'Total Reports', 'sub' => 'All reports received', 'tone' => 'primary'],
-        ['key' => 'Unread', 'label' => 'New / Unread', 'sub' => 'Not opened yet', 'tone' => 'danger'],
-        ['key' => 'Awaiting Reply', 'label' => 'Awaiting Reply', 'sub' => 'IATO expects a response', 'tone' => 'warning'],
-        ['key' => 'Replied', 'label' => 'Replied', 'sub' => 'Responses sent', 'tone' => 'primary'],
-    ];
-@endphp
+{{--
+    LAMP Office "Analytics & Reports" (LampController::reports). Two tabs (#analytics, #reports):
+      Analytics  four numbers, insights worked out from them, and four charts, from the real scholarship applicants
+      Reports    what IATO sent: open one to read or download it (PDF, Excel or CSV); questions go to Messages
+    Opened reports are remembered in this browser ("iaris.lampReportsRead"); the sidebar's red number follows it.
+    The applicants are real; the list of reports IATO sent is a placeholder (nothing stores them yet).
+--}}
 
-@section('title', 'iARIS — LAMP Office · Reports')
-@section('page-title', 'Reports')
-@section('page-subtitle', 'Reports received from IATO — view, download, and reply')
+@section('title', 'iARIS — Analytics & Reports')
+@section('page-title', 'Analytics & Reports')
+@section('page-subtitle', 'Scholar trends and insights, and the reports IATO sends you. Questions go to Messages.')
 
 @section('content')
-    {{-- Stat cards (numbers filled in by the script) --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
-        @foreach ($stats as $stat)
-            <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
-                    <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
-                        <div class="fs-3 fw-bold text-{{ $stat['tone'] === 'primary' ? 'body' : $stat['tone'] . '-emphasis' }}" data-stat="{{ $stat['key'] }}">0</div>
-                        <div class="small text-body-secondary">{{ $stat['sub'] }}</div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <ul class="nav nav-pills gap-2 me-auto" role="tablist" id="tabs">
+            <li class="nav-item" role="presentation"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tabAnalytics" type="button" role="tab" data-hash="analytics"><i class="bi bi-graph-up me-1"></i> Analytics</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabReports" type="button" role="tab" data-hash="reports"><i class="bi bi-file-earmark-text me-1"></i> Reports</button></li>
+        </ul>
+        <a href="{{ url('/lamp/messages') }}" class="btn btn-light border fw-semibold"><i class="bi bi-chat-dots me-1"></i> Messages</a>
+    </div>
+
+    <div class="tab-content">
+        {{-- ========== ANALYTICS ========== --}}
+        <div class="tab-pane fade show active" id="tabAnalytics" role="tabpanel">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-stars text-primary me-1"></i> Insights</h2>
+                        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border">Worked out from this page's figures</span>
                     </div>
+                    <div class="row row-cols-1 row-cols-lg-2 g-3" id="insights"></div>
+                    <p class="small text-body-secondary mt-3 mb-0">Insights describe past patterns and are not guarantees. Verify important figures before acting on them.</p>
                 </div>
             </div>
-        @endforeach
-    </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-        {{-- Search, type, sort --}}
-        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
-            <div class="input-group" style="max-width: 320px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
-                <input type="search" class="form-control" id="search" placeholder="Search report title…" aria-label="Search reports">
-            </div>
-            <select class="form-select w-auto" id="typeFilter" aria-label="Filter by report type">
-                <option value="">All Report Types</option>
-                @foreach ($reportTypes as $type => $style)
-                    <option>{{ $type }}</option>
-                @endforeach
-            </select>
-            <select class="form-select w-auto" id="sort" aria-label="Sort">
-                <option value="newest">Sort: Newest First</option>
-                <option value="oldest">Sort: Oldest First</option>
-                <option value="unread">Sort: Unread First</option>
-            </select>
-        </div>
-
-        {{-- Status pills --}}
-        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom" id="statusPills">
-            <span class="small fw-bold text-body-secondary me-1">Status:</span>
-            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="">All</button>
-            @foreach ($reportStatuses as $status => $tone)
-                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $status }}">{{ $status }}</button>
-            @endforeach
-        </div>
-
-        <div class="list-group list-group-flush" id="reportList"></div>
-        <div class="text-center text-body-secondary py-5 d-none" id="noResults">
-            <i class="bi bi-inbox fs-3 d-block mb-2"></i> No reports match your search or filters.
-        </div>
-        <div class="card-footer bg-white rounded-bottom-4 small text-body-secondary px-4 py-3" id="showingText"></div>
-    </div>
-
-    {{-- One report in the list, copied by the script --}}
-    <template id="reportTemplate">
-        <div class="list-group-item list-group-item-action d-flex flex-wrap flex-md-nowrap align-items-center gap-3 px-4 py-3" role="button" tabindex="0">
-            {{-- Red dot = not opened yet --}}
-            <span class="rounded-circle flex-shrink-0" style="width: 9px; height: 9px;" data-cell="dot"></span>
-            <div class="icon-circle rounded-3 fs-5 d-flex align-items-center justify-content-center" data-cell="icon"><i class="bi"></i></div>
-            <div class="flex-grow-1" style="min-width: 200px;">
-                <div class="fw-bold" data-cell="title"></div>
-                <div class="small text-body-secondary d-flex flex-wrap align-items-center gap-2">
-                    <span>Sent by <b data-cell="sender"></b> (IATO Admin)</span>
-                    <span>·</span>
-                    <span data-cell="sent"></span>
-                    <span data-cell="type"></span>
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+                        <h2 class="fs-6 fw-bold mb-0">Scholarship applicants over four years</h2>
+                        <p class="small text-body-secondary mb-3">Answered Yes on the application</p>
+                        <div id="trend"></div>
+                    </div></div>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+                        <h2 class="fs-6 fw-bold mb-0">Exam results</h2>
+                        <p class="small text-body-secondary mb-3">Scholarship applicants · AY {{ $academicYear }}</p>
+                        <div class="vstack gap-2" id="results"></div>
+                    </div></div>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+                        <h2 class="fs-6 fw-bold mb-0">Scholarship applicants by unit</h2>
+                        <p class="small text-body-secondary mb-3">AY {{ $academicYear }}</p>
+                        <div class="vstack gap-2" id="units"></div>
+                    </div></div>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+                        <h2 class="fs-6 fw-bold mb-0">Your checks</h2>
+                        <p class="small text-body-secondary mb-3">Applicants who passed</p>
+                        <div class="vstack gap-2" id="checks"></div>
+                        <p class="small text-body-secondary mt-3 mb-0" id="checksNote"></p>
+                    </div></div>
                 </div>
             </div>
-            <div class="d-flex align-items-center gap-2 ms-auto">
-                <span data-cell="status"></span>
-                {{-- TODO: download the real file once reports are generated by the backend --}}
-                <button type="button" class="btn btn-sm btn-light border" disabled title="Download (coming soon)" aria-label="Download"><i class="bi bi-download"></i></button>
-                <button type="button" class="btn btn-sm btn-primary fw-semibold text-nowrap" data-cell="reply"></button>
+        </div>
+
+        {{-- ========== REPORTS ========== --}}
+        <div class="tab-pane fade" id="tabReports" role="tabpanel">
+            <div class="row row-cols-1 row-cols-sm-3 g-3 mb-4" id="reportStats"></div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
+                    <div class="input-group" style="max-width: 320px;">
+                        <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-control" id="search" placeholder="Search report title…" aria-label="Search reports">
+                    </div>
+                    <select class="form-select w-auto" id="typeFilter" aria-label="Report type">
+                        <option value="">All report types</option>
+                        @foreach (collect($reports)->pluck('type')->unique() as $type)
+                            <option>{{ $type }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom" id="pills"></div>
+                <div class="list-group list-group-flush rounded-bottom-4" id="reportList"></div>
             </div>
         </div>
-    </template>
+    </div>
 
-    {{-- Report drawer: preview + reply thread. id="applicantDrawer" so the print rules work. --}}
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="applicantDrawer" aria-labelledby="drawerTitle" style="--bs-offcanvas-width: 600px;">
+    {{-- A report --}}
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="reportDrawer" aria-labelledby="drawerTitle" style="--bs-offcanvas-width: 640px;">
         <div class="offcanvas-header bg-iaris text-white align-items-start gap-3 p-4">
             <div class="flex-grow-1">
-                <h2 class="offcanvas-title fs-5 fw-bold mb-2" id="drawerTitle"></h2>
-                <div class="small text-white-50 d-flex flex-wrap gap-2 align-items-center">
-                    <span id="drawerSender"></span><span>·</span><span id="drawerSent"></span>
-                    <span class="badge rounded-pill bg-white text-body" id="drawerType"></span>
-                </div>
+                <h2 class="offcanvas-title fs-5 fw-bold mb-1" id="drawerTitle"></h2>
+                <div class="small text-white-50" id="drawerMeta"></div>
             </div>
-            <button type="button" class="btn-close btn-close-white no-print" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-
-        <ul class="nav nav-underline px-4 border-bottom no-print" role="tablist">
-            <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabPreview" type="button" role="tab">Report Preview</button></li>
-            <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabThread" type="button" role="tab" id="threadTab">Reply Thread</button></li>
-        </ul>
-
-        <div class="offcanvas-body tab-content p-4">
-            <div class="tab-pane fade show active" id="tabPreview" role="tabpanel">
-                <div class="rounded-3 border bg-body-tertiary p-3 mb-3">
-                    <div class="fw-bold mb-3" id="previewTitle"></div>
-                    <div class="row g-3 small mb-3">
-                        <div class="col-6 col-sm-3"><div class="fw-bold text-uppercase text-body-secondary">Prepared by</div><div id="previewSender"></div></div>
-                        <div class="col-6 col-sm-3"><div class="fw-bold text-uppercase text-body-secondary">Date sent</div><div id="previewDate"></div></div>
-                        <div class="col-6 col-sm-3"><div class="fw-bold text-uppercase text-body-secondary">AY</div><div>{{ $academicYear }}</div></div>
-                        <div class="col-6 col-sm-3"><div class="fw-bold text-uppercase text-body-secondary">Type</div><div id="previewType"></div></div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle small mb-0 bg-white">
-                            <thead>
-                                <tr class="text-uppercase">
-                                    <th class="text-body-secondary">Applicant</th>
-                                    <th class="text-body-secondary">Scholarship (IATO)</th>
-                                    <th class="text-body-secondary">LAMP Status</th>
-                                    <th class="text-body-secondary">Note</th>
-                                </tr>
-                            </thead>
-                            <tbody id="previewRows"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2 no-print">
-                    <button type="button" class="btn btn-light border btn-sm" disabled title="Coming soon"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> Download PDF</button>
-                    <button type="button" class="btn btn-light border btn-sm" disabled title="Coming soon"><i class="bi bi-file-earmark-excel text-success me-1"></i> Download Excel</button>
-                    <button type="button" class="btn btn-light border btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
-                </div>
+        <div class="offcanvas-body p-4">
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Prepared by</div><div class="fw-semibold small">IATO · Renegado, Randolph</div></div>
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Date sent</div><div class="fw-semibold small" id="rDate"></div></div>
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">AY</div><div class="fw-semibold small">{{ $academicYear }}</div></div>
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Report type</div><div class="fw-semibold small" id="rType"></div></div>
             </div>
-
-            {{-- Messages: IATO on the left, LAMP on the right --}}
-            <div class="tab-pane fade" id="tabThread" role="tabpanel">
-                <div class="d-flex flex-column gap-3" id="thread"></div>
+            <p class="small text-body-secondary" id="rNote"></p>
+            <div class="table-responsive border rounded-3 mb-2">
+                <table class="table table-sm align-middle mb-0 small" id="rTable">
+                    <thead class="table-light"><tr><th>Applicant</th><th>Applied for a scholarship</th><th>Exam result</th><th>LAMP check</th></tr></thead>
+                    <tbody></tbody>
+                </table>
             </div>
-        </div>
-
-        {{-- Reply box --}}
-        <form class="border-top p-3 no-print" id="replyForm" novalidate>
-            <label for="replyText" class="visually-hidden">Reply to IATO Admin</label>
-            <textarea class="form-control mb-2" id="replyText" rows="3" placeholder="Type your reply to IATO Admin…" required></textarea>
-            <div class="d-flex justify-content-end gap-2">
-                <button type="reset" class="btn btn-light border">Clear</button>
-                <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-send me-1"></i> Send Reply</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div class="toast align-items-center border-0 text-bg-dark" id="lampToast" role="status" aria-live="polite">
-            <div class="d-flex">
-                <div class="toast-body" id="lampToastText"></div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <p class="small text-body-secondary" id="rMore"></p>
+            <div class="mb-4" id="rDownload"></div>
+            <div class="border rounded-3 p-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div><div class="fw-bold small">Question about this report?</div><div class="small text-body-secondary">Ask IATO in Messages. To check one applicant, open them in Scholars.</div></div>
+                <a class="btn btn-primary fw-semibold" id="rAsk" href="#"><i class="bi bi-chat-dots me-1"></i> Ask IATO</a>
             </div>
         </div>
     </div>
+
+    @include('toic.partials.kit')
 @endsection
 
 @section('scripts')
+    @include('lamp.partials.check-script')
     <script>
-        // Front end only: opening and replying change REPORTS in the browser until reload.
-        // TODO: save "read" and replies through a backend route, and notify IATO.
         const REPORTS = @json($reports);
-        const SCHOLARS = @json($scholars);
-        const TYPES = @json($reportTypes);
-        const STATUSES = @json($reportStatuses);
-        const LAMP_BADGES = @json($lampBadges);
+        const TREND = @json($trend);
+        const ACADEMIC_YEAR = @json($academicYear);
+        const KEY = 'iaris.lampReportsRead';
+        const $ = id => document.getElementById(id);
+        const esc = LAMP.esc;
+        const fm = n => Number(n).toLocaleString('en-US');
 
-        const state = { search: '', type: '', status: '', sort: 'newest' };
-        let openId = null;   // report shown in the drawer
-        const byId = id => REPORTS.find(r => r.id === id);
+        // ---------- Analytics: from the real scholarship applicants ----------
+        const COLORS = { Pass: 'success', Reconsidered: 'info', Waitlisted: 'warning', Fail: 'danger', 'Not yet taken': 'secondary' };
+        const bars = (rows, tone, max) => rows.length ? rows.map(([name, n, t]) => `<div class="d-flex align-items-center gap-3 small">
+                <span class="text-truncate" style="width: 130px;" title="${esc(name)}">${esc(name)}</span>
+                <div class="progress flex-grow-1" style="height: 12px;"><div class="progress-bar bg-${t || tone}" style="width: ${max ? n / max * 100 : 0}%"></div></div>
+                <span class="fw-semibold text-end" style="width: 44px;">${fm(n)}</span></div>`).join('')
+            : '<div class="small text-body-secondary">No scholarship applicants yet.</div>';
 
-        function setBadge(el, text, tone, icon) {
-            el.className = `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`;
-            el.textContent = text;
-            if (icon) {
-                const i = document.createElement('i');
-                i.className = `bi ${icon} me-1`;
-                el.prepend(i);
+        function analytics() {
+            const t = LAMP.totals(), people = LAMP.people;
+            const prev = TREND[2][1], now = TREND[3][1] || t.apps;
+            const change = prev ? (now - prev) / prev * 100 : null;
+            const passPct = t.apps ? t.passed / t.apps * 100 : 0;
+
+            $('kpis').innerHTML = [
+                [`Scholarship applicants · AY ${ACADEMIC_YEAR}`, fm(t.apps), change === null ? 'No earlier AY imported' : `${change >= 0 ? '+' : '−'}${Math.abs(change).toFixed(1)}% vs last AY`, 'success'],
+                ['Passed the exam', fm(t.passed), `${passPct.toFixed(1)}% of scholarship applicants`, 'info'],
+                ['Confirmed scholars', fm(t.yes), 'Checked by LAMP', 'primary'],
+                ['Waiting for LAMP', fm(t.wait), 'Passed, not yet checked', 'warning'],
+            ].map(([label, value, note, tone]) => `<div class="col"><div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
+                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}-emphasis">${value}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
+
+            // Insights, worked out from the same figures
+            const notYet = people.filter(x => x.result === 'Not yet taken').length;
+            const units = {};
+            people.filter(x => x.result === 'Not yet taken').forEach(x => units[x.unit] = (units[x.unit] || 0) + 1);
+            const topUnit = Object.entries(units).sort((a, b) => b[1] - a[1])[0];
+            const insights = [];
+            if (t.apps) {
+                insights.push(['bi-arrow-up-right-circle', 'success', change === null ? `${fm(t.apps)} scholarship applicants this AY` : `Scholarship applicants are ${change >= 0 ? 'up' : 'down'} ${Math.abs(change).toFixed(1)}% from last AY`,
+                    change === null ? 'Earlier school years are not in iARIS yet, so there is nothing to compare with.' : `${fm(now)} applicants answered Yes this AY against ${fm(prev)} last AY.`]);
+                insights.push(['bi-person-check', 'info', `${passPct.toFixed(0)} in 100 scholarship applicants passed`, `${fm(t.passed)} of ${fm(t.apps)} passed the entrance exam (Pass or Reconsidered). Only these reach the LAMP Office for checking.`]);
+                insights.push(['bi-hourglass-split', 'warning', t.wait ? `${fm(t.wait)} ${t.wait === 1 ? 'applicant is' : 'applicants are'} waiting for your check` : 'Everyone who passed has been checked', t.wait ? 'All of them passed. Checking them now gives IATO time to confirm before enrollment.' : 'IATO confirms every change you made.']);
+                insights.push(['bi-clock', 'primary', `${fm(notYet)} ${notYet === 1 ? 'has' : 'have'} not taken the exam yet`, notYet ? `They will reach you once their results are in.${topUnit ? ` Most are ${topUnit[0]} applicants.` : ''}` : 'Every scholarship applicant has taken the exam.']);
             }
+            $('insights').innerHTML = insights.length ? insights.map(([icon, tone, title, text]) => `<div class="col"><div class="d-flex gap-3"><i class="bi ${icon} text-${tone} fs-4"></i><div><div class="fw-bold">${title}</div><div class="small text-body-secondary">${text}</div></div></div></div>`).join('')
+                : '<div class="col-12 small text-body-secondary">Insights appear once IATO imports applicants who answered Yes to the scholarship question.</div>';
+
+            // Four years (earlier years show 0 until they are imported)
+            const max = Math.max(...TREND.map(y => y[1]), 1);
+            $('trend').innerHTML = '<div class="d-flex align-items-end gap-3" style="height: 170px;">' + TREND.map(([label, n], i) => `<div class="flex-fill text-center d-flex flex-column justify-content-end h-100">
+                    <div class="small fw-bold">${fm(n)}</div><div class="rounded-top ${i === 3 ? 'bg-success' : 'bg-success-subtle'}" style="height: ${n / max * 130}px; min-height: 2px;"></div></div>`).join('')
+                + '</div><div class="d-flex gap-3 small text-body-secondary mt-1">' + TREND.map(y => `<span class="flex-fill text-center">${y[0]}</span>`).join('') + '</div>'
+                + (TREND.slice(0, 3).every(y => !y[1]) ? '<p class="small text-body-secondary mt-3 mb-0">Earlier school years show 0 until their applicants are imported.</p>' : '');
+
+            const byResult = ['Pass', 'Reconsidered', 'Waitlisted', 'Fail', 'Not yet taken'].map(r => [r, people.filter(x => x.result === r).length, COLORS[r]]);
+            $('results').innerHTML = bars(byResult, 'success', Math.max(t.apps, 1));
+            const byUnit = Object.entries(people.reduce((o, x) => (o[x.unit] = (o[x.unit] || 0) + 1, o), {})).sort((a, b) => b[1] - a[1]);
+            $('units').innerHTML = bars(byUnit, 'success', Math.max(...byUnit.map(u => u[1]), 1));
+            $('checks').innerHTML = bars([['Confirmed scholar', t.yes], ['Waiting for LAMP', t.wait], ['Not a scholar', t.no]], 'primary', Math.max(t.passed, 1));
+            $('checksNote').innerHTML = t.wait ? `Open <a href="{{ url('/lamp/scholars') }}">Scholars</a> to check the ${fm(t.wait)} who ${t.wait === 1 ? 'is' : 'are'} waiting. IATO confirms every change.` : 'Everyone who passed has been checked. IATO confirms every change.';
         }
 
-        function toast(text) {
-            document.getElementById('lampToastText').textContent = text;
-            bootstrap.Toast.getOrCreateInstance(document.getElementById('lampToast')).show();
+        // ---------- Reports IATO sent ----------
+        let read = @json($readReports), filter = 'all', current = null;
+        try { read = JSON.parse(localStorage.getItem(KEY)) || read; } catch (e) {}
+        const saveRead = () => { try { localStorage.setItem(KEY, JSON.stringify(read)); } catch (e) {} };
+        const unread = () => REPORTS.filter(r => !read.includes(r.id)).length;
+        function sidebarBadge() {
+            document.querySelectorAll('[data-lamp-reports-badge]').forEach(e => { e.textContent = unread(); e.classList.toggle('d-none', !unread()); });
         }
 
-        // ---- The list ----
-        function render() {
-            const count = status => REPORTS.filter(r => r.status === status).length;
-            document.querySelectorAll('[data-stat]').forEach(el =>
-                el.textContent = el.dataset.stat === 'total' ? REPORTS.length : count(el.dataset.stat));
-            // Keep the sidebar's red number in step
-            const navBadge = document.getElementById('navReportsBadge');
-            if (navBadge) {
-                navBadge.textContent = count('Unread');
-                navBadge.classList.toggle('d-none', count('Unread') === 0);
-            }
+        function drawReports() {
+            const n = unread();
+            $('reportStats').innerHTML = [['Reports', REPORTS.length, 'Sent by IATO this AY', 'success'], ['New', n, 'Not opened yet', 'danger'], ['Read', REPORTS.length - n, 'Already opened', 'primary']]
+                .map(([label, value, note, tone]) => `<div class="col"><div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
+                <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}-emphasis">${value}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
+            $('pills').innerHTML = '<span class="small fw-bold text-body-secondary me-1">Show:</span>' + [['all', 'All'], ['new', 'New'], ['read', 'Read']].map(([k, label]) =>
+                `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${filter === k ? 'btn-primary' : 'btn-outline-secondary'}" data-k="${k}">${label}</button>`).join('');
+            $('pills').querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.k; drawReports(); }));
 
-            const matches = REPORTS.filter(r =>
-                (!state.type || r.type === state.type) &&
-                (!state.status || r.status === state.status) &&
-                r.title.toLowerCase().includes(state.search)
-            ).sort({
-                newest: (a, b) => b.sent.localeCompare(a.sent),
-                oldest: (a, b) => a.sent.localeCompare(b.sent),
-                unread: (a, b) => (b.status === 'Unread') - (a.status === 'Unread') || b.sent.localeCompare(a.sent),
-            }[state.sort]);
-
-            const template = document.getElementById('reportTemplate').content.firstElementChild;
-            document.getElementById('reportList').replaceChildren(...matches.map(r => {
-                const item = template.cloneNode(true);
-                const cell = name => item.querySelector(`[data-cell="${name}"]`);
-                const [tone, icon] = TYPES[r.type];
-                const unread = r.status === 'Unread';
-                item.dataset.id = r.id;
-                if (unread) item.classList.add('bg-warning-subtle');
-                cell('dot').classList.add(unread ? 'bg-danger' : 'bg-transparent');
-                cell('icon').classList.add(`bg-${tone}-subtle`, `text-${tone}-emphasis`);
-                cell('icon').firstElementChild.classList.add(icon);
-                cell('title').textContent = r.title;
-                cell('sender').textContent = r.sender;
-                cell('sent').textContent = r.sent_label;
-                setBadge(cell('type'), r.type, tone);
-                setBadge(cell('status'), unread ? 'New' : r.status, STATUSES[r.status]);
-                // "Reply" only when IATO is waiting for an answer
-                cell('reply').innerHTML = r.status === 'Replied' ? '<i class="bi bi-chat-left-text me-1"></i> View Thread'
-                    : r.needs_reply ? '<i class="bi bi-reply me-1"></i> Reply'
-                    : '<i class="bi bi-eye me-1"></i> View';
-                cell('reply').dataset.reply = r.id;
-                return item;
-            }));
-            document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
-            document.getElementById('showingText').textContent = `Showing ${matches.length} of ${REPORTS.length} reports`;
+            const q = $('search').value.trim().toLowerCase(), type = $('typeFilter').value;
+            const list = REPORTS.filter(r => (filter === 'all' || (filter === 'new') !== read.includes(r.id)) && (!type || r.type === type) && (!q || r.title.toLowerCase().includes(q)));
+            $('reportList').innerHTML = list.length ? list.map(r => {
+                const isNew = !read.includes(r.id);
+                return `<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3" data-id="${r.id}">
+                    <i class="bi bi-file-earmark-text fs-4 text-success"></i>
+                    <div class="flex-grow-1 text-start"><div class="${isNew ? 'fw-bold' : 'fw-semibold'}">${esc(r.title)}</div>
+                        <div class="small text-body-secondary">Sent by <b>Renegado, Randolph</b> (IATO) · ${esc(r.date)} · <span class="badge rounded-pill bg-${r.tone}-subtle text-${r.tone}-emphasis">${esc(r.type)}</span></div></div>
+                    ${isNew ? '<span class="badge rounded-pill text-bg-danger">New</span>' : ''}
+                    <span class="btn btn-sm btn-light border fw-semibold"><i class="bi bi-eye me-1"></i> Open</span></button>`;
+            }).join('') : '<div class="text-center text-body-secondary small py-5">No reports match.</div>';
+            $('reportList').querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => openReport(b.dataset.id)));
+            sidebarBadge();
         }
 
-        const setFilter = (key, value) => { state[key] = value; render(); };
-        document.getElementById('search').addEventListener('input', e => setFilter('search', e.target.value.trim().toLowerCase()));
-        document.getElementById('typeFilter').addEventListener('change', e => setFilter('type', e.target.value));
-        document.getElementById('sort').addEventListener('change', e => setFilter('sort', e.target.value));
-        document.querySelectorAll('#statusPills button').forEach(pill => pill.addEventListener('click', () => {
-            document.querySelectorAll('#statusPills button').forEach(p => {
-                p.classList.toggle('btn-primary', p === pill);
-                p.classList.toggle('btn-outline-secondary', p !== pill);
-            });
-            setFilter('status', pill.dataset.status);
-        }));
-
-        // Click a report to open it; its Reply button opens it on the thread
-        const list = document.getElementById('reportList');
-        list.addEventListener('click', e => {
-            const reply = e.target.closest('[data-reply]');
-            const item = e.target.closest('[data-id]');
-            if (item && !e.target.closest('button:disabled')) openReport(item.dataset.id, !!reply);
-        });
-        list.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && e.target.matches('[data-id]')) openReport(e.target.dataset.id);
-        });
-
-        // ---- Drawer ----
-        const drawerEl = document.getElementById('applicantDrawer');
-        const drawer = bootstrap.Offcanvas.getOrCreateInstance(drawerEl);
-
-        function openReport(id, showThread = false) {
-            const r = byId(id);
-            openId = id;
-            // Opening an unread report marks it: "Awaiting Reply" if IATO wants an answer, else "Read"
-            if (r.status === 'Unread') r.status = r.needs_reply ? 'Awaiting Reply' : 'Read';
-
-            document.getElementById('drawerTitle').textContent = r.title;
-            document.getElementById('drawerSender').textContent = `${r.sender} (IATO Admin)`;
-            document.getElementById('drawerSent').textContent = r.sent_label;
-            document.getElementById('drawerType').textContent = r.type;
-            document.getElementById('previewTitle').textContent = r.title;
-            document.getElementById('previewSender').textContent = r.sender;
-            document.getElementById('previewDate').textContent = r.sent_label.split(' · ')[0];
-            document.getElementById('previewType').textContent = r.type;
-            renderPreview(r);
-            renderThread(r);
-            document.getElementById('replyForm').reset();
-            document.getElementById('replyForm').classList.remove('was-validated');
-
-            bootstrap.Tab.getOrCreateInstance(drawerEl.querySelector(showThread ? '#threadTab' : '[data-bs-target="#tabPreview"]')).show();
-            drawer.show();
-            render();
+        const SHOWN = 10;
+        const rows = () => LAMP.people.map(x => [x.name, 'Yes', x.result, LAMP.LB[x.lamp][0]]);
+        function openReport(id) {
+            const r = REPORTS.find(x => x.id === id);
+            current = r;
+            if (!read.includes(id)) { read.push(id); saveRead(); }
+            $('drawerTitle').textContent = r.title;
+            $('drawerMeta').textContent = `Sent by Renegado, Randolph (IATO) · ${r.date}`;
+            $('rDate').textContent = r.date.split(' · ')[0];
+            $('rType').textContent = r.type;
+            $('rNote').textContent = r.note;
+            $('rTable').querySelector('tbody').innerHTML = rows().slice(0, SHOWN).map(c => `<tr>${c.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')
+                || '<tr><td colspan="4" class="text-center text-body-secondary py-3">No scholarship applicants yet.</td></tr>';
+            $('rMore').textContent = LAMP.people.length > SHOWN ? `Showing ${SHOWN} of ${fm(LAMP.people.length)} applicants. Download the report for all of them.` : '';
+            $('rDownload').replaceChildren(downloadMenu(() => ({ title: r.title, sub: `Sent by Renegado, Randolph (IATO) · ${r.date}`, head: ['Applicant', 'Applied for a scholarship', 'Exam result', 'LAMP check'], rows: rows() }), false));
+            $('rAsk').href = `{{ url('/lamp/messages') }}?new=1&subject=${encodeURIComponent('About: ' + r.title)}`;
+            bootstrap.Offcanvas.getOrCreateInstance($('reportDrawer')).show();
+            drawReports();
         }
 
-        // The scholars in the report: everyone, or only those that don't match ("issues")
-        function renderPreview(r) {
-            const rows = SCHOLARS.filter(s => r.preview === 'all' || s.lamp_status === 'Discrepancy' || s.lamp_status === 'Not Found');
-            document.getElementById('previewRows').replaceChildren(...rows.map(s => {
-                const tr = document.createElement('tr');
-                const note = s.lamp_status === 'Discrepancy' ? `LAMP shows ${s.lamp_record}`
-                    : s.lamp_status === 'Not Found' ? 'Not in LAMP records' : '—';
-                [s.name, s.type, '', note].forEach((text, i) => {
-                    const td = document.createElement('td');
-                    if (i === 2) {
-                        const badge = document.createElement('span');
-                        setBadge(badge, s.lamp_status, ...LAMP_BADGES[s.lamp_status]);
-                        td.appendChild(badge);
-                    } else {
-                        td.textContent = text;
-                    }
-                    tr.appendChild(td);
-                });
-                return tr;
-            }));
-        }
+        $('search').addEventListener('input', drawReports);
+        $('typeFilter').addEventListener('change', drawReports);
+        LAMP.onChange(analytics);
+        analytics();
+        drawReports();
 
-        function renderThread(r) {
-            document.getElementById('thread').replaceChildren(...r.thread.map(m => {
-                const mine = m.from === 'lamp';
-                const bubble = document.createElement('div');
-                bubble.className = `rounded-3 border p-3 ${mine ? 'align-self-end text-end bg-info-subtle border-info-subtle' : 'align-self-start bg-primary-subtle border-primary-subtle'}`;
-                bubble.style.maxWidth = '90%';
-                bubble.innerHTML = '<div class="small fw-bold mb-1"></div><div class="small"></div><div class="small text-body-secondary mt-1"></div>';
-                bubble.children[0].textContent = `${m.name} · ${mine ? 'LAMP Office' : 'IATO Admin'}`;
-                bubble.children[1].textContent = m.text;
-                bubble.children[2].textContent = m.at;
-                return bubble;
-            }));
-        }
-
-        // Sending a reply adds it to the thread and marks the report "Replied"
-        document.getElementById('replyForm').addEventListener('submit', e => {
-            e.preventDefault();
-            const form = e.target;
-            form.classList.add('was-validated');
-            if (!form.checkValidity()) return;
-            const r = byId(openId);
-            const now = new Date();
-            r.thread.push({
-                from: 'lamp',
-                name: @json(auth()->user()->name),
-                text: document.getElementById('replyText').value.trim(),
-                at: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' +
-                    now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-            });
-            r.status = 'Replied';
-            renderThread(r);
-            form.reset();
-            form.classList.remove('was-validated');
-            bootstrap.Tab.getOrCreateInstance(document.getElementById('threadTab')).show();
-            render();
-            toast('Reply added to the thread (sample only — IATO isn\'t notified yet).');
-        });
-
-        render();
+        // Tabs follow the address: #analytics, #reports
+        document.querySelectorAll('#tabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => history.replaceState(null, '', '#' + b.dataset.hash)));
+        if (location.hash === '#reports') bootstrap.Tab.getOrCreateInstance(document.querySelector('[data-hash="reports"]')).show();
     </script>
 @endsection
