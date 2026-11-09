@@ -27,8 +27,9 @@ class ImportController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'file' => 'required|mimes:xlsx,csv',
+            'school_year' => 'required|regex:/^\d{4}-\d{4}$/',
         ]);
 
         $batch = ImportBatch::create([
@@ -37,7 +38,7 @@ class ImportController extends Controller
             'status' => 'processing',
         ]);
 
-        Excel::import(new ApplicantsImport($batch), $request->file('file'));
+        Excel::import(new ApplicantsImport($batch, $validated['school_year']), $request->file('file'));
 
         $batch->update(['status' => 'completed']);
 

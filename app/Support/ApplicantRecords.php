@@ -37,7 +37,7 @@ class ApplicantRecords
     ];
 
     // sub_level in the table => the Integrated School sub-level the pages use
-    const IS_SUB_LEVELS = ['kindergarten' => 'Preschool', 'jhs' => 'Junior High', 'shs' => 'Senior High'];
+    const IS_SUB_LEVELS = ['kindergarten' => 'Preschool', 'grade_school' => 'Grade School', 'jhs' => 'Junior High', 'shs' => 'Senior High'];
 
     /** The newest school year in the table, e.g. "2025–2026" (or the given default if nothing is imported yet). */
     public static function academicYear(string $default = '2025–2026'): string
@@ -53,7 +53,8 @@ class ApplicantRecords
      */
     public static function forLevel(string $level): array
     {
-        $paid = self::paidReservations();
+        $paid = self::paidFees('reservation_fee');
+        $paidExam = self::paidFees('application_fee');
         $schoolYear = Applicant::max('school_year');
 
         return Applicant::where('level', $level)
@@ -61,15 +62,15 @@ class ApplicantRecords
             ->when($schoolYear, fn ($q) => $q->where('school_year', $schoolYear))
             ->latest()
             ->get()
-            ->map(fn (Applicant $a) => self::shape($a, $paid[$a->id] ?? null))
+            ->map(fn (Applicant $a) => self::shape($a, $paid[$a->id] ?? null, isset($paidExam[$a->id])))
             ->all();
     }
 
-    /** Applicant id => [amount, paid_at] for paid reservation fees (empty until payments are recorded). */
-    public static function paidReservations(): array
+    /** Applicant id => [amount, paid_at] for a paid fee ('reservation_fee' or 'application_fee'/exam fee). */
+    public static function paidFees(string $feeType): array
     {
         return DB::table('payments')
-            ->where('fee_type', 'reservation_fee')
+            ->where('fee_type', $feeType)
             ->where('status', 'paid')
             ->get(['applicant_id', 'amount', 'paid_at'])
             ->keyBy('applicant_id')
@@ -77,7 +78,7 @@ class ApplicantRecords
             ->all();
     }
 
-    private static function shape(Applicant $a, ?array $payment): array
+    private static function shape(Applicant $a, ?array $payment, bool $examPaid = false): array
     {
         $program = $a->program_or_track ?: '—';
         $row = [
@@ -88,7 +89,8 @@ class ApplicantRecords
             'program' => $program,
             'status' => self::status($a, $payment !== null),
             'test' => self::testLabel($a->admission_test_status),
-            'scholar' => $a->applicant_type === 'scholar',
+            'scholar' => $a->applying_for_scholarship,
+            'exam_paid' => $examPaid,
             'feeder_school' => $a->feeder_school,
             'applied' => $a->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'),
             'updated' => ($a->updated_at ?? $a->created_at ?? now())->format('Y-m-d H:i'),
@@ -159,7 +161,8 @@ class ApplicantRecords
     {
         return [
             'not_taken' => 'Not taken yet', 'took_test' => 'Taken, waiting for result', 'passed' => 'Passed',
-            'failed' => 'Not qualified', 'qualified_other_degree' => 'Qualified for another program', 'reconsidered' => 'Reconsidered',
+            'failed' => 'Not qualified', 'qualified_other_degree' => 'Qualified for another program',
+            'reconsidered' => 'Reconsidered', 'waitlisted' => 'Waitlisted',
         ][$status] ?? '—';
     }
 

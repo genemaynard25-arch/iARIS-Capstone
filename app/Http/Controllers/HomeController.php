@@ -157,7 +157,7 @@ class HomeController extends Controller
     {
         $tones = ['Pending' => 'danger', 'For Exam' => 'warning', 'Passed' => 'primary', 'Not Qualified' => 'secondary', 'Paid' => 'info'];
 
-        $paid = ApplicantRecords::paidReservations();
+        $paid = ApplicantRecords::paidFees('reservation_fee');
 
         return Applicant::whereNull('archived_at')->latest()->take(5)->get()
             ->map(function (Applicant $a) use ($tones, $paid) {

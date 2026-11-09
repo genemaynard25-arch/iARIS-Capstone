@@ -192,6 +192,7 @@ class ApplicantController extends Controller
     {
         return match ($group) {
             'Preschool' => 'kindergarten',
+            'Grade School' => 'grade_school',
             'Junior High' => 'jhs',
             'Senior High' => 'shs',
             default => null,
@@ -228,6 +229,7 @@ class ApplicantController extends Controller
             'dept_label' => $deptLabel,
             'program' => $program,
             'scholarship' => ! empty($a['scholar']) ? 'Scholar' : '',
+            'exam_paid' => ! empty($a['exam_paid']),
             'status' => $a['status'],
             'applied' => $a['applied'],
             'dob' => $a['dob'],

@@ -71,9 +71,13 @@ class ScholarController extends Controller
         return $parts ? $last . ', ' . implode(' ', $parts) : $last;
     }
 
-    // Real scholars (applicant_type = 'scholar') from imported data. 'lamp'/'lamp_record' stay
-    // "Pending Check" / "Not in LAMP records" for every row: iARIS has no second dataset
-    // representing LAMP's own records to actually cross-check against yet.
+    // Real scholars: applicants who checked "Yes" to Applying for Scholarship on the
+    // portal file. Admissions only knows this Yes/No plus pass/fail — the specific
+    // scholarship type (Academic, Sports, etc.) is LAMP's own call to make once they
+    // process the secondary application stage, so scholarship_type isn't set from
+    // import and 'lamp'/'lamp_record' stay "Pending Check" / "Not in LAMP records"
+    // for every row: iARIS has no second dataset representing LAMP's own records to
+    // actually cross-check against yet.
     public static function sample(): Collection
     {
         $date = fn ($value, $format) => $value ? Carbon::parse($value)->format($format) : null;
@@ -85,11 +89,11 @@ class ScholarController extends Controller
             'completed' => 'Enrolled',
         ];
 
-        return \App\Models\Applicant::where('applicant_type', 'scholar')
+        return \App\Models\Applicant::where('applying_for_scholarship', true)
             ->get()
             ->map(function (\App\Models\Applicant $a) use ($date, $statusLabels) {
                 $unit = match ($a->level) {
-                    'is' => 'Integrated School · ' . ucfirst($a->sub_level ?? ''),
+                    'is' => 'Integrated School · ' . (\App\Support\ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? ucfirst($a->sub_level ?? '')),
                     'college' => $a->college ?? $a->program_or_track,
                     'graduate_school' => 'Graduate Programs',
                     'eteeap' => 'ETEEAP',
