@@ -20,6 +20,7 @@
 @endphp
 
 @section('title', 'iARIS — Briefing')
+@section('page-breadcrumb', 'Briefing')
 @section('page-title', "{$greeting}, {$greetName}")
 @section('page-subtitle', ($isChair ? "{$label} · " : '') . $college['subtitle'] . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
 

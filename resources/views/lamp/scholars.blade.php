@@ -17,6 +17,7 @@
 @endphp
 
 @section('title', 'iARIS — LAMP Office · Scholars')
+@section('page-breadcrumb', 'Scholars')
 @section('page-title', 'Scholarship applicants')
 @section('page-subtitle', 'Applicants who answered Yes to the scholarship question, with their entrance exam result. Check each one who passed.')
 

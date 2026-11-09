@@ -13,6 +13,7 @@
 @endphp
 
 @section('title', 'iARIS — Registrar Dashboard')
+@section('page-breadcrumb', 'Dashboard')
 @section('page-title', $greeting . ', ' . \Illuminate\Support\Str::after($me['name'], ', '))
 @section('page-subtitle', 'Admissions for ' . (count($units) > 1 ? implode(', ', array_slice($units, 0, -1)) . ', and ' . last($units) : $units[0]) . " · AY {$academicYear}")
 

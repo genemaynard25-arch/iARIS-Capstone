@@ -4,10 +4,18 @@
             <i class="bi bi-list fs-5"></i>
         </button>
         <div>
+            @php
+                // Offices say where they are: "Dean · CITE", "Director · iPACE"
+                $crumbUser = auth()->user();
+                $crumbRoot = $crumbUser->isToic() ? 'TOIC' : ($crumbUser->role === 'iato_staff' ? 'Staff' : $crumbUser->roleInfo()[0]);
+                if ($crumbUser->isDeanOrChair() || $crumbUser->isPrincipal() || $crumbUser->isDirector()) {
+                    $crumbRoot .= ' · ' . $crumbUser->roleInfo()[1];
+                }
+            @endphp
             @hasSection('page-breadcrumb')
-                <div class="ac-breadcrumb">@yield('page-breadcrumb-root', 'System') <i class="bi bi-chevron-right" aria-hidden="true"></i> <span>@yield('page-breadcrumb')</span></div>
+                <div class="ac-breadcrumb">@yield('page-breadcrumb-root', in_array($crumbUser->role, ['admin', 'iato_staff']) ? 'System' : $crumbRoot) <i class="bi bi-chevron-right" aria-hidden="true"></i> <span>@yield('page-breadcrumb')</span></div>
             @else
-                <div class="ac-breadcrumb">{{ auth()->user()->isToic() ? 'TOIC' : (auth()->user()->role === 'iato_staff' ? 'Staff' : auth()->user()->roleInfo()[0]) }} <i class="bi bi-chevron-right" aria-hidden="true"></i> <span>@yield('page-title', 'Dashboard')</span></div>
+                <div class="ac-breadcrumb">{{ $crumbRoot }} <i class="bi bi-chevron-right" aria-hidden="true"></i> <span>@yield('page-title', 'Dashboard')</span></div>
             @endif
             <h1 class="fs-5 fw-bold mb-0">@yield('page-title', 'Dashboard')</h1>
             <p class="small text-body-secondary mb-0">@yield('page-subtitle')</p>

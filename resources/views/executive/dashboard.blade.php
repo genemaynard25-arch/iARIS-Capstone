@@ -22,6 +22,7 @@
 @endphp
 
 @section('title', 'iARIS — Briefing')
+@section('page-breadcrumb', 'Briefing')
 @section('page-title', "{$greeting}, {$honorific}{$firstName}")
 @section('page-subtitle', "{$role} · Admissions briefing for AY {$academicYear}")
 

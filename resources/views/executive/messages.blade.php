@@ -11,6 +11,7 @@
 --}}
 
 @section('title', 'iARIS — Messages')
+@section('page-breadcrumb', 'Messages')
 @section('page-title', 'Messages with IATO')
 @section('page-subtitle', "Every conversation with IATO in one place: your questions, IATO's replies.")
 
