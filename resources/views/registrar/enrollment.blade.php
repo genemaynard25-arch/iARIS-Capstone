@@ -13,7 +13,7 @@
         <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>College of Law and iPACE use preview records until their applicant imports are connected.</p>
     @endif
     {{-- Two cards for the IS Registrar (one unit), four for the College Registrar --}}
-    <div class="admin-stat-grid row row-cols-2 row-cols-xl-{{ count($units) > 1 ? 4 : 2 }} g-3 mb-4" id="statCards"></div>
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom no-print">
