@@ -515,14 +515,14 @@
         // Each action: the pop-up's wording, its colour, and what it does to one user.
         const ACTIONS = {
             reset: {
-                title: 'Force Password Reset', subtitle: "Send a password reset link to the user's email",
-                note: "A reset link will be sent to each user's DLSL email. The user must set a new password before logging in again.",
-                tone: 'warning', icon: 'bi-key', button: 'Send Reset Link',
+                title: 'Force Password Reset', subtitle: "Generate a new temporary password",
+                note: "A new temporary password is generated and shown here once. Share it with the user directly — it is not emailed.",
+                tone: 'warning', icon: 'bi-key', button: 'Reset Password',
                 done: n => `Sample only: no reset link was sent to ${n}.`,
             },
             resend: {
-                title: 'Resend Invitation', subtitle: 'Send the account set-up email again',
-                note: 'The user gets a new invitation link. They must set up MFA before their first login.',
+                title: 'Resend Invitation', subtitle: 'Generate a new one-time password',
+                note: 'A new one-time password is generated and shown here once, since the first one was never set up. Share it with the user directly — it is not emailed.',
                 tone: 'primary', icon: 'bi-send', button: 'Resend Invitation',
                 done: n => `Sample only: no invitation was sent to ${n}.`,
             },
@@ -615,7 +615,7 @@
         const names = users.length === 1 ? fullName(users[0]) : `${users.length} users`;
 
 
-                if (pending.key === 'reset') {
+                if (pending.key === 'reset' || pending.key === 'resend') {
             try {
                 const results = await Promise.all(pending.ids.map(id =>
                     fetch(`/accounts/${id}/reset-password`, {
@@ -628,14 +628,14 @@
                     ? `New temporary password for ${names}: ${results[0].tempPassword} — share this with them directly.`
                     : `Passwords reset for ${results.length} users.`);
             } catch (err) {
-                toast('Something went wrong resetting the password. Please try again.');
+                toast('Something went wrong. Please try again.');
             }
             return;
         }
 
-   
+
         if (!action.status && !action.remove) {
-            // reset / resend: no real backend yet
+            // Any other sample-only action with no backend yet
             confirmModal.hide();
             toast(action.done(names));
             return;
