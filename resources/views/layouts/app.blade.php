@@ -4,6 +4,7 @@
 
 <head>
     @include('partials.head')
+    <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">
     @stack('styles')
     <link href="{{ asset('css/sidebar.css') }}" rel="stylesheet">
     @if (auth()->user()->role === 'iato_staff')
@@ -12,8 +13,12 @@
     <title>@yield('title', 'iARIS')</title>
 </head>
 
-<body class="@yield('body-class') {{ auth()->user()->role === 'iato_staff' ? 'staff-workspace' : '' }}">
-    @yield('app-banner')
+<body class="iaris-workspace @yield('body-class') {{ auth()->user()->role === 'iato_staff' ? 'staff-workspace' : '' }} {{ auth()->user()->isToic() ? 'toic-workspace' : '' }}">
+    @hasSection('app-banner')
+        @yield('app-banner')
+    @else
+        @include('partials.institution-bar')
+    @endif
     <div class="app-shell d-flex min-vh-100">
         {{-- Each kind of user gets their own sidebar. The /lamp, /shs, /executive and /college pages use theirs too,
              so admins can preview them. (isLamp / isShsPrincipal are in app/Models/User.php)

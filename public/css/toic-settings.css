@@ -1,0 +1,21 @@
+.toic-settings-page { color: #1a2b26; }
+.toic-settings-card { border: 0; border-radius: 12px; box-shadow: 0 4px 16px -4px rgba(0,0,0,.09),0 0 2px rgba(0,0,0,.04); overflow: hidden; }
+.toic-settings-card .card-header { background: #fff; border-color: #e2ecea; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.toic-settings-card h2 { font-size: 15px; font-weight: 800; margin: 0; }
+.toic-settings-card .card-header > span { font-size: 12px; color: rgba(26,43,38,.52); overflow-wrap: anywhere; }
+.toic-settings-card .card-body { padding: 4px 20px; }
+.toic-account-row { display: flex; gap: 12px; align-items: flex-start; padding: 16px 0; }
+.toic-account-row + .toic-account-row, .toic-alert-row + .toic-alert-row { border-top: 1px solid #eef2f1; }
+.toic-account-row > i { font-size: 18px; color: #00674f; padding-top: 2px; }
+.toic-account-row strong, .toic-alert-row strong { display: block; font-size: 13px; font-weight: 700; }
+.toic-account-row span, .toic-alert-row span { display: block; font-size: 12px; line-height: 1.6; color: rgba(26,43,38,.52); margin-top: 3px; overflow-wrap: anywhere; }
+.toic-account-row > div { min-width: 0; }
+.toic-alert-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0; }
+.toic-alert-row label { cursor: pointer; }
+.toic-alert-row .form-switch { padding-left: 38px; flex-shrink: 0; }
+.toic-alert-row .form-check-input { width: 36px; height: 20px; margin-top: 0; cursor: pointer; }
+.toic-preview-note { color: #8a4c00; font-size: 11.5px; line-height: 1.6; padding: 0 0 14px; }
+.toic-settings-page .btn { font-size: 13px; font-weight: 700; border-radius: 9px; padding: 10px 16px; }
+.toic-settings-page .toic-security-toggle { padding: 0; text-decoration: none; font-size: 12px; }
+.toic-settings-page #toicAccountSecurity .card { border: 0; border-radius: 12px !important; box-shadow: 0 4px 16px -4px rgba(0,0,0,.09); }
+@media (max-width: 575.98px) { .toic-settings-card .card-header { padding: 14px 16px; } .toic-settings-card .card-body { padding-left: 16px; padding-right: 16px; } .iaris-workspace .app-topbar { flex-wrap: wrap; } }

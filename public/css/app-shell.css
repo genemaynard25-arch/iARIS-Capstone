@@ -25,7 +25,7 @@
 .iaris-workspace .app-topbar .badge { font-size: 13px; border: 1px solid #c5e4d8; }
 .ac-breadcrumb { font-size: 12.5px; color: var(--workspace-muted); margin-bottom: 4px; }
 .ac-breadcrumb i { font-size: 9px; margin: 0 5px; }
-.ac-breadcrumb span { color: var(--ac-green); font-weight: 600; }
+.ac-breadcrumb span { color: var(--ac-green, #00674f); font-weight: 600; }
 
 @media (max-width: 991.98px) {
     .iaris-workspace .app-main { padding: 20px !important; }
@@ -36,3 +36,5 @@
     .iaris-workspace .app-main { padding: 16px !important; }
     .ac-institution-bar { padding: 8px 16px; font-size: 10px; }
 }
+
+.toic-workspace .app-topbar [data-avatar] { width: 38px; height: 38px; background: #a8d5c5 !important; color: #00503d !important; border: 2px solid rgba(168,213,197,.5); }

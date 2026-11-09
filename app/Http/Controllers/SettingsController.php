@@ -87,7 +87,7 @@ class SettingsController extends Controller
         $currentYear = \App\Support\ApplicantRecords::academicYear();
         $startYear = (int) substr($currentYear, 0, 4);
 
-        return view('settings.index', [
+        return view($user->isToic() ? 'toic.settings' : 'settings.index', [
             'sections' => $sections,
             'academicYears' => [$currentYear, ($startYear + 1) . '–' . ($startYear + 2)],
             'profile' => [

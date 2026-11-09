@@ -2,11 +2,10 @@
 
 @section('title', 'iARIS — Analytics & Reports')
 @section('page-title', 'Analytics & Reports')
-@section('body-class', 'iaris-workspace analytics-page')
+@section('body-class', 'analytics-page')
 @section('page-breadcrumb-root', 'Main')
 @section('page-breadcrumb', 'Analytics & Reports')
 @push('styles')
-    <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">
     <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
 @endpush
 @section('sidebar-brand')

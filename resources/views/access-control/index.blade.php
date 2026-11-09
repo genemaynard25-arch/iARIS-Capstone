@@ -2,10 +2,9 @@
 
 @section('title', 'iARIS — Access Control')
 @section('page-title', 'Access Control')
-@section('body-class', 'iaris-workspace access-control-page')
+@section('body-class', 'access-control-page')
 @section('page-breadcrumb', 'Access & Security')
 @push('styles')
-    <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">
     <link href="{{ asset('css/access-control.css') }}" rel="stylesheet">
 @endpush
 @section('sidebar-brand')
