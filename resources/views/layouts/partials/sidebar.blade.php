@@ -38,6 +38,7 @@
         'SYSTEM' => [
             ['group' => 'Data Management', 'icon' => 'bi-database', 'items' => [
                 $link('Import Data', 'bi-cloud-arrow-up', '/import', 'import*', $user->canAccess('import')),
+                $link('Import Admission Stats', 'bi-file-earmark-spreadsheet', '/import/admission-stats', 'import/admission-stats*', $user->canAccess('import')),
                 $link('Review Queue', 'bi-list-check', '/review-queue', 'review-queue*', $user->isAdmin(), $user->isAdmin() ? \App\Http\Controllers\ReviewQueueController::waitingCount() : 0),
                 $link('Audit Logs', 'bi-clipboard-data', '/audit-logs', 'audit-logs*', $user->canAccess('audit')),
             ]],
@@ -53,6 +54,7 @@
         unset($sections['SYSTEM']);
         $sections['MY WORK'] = [
             $link('Import Data', 'bi-cloud-arrow-up', '/import', 'import*', $user->canAccess('import')),
+            $link('Import Admission Stats', 'bi-file-earmark-spreadsheet', '/import/admission-stats', 'import/admission-stats*', $user->canAccess('import')),
             // The number: submissions the Super Admin sent back to you
             $link('My Submissions', 'bi-send', '/submissions', 'submissions*', true, \App\Http\Controllers\SubmissionsController::counts()['sent']),
             $link('Audit Logs', 'bi-clipboard-data', '/audit-logs', 'audit-logs*', $user->canAccess('audit')),
