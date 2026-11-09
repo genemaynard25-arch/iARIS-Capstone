@@ -106,6 +106,9 @@ class AccountController extends Controller
             "department" => $validated["department"],
             "status" => "Pending",
             "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
+            "assigned_level" => $validated["role"] === "registrar"
+                ? ($validated["department"] === "IS Registrar" ? "is" : "college")
+                : null,
         ]);
 
         \App\Models\AuditLog::record(
@@ -140,7 +143,7 @@ class AccountController extends Controller
             "assigned_college" => ["nullable", Rule::in($this->colleges)],
         ]);
 
-        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college']);
+        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college', 'assigned_level']);
 
         $user->update([
             "name" => trim($validated["first"] . " " . $validated["last"]),
@@ -148,6 +151,9 @@ class AccountController extends Controller
             "department" => $validated["department"],
             "status" => $validated["status"],
             "assigned_college" => in_array($validated["role"], ["dean", "program_chair"]) ? ($validated["assigned_college"] ?? null) : null,
+            "assigned_level" => $validated["role"] === "registrar"
+                ? ($validated["department"] === "IS Registrar" ? "is" : "college")
+                : $user->assigned_level,
         ]);
 
         $diff = collect($before)
