@@ -87,125 +87,7 @@
     </div>
 
 
-    {{-- Both permission views share the database-backed controls below. --}}
-    <section class="ac-permissions card border-0" aria-labelledby="permissionsTitle">
-        <div class="ac-permissions-header d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-                <h2 id="permissionsTitle">Role Permissions</h2>
-                <p>Choose a role and set its module access. Staff editor access also allows changes to records.</p>
-            </div>
-            <div class="ac-view-switch btn-group" role="group" aria-label="Permission view">
-                <input type="radio" class="btn-check" name="permView" id="viewByRole" value="role" checked>
-                <label class="btn btn-sm" for="viewByRole"><i class="bi bi-person-gear me-1" aria-hidden="true"></i> By role</label>
-                <input type="radio" class="btn-check" name="permView" id="viewCompare" value="compare">
-                <label class="btn btn-sm" for="viewCompare"><i class="bi bi-grid-3x3 me-1" aria-hidden="true"></i> Compare all roles</label>
-            </div>
-        </div>
-
-        <div class="ac-permissions-body" id="byRoleView">
-            <nav class="ac-roles" aria-label="Choose a role">
-                @foreach ($roles as $role)
-                    @php
-                        $moduleCount = collect($modules)->flatten(1)->filter(fn ($module) => $role['key'] === 'admin' || in_array($role['key'], $module['on']))->count();
-                    @endphp
-                    <button type="button" class="ac-role-button {{ $loop->index === 1 ? 'is-selected' : '' }}" data-pick-role="{{ $role['key'] }}" aria-pressed="{{ $loop->index === 1 ? 'true' : 'false' }}" aria-controls="role-panel-{{ $role['key'] }}">
-                        <span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span>
-                        <span class="ac-role-text"><strong>{{ $role['name'] }}</strong><small>{{ $role['key'] === 'admin' ? 'Permanent administrator' : ($role['key'] === 'iato_staff' ? 'Module access & editing' : 'Module access') }}</small></span>
-                        <span class="ac-role-count" data-role-count="{{ $role['key'] }}" aria-label="Enabled modules">{{ $moduleCount }}</span>
-                        <span class="ac-role-dirty d-none" data-role-dirty="{{ $role['key'] }}" aria-label="Unsaved changes"></span>
-                    </button>
-                @endforeach
-            </nav>
-
-            <div class="ac-role-details">
-                @foreach ($roles as $role)
-                    <section class="{{ $loop->index === 1 ? '' : 'd-none' }}" id="role-panel-{{ $role['key'] }}" data-role-panel="{{ $role['key'] }}" aria-labelledby="role-title-{{ $role['key'] }}">
-                        <div class="ac-role-heading d-flex align-items-start gap-3">
-                            <span class="ac-role-icon ac-role-icon-lg bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span>
-                            <div>
-                                <h3 id="role-title-{{ $role['key'] }}">{{ $role['name'] }}</h3>
-                                <p>{{ $role['key'] === 'admin' ? 'Full system access. The Super Admin’s module permissions cannot be restricted.' : ($role['key'] === 'iato_staff' ? 'Choose None, View, or Edit for supported modules. Edit applies to staff assigned Level Editor access.' : 'Choose which modules this role can open. Individual account editing permissions also apply.') }}</p>
-                                <div class="ac-role-meta"><span><i class="bi bi-grid" aria-hidden="true"></i> <b data-role-count="{{ $role['key'] }}">{{ collect($modules)->flatten(1)->filter(fn ($module) => $role['key'] === 'admin' || in_array($role['key'], $module['on']))->count() }}</b> modules enabled</span><a href="{{ url('/accounts') }}">Manage accounts <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div>
-                            </div>
-                        </div>
-
-                        @foreach ($modules as $section => $sectionModules)
-                            <h4 class="ac-module-section">{{ $section }}</h4>
-                            @foreach ($sectionModules as $module)
-                                @php
-                                    $isAdmin = $role['key'] === 'admin';
-                                    $locked = $isAdmin || ! empty($module['adminOnly']);
-                                    $supportsEditing = $role['key'] === 'iato_staff' && collect($editableModules)->contains('key', $module['key']);
-                                    $on = $isAdmin || in_array($role['key'], $module['on']);
-                                    $canEdit = $supportsEditing && (bool) collect($editableModules)->firstWhere('key', $module['key'])['can_edit'];
-                                    $level = ! $on ? 0 : ($canEdit ? 2 : 1);
-                                @endphp
-                                <div class="ac-module-row" data-permission-row data-row-role="{{ $role['key'] }}" data-row-module="{{ $module['key'] }}">
-                                    <div class="ac-module-text"><strong>{{ $module['name'] }}</strong><small>{{ $module['description'] }}</small></div>
-                                    @if ($locked)
-                                        <span class="ac-locked"><i class="bi bi-lock-fill" aria-hidden="true"></i> {{ $isAdmin ? 'Full access' : 'Super Admin only' }}</span>
-                                    @else
-                                        <div class="ac-levels btn-group" role="group" aria-label="{{ $role['name'] }}: {{ $module['name'] }}">
-                                            @foreach ($supportsEditing ? [0 => 'None', 1 => 'View', 2 => 'Edit'] : [0 => 'None', 1 => 'Access'] as $value => $label)
-                                                <button type="button" class="btn {{ $level === $value ? 'is-selected' : '' }}" data-level-choice="{{ $value }}" data-choice-role="{{ $role['key'] }}" data-choice-module="{{ $module['key'] }}" aria-pressed="{{ $level === $value ? 'true' : 'false' }}">{{ $label }}</button>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
-                            @endforeach
-                        @endforeach
-                    </section>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="table-responsive d-none ac-compare" id="compareView">
-            <table class="table align-middle mb-0 matrix-table">
-                <caption class="visually-hidden">Module access by role. IATO Staff editing is configured in the By role view.</caption>
-                <thead><tr><th scope="col">Module</th>
-                    @foreach ($roles as $role)
-                        <th scope="col" class="text-center"><span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis mx-auto mb-1"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span><span class="d-block">{{ $role['name'] }}</span></th>
-                    @endforeach
-                </tr></thead>
-                <tbody>
-                    @foreach ($modules as $section => $sectionModules)
-                        <tr class="ac-matrix-section"><th scope="rowgroup">{{ $section }}</th><td colspan="{{ count($roles) }}"></td></tr>
-                        @foreach ($sectionModules as $module)
-                            <tr><th scope="row"><strong>{{ $module['name'] }}</strong><small>{{ $module['description'] }}</small></th>
-                                @foreach ($roles as $role)
-                                    @php
-                                        $isAdmin = $role['key'] === 'admin';
-                                        $locked = $isAdmin || ! empty($module['adminOnly']);
-                                        $on = $isAdmin || in_array($role['key'], $module['on']);
-                                    @endphp
-                                    <td class="text-center">
-                                        <div class="form-switch d-inline-block p-0 m-0"><input class="form-check-input m-0" type="checkbox" role="switch" aria-label="{{ $role['name'] }}: {{ $module['name'] }}" {{ $on ? 'checked' : '' }}
-                                            @if ($locked) disabled title="{{ $isAdmin ? 'The Super Admin always has access' : 'Super Admin only' }}"
-                                            @else data-perm data-role="{{ $role['key'] }}" data-module="{{ $module['key'] }}" data-role-name="{{ $role['name'] }}" data-module-name="{{ $module['name'] }}"
-                                            @endif></div>
-                                        @if ($locked)<div class="ac-matrix-lock"><i class="bi bi-lock-fill" aria-hidden="true"></i></div>@endif
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Canonical editor values come from the existing RolePermission records. --}}
-        <div hidden>
-            @foreach ($editableModules as $module)
-                <input type="checkbox" data-edit-perm data-module="{{ $module['key'] }}" data-module-name="{{ $module['name'] }}" {{ $module['can_edit'] ? 'checked' : '' }}>
-            @endforeach
-        </div>
-        <div class="ac-permission-note"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i> Locked permissions are reserved for the Super Admin.</div>
-        <div class="ac-save-bar d-none" id="permissionSaveBar" aria-label="Unsaved permission changes">
-            <span id="unsavedBadge" role="status"></span>
-            <button type="button" class="btn btn-light border fw-semibold" id="discardButton" disabled>Discard</button>
-            <button type="button" class="btn btn-primary fw-semibold" id="saveButton" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i> Save Changes</button>
-        </div>
-    </section>
+    @include('access-control.partials.permissions')
 
     {{-- Access change log --}}
     <div class="ac-log-card card border-0">
@@ -400,6 +282,9 @@
 
         // The comparison checkboxes and hidden editor controls are the source of truth.
         const switches = [...document.querySelectorAll('[data-perm]')];
+        const previewSwitches = [...document.querySelectorAll('[data-preview-perm]')];
+        const previewChanged = () => previewSwitches.filter(input => input.value !== input.dataset.initialLevel);
+        const previewSwitch = (role, module) => previewSwitches.find(input => input.dataset.role === role && input.dataset.module === module);
         const editSwitches = [...document.querySelectorAll('[data-edit-perm]')];
         const changed = () => switches.filter(input => input.checked !== input.defaultChecked);
         const editChanged = () => editSwitches.filter(input => input.checked !== input.defaultChecked);
@@ -410,36 +295,47 @@
         function updateChanges() {
             const accessChanges = changed();
             const editorChanges = editChanged();
-            const count = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`)]).size;
+            const previewChanges = previewChanged();
+            const count = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`), ...previewChanges.map(input => `${input.dataset.role}:${input.dataset.module}`)]).size;
 
             document.querySelectorAll('[data-permission-row]').forEach(row => {
                 const input = matrixSwitch(row.dataset.rowRole, row.dataset.rowModule);
-                if (!input) return;
+                const preview = previewSwitch(row.dataset.rowRole, row.dataset.rowModule);
+                if (!input && !preview) return;
                 const editor = row.dataset.rowRole === 'iato_staff' ? editorSwitch(row.dataset.rowModule) : null;
-                const level = !input.checked ? 0 : editor?.checked ? 2 : 1;
-                const dirty = input.checked !== input.defaultChecked || (editor && editor.checked !== editor.defaultChecked);
+                const level = preview ? Number(preview.value) : !input.checked ? 0 : editor?.checked ? 2 : 1;
+                const dirty = preview ? preview.value !== preview.dataset.initialLevel : input.checked !== input.defaultChecked || (editor && editor.checked !== editor.defaultChecked);
                 row.classList.toggle('is-changed', !!dirty);
                 row.querySelectorAll('[data-level-choice]').forEach(button => {
                     const selected = Number(button.dataset.levelChoice) === level;
                     button.classList.toggle('is-selected', selected);
                     button.setAttribute('aria-pressed', String(selected));
                 });
-                input.closest('td').classList.toggle('ac-cell-changed', !!dirty);
+                (input || preview).closest('td').classList.toggle('ac-cell-changed', !!dirty);
+            });
+
+            previewSwitches.forEach(input => {
+                const label = input.parentElement.querySelector('[data-preview-level-label]');
+                label.textContent = ['None', 'View', 'Edit'][Number(input.value)];
+                label.className = `ac-preview-level ac-preview-level-${input.value}`;
+                input.closest('td').classList.toggle('ac-cell-changed', input.value !== input.dataset.initialLevel);
             });
 
             document.querySelectorAll('[data-pick-role]').forEach(button => {
                 const role = button.dataset.pickRole;
                 if (role !== 'admin') {
-                    const enabled = switches.filter(input => input.dataset.role === role && input.checked).length;
+                    const enabled = switches.filter(input => input.dataset.role === role && input.checked).length + previewSwitches.filter(input => input.dataset.role === role && Number(input.value) > 0).length;
                     document.querySelectorAll('[data-role-count]').forEach(counter => {
                         if (counter.dataset.roleCount === role) counter.textContent = enabled;
                     });
                 }
-                const dirty = accessChanges.some(input => input.dataset.role === role) || (role === 'iato_staff' && editorChanges.length > 0);
+                const dirty = accessChanges.some(input => input.dataset.role === role) || (role === 'iato_staff' && editorChanges.length > 0) || previewChanges.some(input => input.dataset.role === role);
                 button.querySelector('[data-role-dirty]').classList.toggle('d-none', !dirty);
             });
 
-            document.getElementById('unsavedBadge').textContent = `${count} module${count === 1 ? '' : 's'} with unsaved changes`;
+            const liveCount = new Set([...accessChanges.map(input => `${input.dataset.role}:${input.dataset.module}`), ...editorChanges.map(input => `iato_staff:${input.dataset.module}`)]).size;
+            document.getElementById('unsavedBadge').textContent = `${liveCount} connected · ${previewChanges.length} preview module changes`;
+            document.getElementById('permissionSaveLabel').textContent = liveCount === 0 && previewChanges.length ? 'Apply Preview' : 'Save Changes';
             document.getElementById('permissionSaveBar').classList.toggle('d-none', count === 0);
             document.getElementById('saveButton').disabled = saving || count === 0;
             document.getElementById('discardButton').disabled = saving || count === 0;
@@ -451,8 +347,12 @@
             const input = matrixSwitch(button.dataset.choiceRole, button.dataset.choiceModule);
             const editor = button.dataset.choiceRole === 'iato_staff' ? editorSwitch(button.dataset.choiceModule) : null;
             const level = Number(button.dataset.levelChoice);
-            input.checked = level > 0;
-            if (editor) editor.checked = level === 2;
+            if (button.dataset.previewChoice === 'true') {
+                previewSwitch(button.dataset.choiceRole, button.dataset.choiceModule).value = String(level);
+            } else {
+                input.checked = level > 0;
+                if (editor) editor.checked = level === 2;
+            }
             updateChanges();
         }));
 
@@ -473,6 +373,7 @@
 
         document.getElementById('discardButton').addEventListener('click', () => {
             [...switches, ...editSwitches].forEach(input => input.checked = input.defaultChecked);
+            previewSwitches.forEach(input => input.value = input.dataset.initialLevel);
             updateChanges();
         });
 
@@ -480,7 +381,8 @@
             if (saving) return;
             const accessChanges = changed().map(input => ({ input, value: input.checked }));
             const editorChanges = editChanged().map(input => ({ input, value: input.checked }));
-            if (!accessChanges.length && !editorChanges.length) return;
+            const previewChanges = previewChanged().map(input => ({ input, value: input.value }));
+            if (!accessChanges.length && !editorChanges.length && !previewChanges.length) return;
             const changes = new Map();
             accessChanges.forEach(({ input, value }) => changes.set(`${input.dataset.role}:${input.dataset.module}`, {
                 role: input.dataset.role, module: input.dataset.module, enabled: value,
@@ -493,12 +395,14 @@
             saving = true;
             updateChanges();
             try {
-                const response = await fetch('{{ url('/access-control/permissions') }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
-                    body: JSON.stringify({ changes: [...changes.values()] }),
-                });
-                if (!response.ok) throw new Error('Permission save failed');
+                if (changes.size > 0) {
+                    const response = await fetch('{{ url('/access-control/permissions') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+                        body: JSON.stringify({ changes: [...changes.values()] }),
+                    });
+                    if (!response.ok) throw new Error('Permission save failed');
+                }
                 accessChanges.forEach(({ input, value }) => {
                     addLog({ action: `${input.dataset.moduleName} access ${value ? 'granted' : 'revoked'}`, meta: `${input.dataset.roleName} role can ${value ? 'now' : 'no longer'} access ${input.dataset.moduleName}`, affected: input.dataset.roleName, module: input.dataset.moduleName, type: value ? 'Granted' : 'Revoked' });
                     input.defaultChecked = value;
@@ -507,7 +411,10 @@
                     addLog({ action: `${input.dataset.moduleName} editor access ${value ? 'granted' : 'revoked'}`, meta: `IATO Staff Level Editors ${value ? 'can now edit' : 'have view-only access to'} this module when module access is enabled.`, affected: 'IATO Staff', module: input.dataset.moduleName, type: 'Modified' });
                     input.defaultChecked = value;
                 });
-                toast(`${changes.size} module permission${changes.size === 1 ? '' : 's'} saved.`);
+                previewChanges.forEach(({ input, value }) => input.dataset.initialLevel = value);
+                const saved = changes.size ? `${changes.size} connected module permission${changes.size === 1 ? '' : 's'} saved.` : '';
+                const preview = previewChanges.length ? `${previewChanges.length} preview change${previewChanges.length === 1 ? '' : 's'} applied to this page only.` : '';
+                toast([saved, preview].filter(Boolean).join(' '));
             } catch {
                 toast('Permissions could not be saved. Your changes are still here; please try again.');
             } finally {
@@ -517,7 +424,7 @@
         });
 
         window.addEventListener('beforeunload', event => {
-            if (changed().length || editChanged().length) event.preventDefault();
+            if (changed().length || editChanged().length || previewChanged().length) event.preventDefault();
         });
         updateChanges();
         applyTypeFilter();

@@ -60,6 +60,11 @@
 .ac-role-text small { font-size: 11.5px; color: var(--ac-muted); }
 .ac-role-count { padding: 2px 8px; background: #f2f5f4; color: var(--ac-muted); border-radius: 10px; font-size: 11px; font-weight: 700; }
 .ac-role-dirty { width: 8px; height: 8px; border-radius: 50%; background: #b96000; flex-shrink: 0; }
+.ac-preview-badge { display: inline-block; margin-left: 5px; padding: 2px 5px; border-radius: 4px; background: #fff3e6; color: #8a4c00; font-size: 9px; font-weight: 700; line-height: 1.4; vertical-align: middle; letter-spacing: 0; text-transform: none; }
+.ac-preview-level { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 700; }
+.ac-preview-level-0 { color: #81978e; }
+.ac-preview-level-1 { background: #eaf1ff; color: #2558d9; }
+.ac-preview-level-2 { background: #e6f5ef; color: #00674f; }
 .ac-role-details { padding: 20px 24px 24px; min-width: 0; }
 .ac-role-icon-lg { width: 46px; height: 46px; border-radius: 12px; font-size: 18px; }
 .ac-role-heading { margin-bottom: 16px; }
