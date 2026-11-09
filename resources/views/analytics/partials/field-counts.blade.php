@@ -1,14 +1,14 @@
 @php
     $reservedIndex = array_search('Reserved', $charts['funnel']['labels'], true);
     $fieldCounts = [
-        ['label' => 'Male', 'value' => $yesNoBreakdown['male'], 'icon' => 'bi-gender-male'],
-        ['label' => 'Female', 'value' => $yesNoBreakdown['female'], 'icon' => 'bi-gender-female'],
-        ['label' => 'Applying for scholarship', 'value' => $yesNoBreakdown['scholars'], 'icon' => 'bi-award'],
-        ['label' => 'Paid entrance exam', 'value' => $yesNoBreakdown['paidExam'], 'icon' => 'bi-cash-coin'],
-        ['label' => 'Reserved', 'value' => $reservedIndex === false ? 0 : $charts['funnel']['values'][$reservedIndex], 'icon' => 'bi-bookmark-check'],
-        ['label' => 'NOA issued', 'value' => $yesNoBreakdown['noaIssued'], 'icon' => 'bi-patch-check'],
-        ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-universal-access'],
-        ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge'],
+        ['label' => 'Male', 'value' => $yesNoBreakdown['male'], 'icon' => 'bi-gender-male', 'tone' => 'blue'],
+        ['label' => 'Female', 'value' => $yesNoBreakdown['female'], 'icon' => 'bi-gender-female', 'tone' => 'red'],
+        ['label' => 'Applying for scholarship', 'value' => $yesNoBreakdown['scholars'], 'icon' => 'bi-award', 'tone' => 'purple'],
+        ['label' => 'Paid entrance exam', 'value' => $yesNoBreakdown['paidExam'], 'icon' => 'bi-cash-coin', 'tone' => 'green'],
+        ['label' => 'Paid reservation', 'value' => $reservedIndex === false ? 0 : $charts['funnel']['values'][$reservedIndex], 'icon' => 'bi-bookmark-check', 'tone' => 'blue'],
+        ['label' => 'NOA issued', 'value' => $yesNoBreakdown['noaIssued'], 'icon' => 'bi-patch-check', 'tone' => 'green'],
+        ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-universal-access', 'tone' => 'orange'],
+        ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge', 'tone' => 'orange'],
     ];
 @endphp
 <section class="ar-field-card card border-0 shadow-sm rounded-4 mb-4" aria-labelledby="fieldCountTitle">
@@ -28,9 +28,13 @@
         </div>
         <div class="ar-field-grid" id="fieldCountCards">
             @foreach ($fieldCounts as $field)
-                <div class="ar-field-tile" data-field-name="{{ $field['label'] }}" data-field-value="{{ $field['value'] }}">
-                    <i class="bi {{ $field['icon'] }}" aria-hidden="true"></i>
-                    <strong>{{ number_format($field['value']) }}</strong><span>{{ $field['label'] }}</span>
+                <div class="ar-field-tile ar-field-{{ $field['tone'] }}" data-field-name="{{ $field['label'] }}" data-field-value="{{ $field['value'] }}">
+                    <div class="ar-field-icon"><i class="bi {{ $field['icon'] }}" aria-hidden="true"></i></div>
+                    <div class="ar-field-details">
+                        <strong>{{ number_format($field['value']) }}</strong>
+                        <span>{{ $field['label'] }}</span>
+                        <small>Current AY total</small>
+                    </div>
                 </div>
             @endforeach
         </div>

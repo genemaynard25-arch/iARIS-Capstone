@@ -4,7 +4,7 @@
 @section('page-title', 'Admissions Overview')
 @section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
 
-@include('partials.admin-workspace', ['workspacePage' => 'dashboard-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Dashboard'])
+@include('partials.admin-workspace', ['workspacePage' => 'dashboard-page', 'workspaceGroup' => 'Admin', 'workspaceLabel' => 'Dashboard'])
 
 @section('content')
     @includeWhen($staffStrip, 'home.partials.staff-strip')
