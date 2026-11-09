@@ -112,7 +112,10 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
-            $event->user->forceFill(['last_login_at' => now()])->save();
+            $event->user->forceFill([
+                'last_login_at' => now(),
+                'status' => $event->user->status === 'Pending' ? 'Active' : $event->user->status,
+            ])->save();
 
             \App\Models\AuditLog::record(
                 'login',
