@@ -15,13 +15,15 @@ class LampRequests
      */
     public static function sample(): array
     {
-        $scholars = \App\Http\Controllers\ScholarController::sample()->keyBy('id');
-        $request = fn ($id, $reason, $status, $messages) => [
+        // Self-contained: these are illustrative conversations about fictional scholars,
+        // not tied to whatever's actually been imported (unlike ScholarController::sample(),
+        // which is real). Keeping that decoupled avoids crashing when real scholar IDs change.
+        $request = fn ($id, $name, $program, $iato, $lamp, $reason, $status, $messages) => [
             'id' => $id,
-            'name' => $scholars[$id]['name'],
-            'program' => $scholars[$id]['program'],
-            'iato' => $scholars[$id]['type'],
-            'lamp' => $scholars[$id]['lamp_record'],
+            'name' => $name,
+            'program' => $program,
+            'iato' => $iato,
+            'lamp' => $lamp,
             'reason' => $reason,
             'status' => $status,
             'messages' => $messages,
@@ -30,13 +32,13 @@ class LampRequests
         $lamp = fn ($at, $text) => ['from' => 'lamp', 'name' => 'LAMP Office', 'role' => 'LAMP Office', 'at' => $at, 'text' => $text];
 
         return [
-            $request('APP-2026-0383', 'Not in LAMP records', 'waiting', [
+            $request('SAMPLE-0383', 'Villareal, Pia V.', 'BS Hospitality Management', 'DLSL Scholar', 'Not in LAMP records', 'Not in LAMP records', 'waiting', [
                 $iato('Renegado, Randolph', 'Super Admin', 'Jun 12, 2026 · 9:20 AM', 'Her folder has a DLSL Scholarship award letter dated May 20, 2026, but she isn\'t in LAMP records. Can you check?'),
             ]),
-            $request('APP-IS-2026-0101', 'Scholarship type doesn\'t match', 'waiting', [
+            $request('SAMPLE-0101', 'Santos, Miguel A.', 'BS Criminology', 'Academic Scholar', 'Athletic Scholar', 'Scholarship type doesn\'t match', 'waiting', [
                 $iato('Cruz, Jasmine', 'IATO Staff', 'Jun 11, 2026 · 1:45 PM', 'We have him as an Academic Scholar, but your record says Athletic Scholar. Which one is correct?'),
             ]),
-            $request('APP-2026-0389', 'Scholarship type doesn\'t match', 'replied', [
+            $request('SAMPLE-0389', 'Torres, Nicole A.', 'BS Accountancy', 'CHED Scholar', 'DLSL Scholar', 'Scholarship type doesn\'t match', 'replied', [
                 $iato('Cruz, Jasmine', 'IATO Staff', 'Jun 11, 2026 · 3:10 PM', 'Our record says CHED Scholar, but LAMP shows DLSL Scholar. Which one is correct?'),
                 $lamp('Jun 11, 2026 · 4:02 PM', 'She moved from CHED to the DLSL Scholarship this semester. We\'ll send a correction to your Review Queue.'),
             ]),
