@@ -270,14 +270,20 @@
         }
 
         function render(file, rows) {
-            const headers = (rows[0] || []).map(h => String(h).trim());
-            const dataRows = rows.slice(1).filter(r => r.some(cell => String(cell).trim() !== ''));
+            // The header is usually row 1, but some exports have a sheet-title row above it
+            // (e.g. "list-of-applicants (96)") - find the real header wherever it is, the
+            // same way the server does, instead of assuming it's always the first row.
+            let headerIndex = rows.findIndex(r => String(r[0] ?? '').trim() === '#');
+            if (headerIndex === -1) headerIndex = 0; // couldn't find it - fall back to row 1
+
+            const headers = (rows[headerIndex] || []).map(h => String(h).trim());
+            const dataRows = rows.slice(headerIndex + 1).filter(r => r.some(cell => String(cell).trim() !== ''));
             rowCount = dataRows.filter(r => String(r[3] ?? '').trim() !== '').length; // col 3 = FULL NAME
 
             document.getElementById('fileMeta').textContent =
                 `${formatSize(file.size)} · ${plural(dataRows.length, 'row')} · ${plural(headers.length, 'column')}`;
 
-            renderPreview(headers, dataRows);
+            renderPreview(headers, dataRows, headerIndex);
 
             // A light sanity check only — not a full column-by-column validation. The server does the real read.
             const matches = EXPECTED_HEADERS.filter((h, i) => (headers[i] || '').toUpperCase() === h).length;
@@ -295,7 +301,7 @@
         }
 
         // Built with textContent (not innerHTML) so nothing in the file can inject HTML into the page
-        function renderPreview(headers, dataRows) {
+        function renderPreview(headers, dataRows, headerIndex) {
             const table = document.getElementById('previewTable');
             table.replaceChildren();
 
@@ -317,7 +323,7 @@
                 // A section header row (no FULL NAME, but something in column 0) gets highlighted
                 const isSection = String(row[3] ?? '').trim() === '' && String(row[0] ?? '').trim() !== '' && isNaN(row[0]);
                 if (isSection) tr.className = 'table-primary';
-                tr.insertCell().textContent = index + 2;
+                tr.insertCell().textContent = index + headerIndex + 2;
                 headers.forEach((_, i) => { tr.insertCell().textContent = row[i] ?? ''; });
             });
 
