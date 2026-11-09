@@ -17,6 +17,18 @@ use Illuminate\Support\Facades\DB;
  */
 class ApplicantRecords
 {
+    // admission_test_status -> label, in the order they should appear in an edit dropdown.
+    // Kept in sync with testLabel() below.
+    public const EXAM_STATUSES = [
+        'not_taken' => 'Not Taken',
+        'took_test' => 'Taken, Awaiting Result',
+        'waitlisted' => 'Waitlisted',
+        'passed' => 'Passed',
+        'qualified_other_degree' => 'Qualified for Another Program',
+        'reconsidered' => 'Reconsidered',
+        'failed' => 'Failed',
+    ];
+
     // Program name contains ... => college. Checked in order; anything else is "Other".
     const COLLEGES = [
         'Nursing' => 'CON',
@@ -89,6 +101,7 @@ class ApplicantRecords
             'program' => $program,
             'status' => self::status($a, $payment !== null),
             'test' => self::testLabel($a->admission_test_status),
+            'exam_status' => $a->admission_test_status,
             'scholar' => $a->applying_for_scholarship,
             'exam_paid' => $examPaid,
             'feeder_school' => $a->feeder_school,
@@ -157,7 +170,7 @@ class ApplicantRecords
         };
     }
 
-    private static function testLabel(?string $status): string
+    public static function testLabel(?string $status): string
     {
         return [
             'not_taken' => 'Not taken yet', 'took_test' => 'Taken, waiting for result', 'passed' => 'Passed',

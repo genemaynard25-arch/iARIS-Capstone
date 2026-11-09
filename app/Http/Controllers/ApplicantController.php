@@ -17,10 +17,21 @@ class ApplicantController extends Controller
      */
     public function index()
     {
+        $user = auth()->user();
+
         return view('applicants.pipeline', [
             'academicYear' => ApplicantRecords::academicYear(),
             'divisions' => self::DIVISIONS,
             'applicants' => self::pipeline(),
+            // Exam result editing is only wired up for the divisions backed by real
+            // database records — College of Law and iPACE still use placeholder data.
+            'canEditExam' => [
+                'Integrated School' => $user->canEdit('is'),
+                'College' => $user->canEdit('college'),
+                'Graduate Programs' => $user->canEdit('graduate_school'),
+                'ETEEAP' => $user->canEdit('eteeap'),
+            ],
+            'examStatuses' => ApplicantRecords::EXAM_STATUSES,
         ]);
     }
 
@@ -163,6 +174,59 @@ class ApplicantController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Update just the entrance exam result (Pass / Fail / Waitlisted / Reconsidered / etc.)
+     * from the Applicants pipeline drawer, without going through the full Add/Edit form.
+     * A passing result (Passed, Qualified for Another Program, Reconsidered) issues the
+     * Notice of Admission automatically — a failing or still-pending result revokes it.
+     */
+    public function updateExamStatus(Request $request, \App\Models\Applicant $applicant)
+    {
+        if (! $request->user()->canEdit($applicant->level)) {
+            abort(403, 'You do not have permission to edit this record.');
+        }
+
+        $validated = $request->validate([
+            'admission_test_status' => 'required|in:' . implode(',', array_keys(\App\Support\ApplicantRecords::EXAM_STATUSES)),
+        ]);
+
+        $before = $applicant->admission_test_status;
+        $passing = in_array($validated['admission_test_status'], ['passed', 'qualified_other_degree', 'reconsidered']);
+
+        $applicant->update([
+            'admission_test_status' => $validated['admission_test_status'],
+            'noa_issued' => $passing,
+        ]);
+
+        $module = [
+            'is' => 'Integrated School', 'college' => 'College Records',
+            'graduate_school' => 'Graduate Programs', 'eteeap' => 'ETEEAP',
+        ][$applicant->level] ?? 'Applicants';
+
+        \App\Models\AuditLog::record(
+            'edit',
+            $module,
+            'Exam Result Updated',
+            "Updated exam result for **{$applicant->last_name}, {$applicant->first_name}** ({$applicant->reference_number})",
+            null,
+            [['field' => 'Exam Result', 'before' => \App\Support\ApplicantRecords::EXAM_STATUSES[$before] ?? $before, 'after' => \App\Support\ApplicantRecords::EXAM_STATUSES[$validated['admission_test_status']]]],
+        );
+
+        $reservationPaid = \Illuminate\Support\Facades\DB::table('payments')
+            ->where('applicant_id', $applicant->id)
+            ->where('fee_type', 'reservation_fee')
+            ->where('status', 'paid')
+            ->exists();
+
+        return response()->json([
+            'ok' => true,
+            'exam_status' => $applicant->admission_test_status,
+            'exam_label' => \App\Support\ApplicantRecords::EXAM_STATUSES[$applicant->admission_test_status],
+            'noa_issued' => $applicant->noa_issued,
+            'status' => \App\Support\ApplicantRecords::status($applicant->fresh(), $reservationPaid),
+        ]);
+    }
+
     protected function applyStatus(\App\Models\Applicant $applicant, string $status): void
     {
         $map = [
@@ -231,6 +295,9 @@ class ApplicantController extends Controller
             'scholarship' => ! empty($a['scholar']) ? 'Scholar' : '',
             'exam_paid' => ! empty($a['exam_paid']),
             'status' => $a['status'],
+            // Raw admission_test_status, for the editable Exam Result control (null on
+            // the still-placeholder College of Law / iPACE rows — editing is hidden then)
+            'exam_status' => $a['exam_status'] ?? null,
             'applied' => $a['applied'],
             'dob' => $a['dob'],
             'gender' => $a['gender'],

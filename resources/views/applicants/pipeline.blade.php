@@ -194,8 +194,23 @@
                     <div class="col-6"><dt class="text-body-secondary fw-semibold" id="deptLabel">Department</dt><dd class="fw-bold mb-0" data-field="dept_label"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Scholarship</dt><dd class="fw-bold mb-0" data-field="scholarship"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Date Applied</dt><dd class="fw-bold mb-0" data-field="applied"></dd></div>
-                    <div class="col-12"><dt class="text-body-secondary fw-semibold">Program / Grade</dt><dd class="fw-bold mb-0" data-field="program"></dd></div>
                     <div class="col-12"><dt class="text-body-secondary fw-semibold" id="examLabel">Entrance Exam</dt><dd class="fw-bold mb-0" data-field="exam"></dd></div>
+                    <div class="col-12">
+                        <dt class="text-body-secondary fw-semibold">Exam Result</dt>
+                        <dd class="fw-bold mb-0" id="examResultLabel"></dd>
+                        <div class="d-none mt-2" id="examResultEdit">
+                            <div class="input-group input-group-sm" style="max-width: 320px;">
+                                <select class="form-select" id="examResultSelect">
+                                    @foreach ($examStatuses as $key => $label)
+                                        <option value="{{ $key }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-primary fw-semibold" id="examResultSave">Save</button>
+                            </div>
+                            <div class="form-text">Passing (Passed / Qualified for Another Program / Reconsidered) automatically issues the Notice of Admission.</div>
+                        </div>
+                    </div>
+                    <div class="col-12"><dt class="text-body-secondary fw-semibold">Program / Grade</dt><dd class="fw-bold mb-0" data-field="program"></dd></div>
                 </dl>
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Payment &amp; Status</div>
                 <div class="rounded-3 bg-body-tertiary p-3 d-grid gap-2 small">
@@ -263,6 +278,9 @@
         const APPLICANTS = @json($applicants);
         const DIVISIONS = @json($divisions);
         const STATUSES = @json($statuses);
+        const CAN_EDIT_EXAM = @json($canEditExam);
+        const EXAM_STATUSES = @json($examStatuses);
+        const CSRF = document.querySelector('meta[name="csrf-token"]').content;
         const PAGE_SIZE = 10;
 
         const $ = id => document.getElementById(id);
@@ -442,7 +460,10 @@
         const drawerEl = $('applicantDrawer');
         const drawer = bootstrap.Offcanvas.getOrCreateInstance(drawerEl);
 
+        let drawerApplicant = null;   // the applicant currently open, for the exam-result Save button
+
         function openDrawer(a) {
+            drawerApplicant = a;
             const tone = STATUSES[a.status].tone, isSchool = a.division === 'Integrated School';
             const set = (field, value) => drawerEl.querySelectorAll(`[data-field="${field}"]`).forEach(el => el.textContent = value ?? '—');
             const [last, first] = a.name.split(', ');
@@ -462,6 +483,14 @@
             set('applied', formatDate(a.applied));
             set('scholarship', a.scholarship || 'None');
             set('exam', a.exam || 'Not yet scheduled');
+
+            // Exam result: editable only for divisions backed by real records (not the
+            // still-placeholder College of Law / iPACE) and only for users who can edit them
+            const canEditThis = a.exam_status != null && CAN_EDIT_EXAM[a.division];
+            $('examResultLabel').textContent = a.exam_status ? (EXAM_STATUSES[a.exam_status] ?? a.exam_status) : '—';
+            $('examResultEdit').classList.toggle('d-none', !canEditThis);
+            if (canEditThis) $('examResultSelect').value = a.exam_status;
+
             set('amount', money(a.amount));
             set('paid', formatDate(a.paid));
             set('payStatus', a.paid ? 'Confirmed' : 'Pending');
@@ -490,6 +519,43 @@
             bootstrap.Tab.getOrCreateInstance(drawerEl.querySelector('[data-bs-target="#paneInfo"]')).show();
             drawer.show();
         }
+
+        // ---- Exam Result: save from the drawer, no full page reload ----
+        $('examResultSave').addEventListener('click', async () => {
+            if (!drawerApplicant) return;
+            const btn = $('examResultSave'), select = $('examResultSelect');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            select.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>';
+
+            try {
+                const res = await fetch(`/applicants/${encodeURIComponent(drawerApplicant.id)}/exam-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    body: JSON.stringify({ admission_test_status: select.value }),
+                });
+                if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Save failed');
+                const data = await res.json();
+
+                // Update this applicant in place (in the data, the open drawer, and the table)
+                Object.assign(drawerApplicant, { exam_status: data.exam_status, status: data.status });
+                $('examResultLabel').textContent = data.exam_label;
+                const tone = STATUSES[data.status].tone;
+                $('drawerBadge').className = `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`;
+                $('drawerBadge').textContent = statusLabel(drawerApplicant);
+                render();
+
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> Saved';
+                setTimeout(() => { btn.innerHTML = original; }, 1500);
+            } catch (err) {
+                btn.innerHTML = original;
+                alert(err.message || 'Could not save the exam result. Please try again.');
+            } finally {
+                btn.disabled = false;
+                select.disabled = false;
+            }
+        });
 
         render();
     </script>
