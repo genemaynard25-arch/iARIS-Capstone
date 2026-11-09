@@ -325,8 +325,8 @@
                 const role = button.dataset.pickRole;
                 if (role !== 'admin') {
                     const enabled = switches.filter(input => input.dataset.role === role && input.checked).length + previewSwitches.filter(input => input.dataset.role === role && Number(input.value) > 0).length;
-                    document.querySelectorAll('[data-role-count]').forEach(counter => {
-                        if (counter.dataset.roleCount === role) counter.textContent = enabled;
+                    document.querySelectorAll('[data-module-count]').forEach(counter => {
+                        if (counter.dataset.moduleCount === role) counter.textContent = enabled;
                     });
                 }
                 const dirty = accessChanges.some(input => input.dataset.role === role) || editorChanges.some(input => input.dataset.role === role) || previewChanges.some(input => input.dataset.role === role);

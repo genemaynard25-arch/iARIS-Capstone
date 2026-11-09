@@ -518,13 +518,10 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         <div class="ac-permissions-body" id="byRoleView">
             <nav class="ac-roles" aria-label="Choose a role">
                 @foreach ($roles as $role)
-                    @php
-                        $moduleCount = collect($modules)->flatten(1)->filter(fn ($module) => $permissionLevel($role, $module) > 0)->count();
-                    @endphp
                     <button type="button" class="ac-role-button {{ $loop->index === 1 ? 'is-selected' : '' }}" data-pick-role="{{ $role['key'] }}" aria-pressed="{{ $loop->index === 1 ? 'true' : 'false' }}" aria-controls="role-panel-{{ $role['key'] }}">
                         <span class="ac-role-icon bg-{{ $role['tone'] }}-subtle text-{{ $role['tone'] }}-emphasis"><i class="bi {{ $role['icon'] }}" aria-hidden="true"></i></span>
                         <span class="ac-role-text"><strong>{{ $role['name'] }} @if ($role['preview'])<span class="ac-preview-badge">Preview</span>@endif</strong><small>{{ $role['scope'] }}</small></span>
-                        <span class="ac-role-count" data-role-count="{{ $role['key'] }}" aria-label="Modules shown as enabled">{{ $moduleCount }}</span>
+                        <span class="ac-role-count" data-role-user-count="{{ $role['key'] }}" aria-label="Users assigned to {{ $role['name'] }}" title="Users assigned to this role">{{ number_format($roleUserCounts[$role['key']] ?? 0) }}</span>
                         <span class="ac-role-dirty d-none" data-role-dirty="{{ $role['key'] }}" aria-label="Unsaved changes"></span>
                     </button>
                 @endforeach
@@ -538,7 +535,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                             <div>
                                 <h3 id="role-title-{{ $role['key'] }}">{{ $role['name'] }}</h3>
                                 <p>{{ $role['description'] }}</p>
-                                <div class="ac-role-meta"><span><i class="bi bi-grid" aria-hidden="true"></i> <b data-role-count="{{ $role['key'] }}">{{ collect($modules)->flatten(1)->filter(fn ($module) => $permissionLevel($role, $module) > 0)->count() }}</b> modules enabled</span><a href="{{ url('/accounts') }}">Manage accounts <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div>
+                                <div class="ac-role-meta"><span><i class="bi bi-grid" aria-hidden="true"></i> <b data-module-count="{{ $role['key'] }}">{{ collect($modules)->flatten(1)->filter(fn ($module) => $permissionLevel($role, $module) > 0)->count() }}</b> modules enabled</span><a href="{{ url('/accounts') }}">Manage accounts <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div>
                             </div>
                         </div>
 
