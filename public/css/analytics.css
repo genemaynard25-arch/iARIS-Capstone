@@ -1,0 +1,119 @@
+/* Analytics & Reports v2: scoped to this page, using Bootstrap and Chart.js. */
+.analytics-page { --ar-border: #e2ecea; --ar-muted: rgba(26,43,38,.52); --ar-shadow: 0 4px 16px -4px rgba(0,0,0,.09),0 0 2px rgba(0,0,0,.04); }
+.analytics-page .text-body-secondary { color: var(--ar-muted) !important; }
+.analytics-page .border-info { border-color: #2558d9 !important; }
+.analytics-page .border-warning { border-color: #b96000 !important; }
+.analytics-page .app-topbar { align-items: flex-start !important; }
+.analytics-page .app-topbar-actions { padding-top: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ar-generate-view { font-size: 13.5px; padding: 10px 16px; border-radius: 9px; white-space: nowrap; }
+.analytics-page .card { border-radius: 12px !important; box-shadow: var(--ar-shadow) !important; }
+.analytics-page .card-body { padding: 22px !important; }
+.analytics-page .card h2 { font-size: 15px !important; font-weight: 700; }
+.analytics-page .card p { font-size: 13px; line-height: 1.6; }
+.ar-filter-card .card-body { padding: 18px 22px !important; }
+.ar-filter-card .small.text-uppercase, .ar-comparison-card .small.text-uppercase { font-size: 11.5px; letter-spacing: .5px; }
+.ar-filter-card .form-select, .ar-comparison-card .form-select { min-width: 160px; border: 1.5px solid var(--ar-border); border-radius: 9px; padding: 10px 36px 10px 14px; font-size: 13.5px; }
+.ar-filter-card .btn-outline-primary { border: 1.5px solid var(--ar-border); border-radius: 8px; padding: 9px 16px; background: #fff; color: var(--ar-muted); font-size: 13px; }
+.ar-filter-card .btn-check:checked + .btn { background: #00674f; color: #fff; border-color: #00674f; }
+.ar-filter-note { margin-top: 12px; font-size: 11.5px; color: var(--ar-muted); line-height: 1.5; }
+.ar-tab-bar { margin-bottom: 18px !important; }
+.ar-tabs { padding: 4px; background: #fff; border-radius: 11px; box-shadow: var(--ar-shadow); }
+.ar-tabs .nav-link { font-size: 13.5px; font-weight: 700; padding: 9px 18px; border-radius: 8px; color: var(--ar-muted); }
+.ar-tabs .nav-link.active { background: #00674f; color: #fff; }
+.ar-tabs .badge { font-size: 11px; border: 0 !important; background: rgba(0,0,0,.07) !important; padding: 2px 8px; }
+.ar-tabs .nav-link.active .badge { background: rgba(255,255,255,.22) !important; color: #fff !important; }
+.ar-scope-chip { font-size: 12.5px; font-weight: 600; color: var(--ar-muted); background: #fff; border: 1.5px solid var(--ar-border); padding: 7px 14px !important; line-height: 1.5; max-width: 100%; }
+.ar-scope-chip #scopeText { color: #00674f !important; font-weight: 700; }
+.ar-stat-grid { --bs-gutter-x: 16px; --bs-gutter-y: 16px; margin-bottom: 20px !important; }
+.ar-stat-card .card-body { padding: 18px 20px !important; }
+.ar-stat-card .card-body > div:first-child { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px !important; }
+.ar-stat-card .fs-3 { font-size: 28px !important; font-weight: 800 !important; line-height: 1.25; }
+.ar-stat-card .card-body > div:last-child { font-size: 12.5px; }
+.ar-card-header { margin-bottom: 18px; }
+.ar-card-header h2 { margin-bottom: 4px; }
+.ar-card-header p { margin-bottom: 0; font-size: 12.5px; color: var(--ar-muted); }
+.ar-card-controls .btn, .ar-chart-card .btn, .ar-chart-card .form-select { padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border-color: var(--ar-border) !important; }
+.ar-card-controls .btn, .ar-chart-card .btn { background: #f2f5f4; }
+.ar-card-controls [data-add-report], .ar-chart-card [data-add-report] { background: #fff; }
+.ar-chart-card .form-select { padding-right: 30px; }
+.ar-card-controls [data-add-report].active, .ar-chart-card [data-add-report].active { background: #eaf5f0; color: #00674f; border-color: #00674f !important; }
+.ar-field-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.ar-field-tile { padding: 14px; border-radius: 10px; background: #f8fafa; border: 1px solid var(--ar-border); display: flex; flex-direction: column; min-width: 0; }
+.ar-field-tile > i { font-size: 17px; color: #00674f; margin-bottom: 7px; }
+.ar-field-tile strong { font-size: 23px; line-height: 1.3; color: #1a2b26; }
+.ar-field-tile span { font-size: 11.5px; color: var(--ar-muted); line-height: 1.5; margin-top: 3px; }
+.ar-chart-grid { --bs-gutter-x: 18px; --bs-gutter-y: 18px; margin-bottom: 18px !important; }
+.ar-chart-card h2 { font-size: 15px !important; }
+.ar-chart-card p { font-size: 12.5px; }
+.ar-chart-card .chart-box { height: 230px; }
+.ar-chart-card .chart-box-donut { height: 180px; width: 180px; max-width: 180px; flex-grow: 0 !important; }
+.ar-chart-card #locationsDonutExtras { min-width: 140px; }
+.ar-chart-card #locationsTotal { font-size: 23px !important; }
+.ar-chart-card ol li { min-width: 0; }
+.ar-funnel-label { width: 100px; font-size: 12px; }
+.ar-funnel-track { height: 42px; min-width: 16px; }
+.ar-funnel-value { width: 52px; font-size: 12px; }
+.ar-funnel-share { width: 42px; font-size: 12px; }
+.ar-comparison-card .btn-primary { padding: 10px 22px; font-size: 13.5px; border-radius: 9px; }
+.ar-comparison-card #yearChips .badge { font-size: 12.5px !important; border-radius: 8px !important; }
+.ar-insights-header { background: linear-gradient(135deg,#00674f,#003d2e); }
+.ar-insights-header p { color: rgba(255,255,255,.78) !important; }
+.ar-insights-header .badge { font-size: 11px; }
+.ar-insights-header .btn { font-size: 12px; border-radius: 8px; padding: 8px 12px; }
+.ar-insight-card h3 { font-size: 15px !important; line-height: 1.5; }
+.ar-insight-card p { font-size: 13px; }
+.ar-insight-card .card-body > .badge { font-size: 10px; letter-spacing: .7px; border-radius: 6px; }
+.ar-projection-card .bg-body-tertiary { background: #f8fafa !important; border-radius: 10px !important; }
+.ar-report-section h2 { font-size: 15px !important; }
+.ar-report-section p { font-size: 13px; margin-top: 3px; }
+.ar-report-grid { --bs-gutter-x: 16px; --bs-gutter-y: 16px; margin-bottom: 28px !important; }
+.ar-report-card { transition: transform .12s; }
+.ar-report-card:hover { transform: translateY(-2px); }
+.ar-report-card .icon-circle { width: 44px; height: 44px; border-radius: 12px !important; font-size: 18px !important; margin-bottom: 14px !important; }
+.ar-report-card h3 { font-size: 14.5px !important; margin-bottom: 6px !important; }
+.ar-report-card .badge { border: 0 !important; border-radius: 8px !important; font-size: 12px; background: #f2f5f4 !important; padding: 5px 12px !important; }
+.ar-report-card .btn { border: 0 !important; border-radius: 8px; padding: 10px; font-size: 13px; }
+.ar-report-card .btn-light { background: #f2f5f4; }
+.ar-report-history table { min-width: 900px; }
+.analytics-page .table { font-size: 13px; }
+.analytics-page .table th { font-size: 11px; letter-spacing: .5px; color: var(--ar-muted); background: #f8fafa; padding: 12px 14px; border-color: var(--ar-border); }
+.analytics-page .table td { padding: 12px 14px; border-color: #f2f5f4; }
+.analytics-page .table th[scope="row"] { font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 600; background: #fff; color: #1a2b26; }
+.analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .modal-content { border-radius: 18px !important; }
+.analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .modal-header { padding: 22px 26px !important; }
+.analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .modal-title { font-size: 17px !important; }
+.analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .modal-body { padding: 24px 26px !important; }
+.analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .form-control, .analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .form-select { font-size: 14px; border: 1.5px solid var(--ar-border); border-radius: 9px; padding: 11px 14px; }
+.analytics-page #reportTray { max-width: calc(100vw - 32px); border: 1px solid rgba(255,255,255,.12); font-size: 12px; padding: 12px 16px !important; }
+.analytics-page #reportTray .btn { font-size: 12px; white-space: nowrap; }
+.analytics-page:has(.report-tray.show) .app-main { padding-bottom: 110px !important; }
+.ar-preview-note { color: #8a4c00; font-size: 11.5px; line-height: 1.5; }
+@media (min-width: 1500px) { .ar-field-grid { grid-template-columns: repeat(8,minmax(0,1fr)); } }
+@media (max-width: 1199.98px) { .analytics-page .app-topbar { flex-wrap: wrap; } .analytics-page .app-topbar-actions { padding-top: 0; } }
+@media (max-width: 767.98px) {
+    .analytics-page .app-topbar-actions { width: 100%; justify-content: space-between; }
+    .ar-generate-view { font-size: 12px; padding: 9px 12px; }
+    .ar-filter-card .btn-outline-primary { padding: 8px 12px; font-size: 12px; }
+    .ar-field-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .ar-tabs .nav-link { padding: 9px 12px; font-size: 12px; }
+    .ar-scope-chip { width: 100%; }
+    .analytics-page #reportTray { width: calc(100vw - 32px); left: 16px; flex-wrap: wrap; }
+    .analytics-page #reportTray > div { min-width: 0; }
+}
+@media (max-width: 575.98px) {
+    .analytics-page .card-body { padding: 18px !important; }
+    .ar-stat-card .card-body { padding: 14px !important; }
+    .ar-stat-card .fs-3 { font-size: 24px !important; }
+    .ar-stat-card .card-body > div:last-child { font-size: 11px; }
+    .ar-filter-card .form-select, .ar-comparison-card .form-select { min-width: 0; max-width: 100%; }
+    .ar-comparison-card .input-group { flex-wrap: nowrap; }
+    .ar-comparison-card .d-flex > div { min-width: 0; max-width: 100%; }
+    .ar-funnel-label { width: 65px; font-size: 10px; white-space: normal !important; }
+    .ar-funnel-value { width: 34px; font-size: 10px; }
+    .ar-funnel-share { width: 34px; font-size: 10px; }
+    .ar-chart-card ol li { gap: 8px !important; }
+    .ar-card-controls .btn, .ar-chart-card .btn, .ar-chart-card .form-select { padding: 7px 9px; font-size: 11px; }
+    .analytics-page :is(#reportModal, #viewReportModal, #trayReportModal) .modal-body { padding: 20px !important; }
+    .ar-field-tile { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .analytics-page *, .analytics-page *::before, .analytics-page *::after { transition: none !important; animation: none !important; } }

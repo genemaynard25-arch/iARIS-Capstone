@@ -2,6 +2,19 @@
 
 @section('title', 'iARIS — Analytics & Reports')
 @section('page-title', 'Analytics & Reports')
+@section('body-class', 'iaris-workspace analytics-page')
+@section('page-breadcrumb-root', 'Main')
+@section('page-breadcrumb', 'Analytics & Reports')
+@push('styles')
+    <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
+@endpush
+@section('sidebar-brand')
+    @include('partials.auth-logo', ['size' => 44, 'variant' => 'glass'])
+@endsection
+@section('app-banner')
+    <div class="ac-institution-bar"><span><strong>De La Salle Lipa</strong><span class="mx-2 opacity-50">|</span>Institutional Admissions and Testing Office</span><span class="d-none d-md-inline">iARIS · Analytics &amp; Reports</span></div>
+@endsection
 @section('page-subtitle', 'Explore admissions data, read the AI insights, and turn any view into an official report')
 
 @php
@@ -16,12 +29,22 @@
         'insights' => ['AI Insights', 'bi-stars'],
         'reports' => ['Reports', 'bi-file-earmark-text'],
     ];
+    $locationPreview = ($charts['locations']['labels'] ?? []) === ['No location data available'];
+    if ($locationPreview) {
+        $charts['locations'] = ['labels' => ['Lipa City', 'Batangas City', 'CALABARZON', 'Others'], 'values' => [1377, 895, 723, 447]];
+    }
 @endphp
+
+@section('page-actions')
+    @if ($hasAnalytics && $hasReports)
+        <button type="button" class="ar-generate-view btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#viewReportModal"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i> Generate from this view</button>
+    @endif
+@endsection
 
 @section('content')
     @if ($hasAnalytics)
     {{-- Filters: one row above everything they scope --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="ar-filter-card card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div>
@@ -51,14 +74,14 @@
                     </select>
                 </div>
             </div>
-            <div class="small text-body-secondary mt-3"><i class="bi bi-info-circle me-1"></i> Stat cards and charts below are computed from imported admission data. The filters above are not wired to re-query yet.</div>
+            <div class="ar-filter-note"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Preview filters update report scope only. Figures below continue to show the current imported school-year data.</div>
         </div>
     </div>
     @endif
 
     {{-- Tabs, with what the filters are showing and "Generate from this view" on the right --}}
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <ul class="nav nav-pills gap-1" role="tablist">
+    <div class="ar-tab-bar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <ul class="ar-tabs nav nav-pills gap-1" role="tablist">
             @foreach ($tabs as $key)
                 <li class="nav-item" role="presentation">
                     <button type="button" class="nav-link fw-semibold {{ $key === $tab ? 'active' : '' }}" id="tab-{{ $key }}" data-bs-toggle="pill" data-bs-target="#pane-{{ $key }}" data-tab="{{ $key }}" role="tab" aria-controls="pane-{{ $key }}" aria-selected="{{ $key === $tab ? 'true' : 'false' }}">
@@ -72,14 +95,9 @@
         </ul>
         @if ($hasAnalytics)
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="badge rounded-pill bg-body-tertiary text-body-secondary border fw-semibold px-3 py-2 text-wrap text-start">
+                <span class="ar-scope-chip badge rounded-pill text-wrap text-start">
                     <i class="bi bi-funnel me-1"></i> Showing: <span class="text-body" id="scopeText">—</span>
                 </span>
-                @if ($hasReports)
-                    <button type="button" class="btn btn-primary fw-semibold text-nowrap" data-bs-toggle="modal" data-bs-target="#viewReportModal">
-                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Generate from this view
-                    </button>
-                @endif
             </div>
         @endif
     </div>
@@ -90,53 +108,31 @@
     <div class="tab-pane fade {{ $tab === 'overview' ? 'show active' : '' }}" id="pane-overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
 
     {{-- Stat tiles --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
+    <div class="ar-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="ar-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold mb-1">{{ $stat['value'] }}</div>
-                        <div class="small fw-semibold {{ $stat['good'] ? 'text-primary' : 'text-danger' }}">
-                            <i class="bi {{ str_starts_with($stat['change'], '+') ? 'bi-arrow-up-right' : 'bi-arrow-down-right' }}"></i>
-                            {{ $stat['change'] }} <span class="text-body-secondary fw-normal">vs last AY</span>
-                        </div>
+                        @if (in_array($stat['change'], ['N/A', 'No prior-year data']))
+                            <div class="small text-body-secondary">{{ $stat['change'] }}</div>
+                        @else
+                            <div class="small fw-semibold {{ $stat['good'] ? 'text-primary' : 'text-danger' }}">
+                                <i class="bi {{ str_starts_with($stat['change'], '+') ? 'bi-arrow-up-right' : 'bi-arrow-down-right' }}" aria-hidden="true"></i>
+                                {{ $stat['change'] }} <span class="text-body-secondary fw-normal">vs last AY</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
         @endforeach
     </div>
 
-    {{-- Yes/No fields and gender, counted automatically from the imported applicants —
-         nothing here is filtered or tallied by hand. Current school year only. --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <h2 class="fs-6 fw-bold mb-1">Applicant field counts</h2>
-            <p class="small text-body-secondary mb-3">Read automatically from the imported file — current school year</p>
-            <div class="row row-cols-2 row-cols-md-4 row-cols-xl-7 g-3">
-                @foreach ([
-                    ['label' => 'Male', 'value' => $yesNoBreakdown['male'], 'icon' => 'bi-gender-male'],
-                    ['label' => 'Female', 'value' => $yesNoBreakdown['female'], 'icon' => 'bi-gender-female'],
-                    ['label' => 'Applying for Scholarship', 'value' => $yesNoBreakdown['scholars'], 'icon' => 'bi-award'],
-                    ['label' => 'Paid Entrance Exam', 'value' => $yesNoBreakdown['paidExam'], 'icon' => 'bi-cash-coin'],
-                    ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-universal-access'],
-                    ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge'],
-                    ['label' => 'NOA Issued', 'value' => $yesNoBreakdown['noaIssued'], 'icon' => 'bi-patch-check'],
-                ] as $field)
-                    <div class="col">
-                        <div class="rounded-3 bg-body-tertiary p-3 h-100">
-                            <i class="bi {{ $field['icon'] }} text-primary mb-1 d-block"></i>
-                            <div class="fs-5 fw-bold">{{ number_format($field['value']) }}</div>
-                            <div class="small text-body-secondary">{{ $field['label'] }}</div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
+    @include('analytics.partials.field-counts')
 
     {{-- Charts --}}
-    <div class="row g-4 mb-4">
+    <div class="ar-chart-grid row g-4 mb-4">
         <div class="col-12 col-xl-6">
            @include('analytics.partials.chart-card', ['id' => 'trends', 'title' => 'Applicants: current vs previous SY', 'subtitle' => 'Total applicants summed across all levels/programs', 'types' => ['bar' => 'Bar chart', 'line' => 'Line chart']])
         </div>
@@ -148,12 +144,12 @@
             @include('analytics.partials.chart-card', ['id' => 'funnel', 'title' => 'Conversion funnel', 'subtitle' => 'Applicant pipeline from application to enrollment', 'body' => 'analytics.partials.funnel'])
         </div>
         <div class="col-12 col-xl-6">
-            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by location', 'subtitle' => 'Where applicants come from', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
+            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by location', 'subtitle' => $locationPreview ? 'Mockup preview · location aggregation is not connected yet' : 'Where applicants come from', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
         </div>
     </div>
 
     {{-- School year comparison builder --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="ar-comparison-card card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
             <h2 class="fs-6 fw-bold mb-1">School year comparison</h2>
             <p class="small text-body-secondary mb-3">Pick a department and 2–3 academic years, then generate the chart.</p>
@@ -215,7 +211,7 @@
     <div class="tab-pane fade {{ $tab === 'insights' ? 'show active' : '' }}" id="pane-insights" role="tabpanel" aria-labelledby="tab-insights" tabindex="0">
 
     {{-- AI insights --}}
-    <div class="card border-0 rounded-4 bg-iaris text-white mb-3">
+    <div class="ar-insights-header card border-0 rounded-4 bg-iaris text-white mb-3">
         <div class="card-body p-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-3">
                 <div class="icon-circle rounded-3 bg-white bg-opacity-10 border border-white border-opacity-25 fs-5 d-flex align-items-center justify-content-center">
@@ -237,7 +233,7 @@
                 @if (session('insightsError'))
                     <span class="badge bg-danger ms-2">{{ session('insightsError') }}</span>
                 @endif
-                <button type="button" class="btn btn-sm btn-light fw-semibold" disabled title="Coming soon"><i class="bi bi-download me-1"></i> Export insights</button>
+                <button type="button" class="btn btn-sm btn-light fw-semibold" id="exportInsights"><i class="bi bi-download me-1" aria-hidden="true"></i> Export insights</button>
             </div>
         </div>
     </div>
@@ -246,7 +242,7 @@
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
         @foreach ($insights as $insight)
             <div class="col">
-                <div class="card border-0 border-start border-4 border-{{ $insight['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="ar-insight-card card border-0 border-start border-4 border-{{ $insight['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body d-flex flex-column p-4">
                         <span class="badge bg-{{ $insight['tone'] }}-subtle text-{{ $insight['tone'] }}-emphasis text-uppercase tracking-wide align-self-start mb-3">
                             <i class="bi {{ $insight['icon'] }} me-1"></i> {{ $insight['type'] }}
@@ -272,10 +268,10 @@
     </div>
 
     {{-- Projection --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-3">
+    <div class="ar-projection-card card border-0 shadow-sm rounded-4 mb-3">
         <div class="card-body p-4">
             <h2 class="fs-6 fw-bold mb-1">Projected enrollment — {{ $projection['year'] }}</h2>
-            <p class="small text-body-secondary mb-3">Based on 4-year historical trends · For planning purposes only</p>
+            <p class="small text-body-secondary mb-3">Based on imported school-year comparisons · For planning purposes only</p>
             <div class="row row-cols-2 row-cols-lg-4 g-3">
                 @foreach ($projection['items'] as $item)
                     <div class="col">
@@ -323,19 +319,22 @@
             const url = new URL(location.href);
             url.searchParams.set('tab', btn.dataset.tab);
             history.replaceState(null, '', url);
+            if (window.Chart) Object.values(Chart.instances).forEach(chart => chart.resize());
         }));
     </script>
 
     @if ($hasAnalytics)
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         const CHARTS = @json($charts);
         const COMPARISON = @json($comparison);
+        const INSIGHTS = @json($insights);
+        const LOCATION_PREVIEW = @json($locationPreview);
 
         // Chart colours (checked with the dataviz palette validator).
         const COLORS = {
-            single: '#00795A',                                        // one-series charts
-            locations: ['#00795A', '#2a78d6', '#eb6834', '#8C918E'],  // 3 distinct hues + grey for "Others"
+            single: '#00674F',                                        // one-series charts
+            locations: ['#00674F', '#4DAB8E', '#A8D5C5', '#D4EDE5'],  // 3 distinct hues + grey for "Others"
             years: ['#7FC4AB', '#2E8A6E', '#00503D'],                 // ordered: oldest (light) → newest (dark)
             grid: '#E7ECEA',
             text: 'rgba(26, 43, 38, 0.6)',
@@ -349,7 +348,7 @@
         Chart.defaults.plugins.tooltip.bodyFont = { weight: 'bold' };
         Chart.defaults.plugins.tooltip.displayColors = false; // one-series charts don't need a colour key in the tooltip
         Chart.defaults.plugins.tooltip.callbacks.label = ctx =>
-            ` ${(ctx.parsed.y ?? ctx.parsed).toLocaleString()}${ctx.dataset.label ? ' · ' + ctx.dataset.label : ''}`;
+            ` ${(typeof ctx.parsed === 'object' ? (ctx.chart.options.indexAxis === 'y' ? ctx.parsed.x : ctx.parsed.y) : ctx.parsed).toLocaleString()}${ctx.dataset.label ? ' · ' + ctx.dataset.label : ''}`;
 
         const format = n => Number(n).toLocaleString();
 
@@ -383,15 +382,17 @@
 
         // ---- Applicant trends (bar or line) ----
         function drawTrends(type) {
-            const { labels, values } = CHARTS.trends;
-            const dataset = type === 'line'
-                ? { data: values, borderColor: COLORS.single, backgroundColor: COLORS.single + '1A', fill: true, borderWidth: 2, tension: 0,
-                    pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: COLORS.single, pointBorderColor: '#fff', pointBorderWidth: 2 }
-                : bar('', values, COLORS.single);
+            const labels = Object.keys(COMPARISON);
+            const years = Object.keys(Object.values(COMPARISON)[0]);
+            const colors = ['#A8D5C5', '#00674F', '#00503D'];
+            const datasets = years.map((year, index) => type === 'line'
+                ? { label: year, data: labels.map(label => COMPARISON[label][year]), borderColor: colors[index], borderWidth: 2, tension: .15, pointRadius: 4 }
+                : bar(year, labels.map(label => COMPARISON[label][year]), colors[index]));
             draw('trends', {
                 type,
-                data: { labels, datasets: [dataset] },
+                data: { labels, datasets },
                 options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } }, tooltip: { displayColors: true } },
                     scales: { x: axis(false), y: { ...axis(true), beginAtZero: true } } },
             });
         }
@@ -422,7 +423,7 @@
                     li.innerHTML = '<span class="rounded-1 flex-shrink-0" style="width:10px;height:10px"></span><span class="flex-grow-1"></span><span class="fw-bold text-body-secondary"></span>';
                     li.children[0].style.background = COLORS.locations[i];
                     li.children[1].textContent = label;
-                    li.children[2].textContent = Math.round(values[i] / total * 100) + '%';
+                    li.children[2].textContent = (total > 0 ? Math.round(values[i] / total * 100) : 0) + '%';
                     return li;
                 }));
             }
@@ -474,7 +475,8 @@
         document.getElementById('generateComparison').addEventListener('click', () => {
             if (selectedYears.length < 2) return compareMessage('Add at least 2 academic years to compare.');
             compareMessage('');
-            const years = [...selectedYears].sort();                      // oldest first
+            const availableYears = Object.keys(Object.values(COMPARISON)[0]);
+            const years = [...selectedYears].sort((a, b) => availableYears.indexOf(a) - availableYears.indexOf(b));
             const yearColors = years.length === 2 ? [COLORS.years[0], COLORS.years[2]] : COLORS.years;
             const department = document.getElementById('compareDepartment').value;
 
@@ -511,8 +513,12 @@
         // ---- Table view + CSV export (every chart) ----
         function tableData(id) {
             if (id === 'comparison') return comparisonTable;
+            if (id === 'trends') {
+                const years = Object.keys(Object.values(COMPARISON)[0]);
+                return { head: ['Division / program', ...years], rows: Object.entries(COMPARISON).map(([label, values]) => [label, ...years.map(year => values[year])]) };
+            }
             const { labels, values } = CHARTS[id];
-            const heads = { trends: ['Month', 'Applicants'], programs: ['Program', 'Applicants'], funnel: ['Stage', 'Applicants'], locations: ['Location', 'Applicants'] };
+            const heads = { trends: ['School year', 'Applicants'], programs: ['Program', 'Applicants'], funnel: ['Stage', 'Applicants'], locations: LOCATION_PREVIEW ? ['Location (mockup preview)', 'Sample applicants'] : ['Location', 'Applicants'] };
             return { head: heads[id], rows: labels.map((l, i) => [l, values[i]]) };
         }
 
@@ -555,13 +561,8 @@
         document.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => {
             const data = tableData(btn.dataset.export);
             if (!data) return;
-            const escape = v => `"${String(v).replace(/"/g, '""')}"`;
-            const csv = [data.head, ...data.rows].map(r => r.map(escape).join(',')).join('\n');
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-            link.download = `iaris-${btn.dataset.export}.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const suffix = btn.dataset.export === 'locations' && LOCATION_PREVIEW ? '-preview' : '';
+            downloadCsv(`iaris-${btn.dataset.export}${suffix}.csv`, [data.head, ...data.rows]);
         }));
 
         // Chart type switches
@@ -573,6 +574,39 @@
         drawPrograms();
         drawLocations('donut');
         renderYearChips();
+
+        // Field counts use the values rendered from imported records.
+        document.querySelectorAll('[data-field-view]').forEach(button => button.addEventListener('click', () => {
+            const table = button.dataset.fieldView === 'table';
+            document.getElementById('fieldCountCards').classList.toggle('d-none', table);
+            document.getElementById('fieldCountTable').classList.toggle('d-none', !table);
+            document.querySelectorAll('[data-field-view]').forEach(choice => {
+                const selected = choice === button;
+                choice.classList.toggle('active', selected);
+                choice.setAttribute('aria-pressed', String(selected));
+            });
+        }));
+        function downloadCsv(filename, rows) {
+            const quote = value => {
+                const text = String(value ?? '');
+                const safe = typeof value === 'string' && /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
+                return `"${safe.replace(/"/g, '""')}"`;
+            };
+            const csv = rows.map(row => row.map(quote).join(',')).join('\r\n');
+            const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        document.getElementById('exportFieldCounts').addEventListener('click', () => {
+            const rows = [...document.querySelectorAll('[data-field-name]')].map(field => [field.dataset.fieldName, field.dataset.fieldValue]);
+            downloadCsv('iaris-applicant-field-counts.csv', [['Field', 'Current school year'], ...rows]);
+        });
+        document.getElementById('exportInsights').addEventListener('click', () => {
+            downloadCsv('iaris-insights.csv', [['Type', 'Title', 'Insight', 'Statistic'], ...INSIGHTS.map(insight => [insight.type, insight.title, insight.body, insight.stat])]);
+        });
 
         // ---- "Showing: ..." — what the filters at the top are set to ----
         function currentView() {

@@ -115,7 +115,7 @@ class AdmissionStats
             'conversionRatePrevious' => $overallPrevious > 0 ? ($reservedPrevious / $overallPrevious) * 100 : 0,
             'funnelLabels' => ['Submitted', 'Took Exam', 'Passed Exam', 'Reserved', 'Enrolled'],
             'funnelValues' => [
-                max($submittedCurrent, 1),
+                $submittedCurrent,
                 $tookTestCurrent,
                 $passedCurrent,
                 $reservedCurrent,
