@@ -1,11 +1,11 @@
 /* Records mockups: four summaries, exam-result chips, category chips and payment columns. */
-:is(.records-page, .scholars-page) .admin-stat-grid { --bs-gutter-x: 14px; --bs-gutter-y: 14px; }
-:is(.records-page, .scholars-page) .admin-stat-card .card-body { padding: 16px 18px !important; }
-:is(.records-page, .scholars-page) .admin-stat-card .fs-3 { font-size: 26px !important; }
-:is(.records-page, .scholars-page) .admin-stat-card .card-body > .small:first-child { font-size: 11px; letter-spacing: 1px; margin-bottom: 8px !important; }
-:is(.records-page, .scholars-page) .admin-stat-card .card-body > .small:last-child { margin-top: 4px; font-size: 12px; }
-:is(.records-page, .scholars-page) .border-purple { border-color: #7c3aed !important; }
-:is(.records-page, .scholars-page) .text-purple-emphasis { color: #7c3aed !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-grid { --bs-gutter-x: 14px; --bs-gutter-y: 14px; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body { padding: 16px 18px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .fs-3 { font-size: 26px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body > .small:first-child { font-size: 11px; letter-spacing: 1px; margin-bottom: 8px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body > .small:last-child { margin-top: 4px; font-size: 12px; }
+:is(.records-page, .scholars-page, .pipeline-page) .border-purple { border-color: #7c3aed !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .text-purple-emphasis { color: #7c3aed !important; }
 .records-page .records-table-card > .d-flex:first-child { padding: 18px 22px !important; gap: 10px !important; }
 .records-page .records-table-card .input-group { max-width: 300px !important; }
 .records-page :is(#groupFilter, #programFilter) { max-width: 240px; }
@@ -48,4 +48,4 @@
 .records-eteeap #applicantDrawer > .nav { flex-wrap: nowrap; overflow-x: auto; }
 .records-eteeap #applicantDrawer > .nav .nav-link { white-space: nowrap; }
 
-:is(.records-page, .scholars-page) .admin-stat-card.border-info .fs-3 { color: #2558d9 !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card.border-info .fs-3 { color: #2558d9 !important; }

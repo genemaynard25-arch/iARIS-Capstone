@@ -40,25 +40,25 @@
 
 @include('partials.admin-workspace', ['workspacePage' => 'pipeline-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Applicants'])
 
+@push('styles')
+    <link href="{{ asset('css/records.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
-    {{-- Stat cards: the numbers follow the filters (the script fills them in) --}}
-    <div class="admin-stat-grid row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
-        <div class="col">
-            <div class="admin-stat-card card border-0 border-top border-3 border-dark shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">Total Applicants</div>
-                    <div class="fs-3 fw-bold" data-stat="All">0</div>
-                    <div class="small text-body-secondary" id="scopeLabel">All divisions</div>
-                </div>
-            </div>
-        </div>
-        @foreach ($statuses as $key => $status)
+    {{-- The same four summary cards as the Records pages; totals follow the active scope. --}}
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+        @foreach ([
+            ['key' => 'All', 'label' => 'Total Applicants', 'sub' => 'All divisions', 'tone' => 'primary'],
+            ['key' => 'examPaid', 'label' => 'Exam fee paid', 'sub' => 'Updates after online payment', 'tone' => 'primary'],
+            ['key' => 'passedExam', 'label' => 'Passed', 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
+            ['key' => 'reserved', 'label' => 'Reservation paid', 'sub' => 'Ready for enrollment', 'tone' => 'info'],
+        ] as $summary)
             <div class="col">
-                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $status['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $summary['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $status['label'] }}</div>
-                        <div class="fs-3 fw-bold text-{{ $status['tone'] }}-emphasis" data-stat="{{ $key }}">0</div>
-                        <div class="small text-body-secondary">{{ $status['sub'] }}</div>
+                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $summary['label'] }}</div>
+                        <div class="fs-3 fw-bold text-{{ $summary['tone'] === 'primary' ? 'body' : $summary['tone'] . '-emphasis' }}" data-stat="{{ $summary['key'] }}">0</div>
+                        <div class="small text-body-secondary" @if ($summary['key'] === 'All') id="scopeLabel" @endif>{{ $summary['sub'] }}</div>
                     </div>
                 </div>
             </div>
@@ -348,7 +348,12 @@
         // ---- Stat cards, chips, status pills and department pills ----
         function renderFilters() {
             const base = baseRows();
-            const counts = { All: base.length };
+            const counts = {
+                All: base.length,
+                examPaid: base.filter(a => a.exam_paid).length,
+                passedExam: base.filter(a => ['passed', 'reconsidered', 'qualified_other_degree'].includes(a.exam_status) || (!a.exam_status && a.status === 'Passed')).length,
+                reserved: base.filter(a => a.amount != null || a.paid != null || ['Paid', 'Enrolled'].includes(a.status)).length,
+            };
             Object.keys(STATUSES).forEach(k => counts[k] = base.filter(a => a.status === k).length);
             document.querySelectorAll('[data-stat]').forEach(el => el.textContent = counts[el.dataset.stat].toLocaleString());
             $('scopeLabel').textContent = scopeLabel();
