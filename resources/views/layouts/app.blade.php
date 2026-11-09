@@ -5,6 +5,7 @@
 <head>
     @include('partials.head')
     @stack('styles')
+    <link href="{{ asset('css/sidebar.css') }}" rel="stylesheet">
     <title>@yield('title', 'iARIS')</title>
 </head>
 
