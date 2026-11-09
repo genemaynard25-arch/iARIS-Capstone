@@ -38,3 +38,6 @@
 }
 
 .toic-workspace .app-topbar [data-avatar] { width: 38px; height: 38px; background: #a8d5c5 !important; color: #00503d !important; border: 2px solid rgba(168,213,197,.5); }
+
+.toic-workspace .app-topbar { flex-wrap: wrap; }
+.toic-workspace .app-topbar-actions { flex-shrink: 0; }
