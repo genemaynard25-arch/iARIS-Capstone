@@ -12,7 +12,6 @@
 .records-page #statusPills { background: #fff; }
 .records-page #statusPills .btn { font-size: 13px; padding: 7px 16px; border-width: 1.5px; }
 .records-page #statusPills .btn-outline-secondary { color: var(--admin-muted); border-color: var(--admin-border); }
-.records-page .records-pill-count { font-size: 11px; font-weight: 700; margin-left: 6px; opacity: .7; }
 .records-page .records-category-pills { padding: 12px 22px; background: #fafcfb; }
 .records-page .records-category-pills .btn { padding: 6px 14px; font-size: 12.5px; border-radius: 8px; border-width: 1.5px; font-weight: 700; }
 .records-page .records-category-pills .btn-light { background: #fff; color: var(--admin-muted); }

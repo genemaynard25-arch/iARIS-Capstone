@@ -305,11 +305,11 @@
 
         {{-- Status pills --}}
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
-            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All <span class="records-pill-count">{{ $rows->count() }}</span></button>
+            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All</button>
             @foreach ($examResults as $result => [$label, $tone])
                 @continue($isRegistrar && ! in_array($result, ['passed', 'reconsidered', 'qualified_other_degree']))
                 @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
-                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }} <span class="records-pill-count">{{ $rows->where('exam_result', $result)->count() }}</span></button>
+                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }}</button>
             @endforeach
         </div>
         <div class="records-category-pills d-flex flex-wrap align-items-center gap-2 border-bottom" id="categoryPills" aria-label="Filter by {{ strtolower($categoryLabel) }}">
