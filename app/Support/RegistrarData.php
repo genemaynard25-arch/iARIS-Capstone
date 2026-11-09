@@ -56,6 +56,11 @@ class RegistrarData
                 default => ApplicantRecords::forLevel($source),
             };
             foreach ($list as $a) {
+                $preview = in_array($source, ['law', 'ipace']);
+                // Only the unconnected sample divisions infer a sample result from their sample status.
+                $examStatus = $a['exam_status'] ?? ($preview && in_array($a['status'], ['Passed', 'Paid', 'Enrolled']) ? 'passed' : null);
+                $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);
+                $reserved = $a['amount'] !== null || $a['paid'] !== null || in_array($a['status'], ['Paid', 'Enrolled']);
                 $rows[] = [
                     'id' => $a['id'],
                     'name' => trim("{$a['last']}, {$a['first']}" . (($a['mi'] ?? '') ? " {$a['mi']}." : '')),
@@ -65,6 +70,12 @@ class RegistrarData
                     // College / IS: the program or grade as imported; the others: the program's full name
                     'program' => in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']),
                     'status' => $a['status'],
+                    'exam_status' => $examStatus,
+                    'exam_result' => $examStatus ? ApplicantRecords::testLabel($examStatus) : 'Not recorded',
+                    'exam_passed' => $passed,
+                    'reservation_paid' => $reserved,
+                    'ready_for_enrollment' => $passed && $reserved,
+                    'is_preview' => $preview,
                     'applied' => $a['applied'],
                     'applied_label' => $a['applied'] ? Carbon::parse($a['applied'])->format('M j, Y') : '—',
                     'paid' => $a['paid'],

@@ -1,0 +1,27 @@
+.registrar-page .admin-stat-card .card-body { padding: 16px 18px !important; }
+.registrar-page .admin-stat-card .card-body > .small:first-child { font-size: 11px; letter-spacing: 1px; }
+.registrar-page .admin-stat-card .fs-3 { font-size: 26px !important; }
+.registrar-page .border-purple { border-color: #7c3aed !important; }
+.registrar-page .text-purple-emphasis { color: #7c3aed !important; }
+.registrar-page .border-info .fs-3 { color: #2558d9 !important; }
+.registrar-page .border-warning .fs-3 { color: #b96000 !important; }
+.registrar-page .alert-info { background: #eaf5f0; color: #005c46; border-color: #c5e4d8; padding: 13px 18px; border-radius: 10px !important; }
+.registrar-page .card-header { padding: 18px 20px 12px !important; }
+.registrar-page .card-header a { font-size: 12px; }
+.registrar-page .card-body { padding: 18px 20px !important; }
+.registrar-page .list-group-item { border-color: #eef2f1; font-size: 13px; }
+.registrar-page .list-group-item .small { font-size: 11.5px; }
+.registrar-page .badge { border-radius: 6px !important; font-size: 11px; padding: 5px 9px; }
+.registrar-page .registrar-status-bar { height: 16px !important; border-radius: 4px; }
+.registrar-page .registrar-status-bar .progress { height: 16px !important; }
+.registrar-enrollment-page .table { min-width: 1050px; }
+.registrar-enrollment-page #statCards { margin-bottom: 20px !important; }
+.registrar-enrollment-page .form-select { max-width: 260px; }
+.registrar-page .app-topbar-actions { flex-shrink: 0; }
+@media (max-width: 991.98px) { .registrar-page .app-topbar { flex-wrap: wrap; } }
+@media (max-width: 575.98px) {
+    .registrar-page .card-body { padding: 16px !important; }
+    .registrar-page .admin-stat-card .card-body { padding: 14px !important; }
+    .registrar-enrollment-page .form-select { max-width: 100%; }
+    .registrar-page .list-group-item { flex-wrap: wrap; }
+}

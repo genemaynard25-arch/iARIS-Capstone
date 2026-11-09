@@ -1,6 +1,5 @@
 {{-- Sidebar for Registrar users: their pages, then the records they can view (not edit). Same look as the admin sidebar. --}}
 @php
-    $answered = \App\Support\RegistrarQuestions::answeredCount();
     $link = fn ($label, $icon, $url, $match) => ['label' => $label, 'icon' => $icon, 'url' => $url, 'active' => request()->is($match)];
     $sections = [
         'MAIN' => [
@@ -50,12 +49,6 @@
 
             <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">HELP</div>
             <nav class="nav nav-pills flex-column">
-                {{-- Amber: questions IATO answered (the Questions page keeps it up to date) --}}
-                <a href="{{ url('/registrar/questions') }}" class="nav-link {{ request()->is('registrar/questions*') ? 'active' : '' }}">
-                    <i class="bi bi-question-circle"></i> Questions to IATO
-                    <span class="badge rounded-pill nav-count ms-auto {{ $answered ? '' : 'd-none' }}" id="navAnsweredBadge" title="IATO answered">{{ $answered }}</span>
-                </a>
-                {{-- Messages: everything else for IATO (Questions to IATO are about one record) --}}
                 @php
                     $answeredMessages = \App\Http\Controllers\MessagesController::answeredMessages();
                 @endphp

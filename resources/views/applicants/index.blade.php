@@ -29,7 +29,7 @@
     // Add / Edit / Remove: only roles with the 'edit' permission (Access Control).
     // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
     $isRegistrar = auth()->user()->role === 'registrar';
-    $canEdit = match ($scope) {
+    $canEdit = ! $isRegistrar && match ($scope) {
         'college', 'is', 'scholars' => auth()->user()->canEdit($scope),
         default => auth()->user()->canAccess('edit'),
     };
@@ -224,7 +224,7 @@
 
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin', 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => $isRegistrar ? (auth()->user()->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar') : (auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin'), 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
 
 @push('styles')
     <link href="{{ asset('css/records.css') }}" rel="stylesheet">

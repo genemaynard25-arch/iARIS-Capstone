@@ -121,7 +121,7 @@ Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(functi
     Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard');
     Route::get('/enrollment', [RegistrarController::class, 'enrollment'])->name('enrollment');
     Route::get('/reports', [RegistrarController::class, 'reports'])->name('reports');
-    Route::get('/questions', [RegistrarController::class, 'questions'])->name('questions');
+    Route::redirect('/questions', '/registrar/messages');
 });
 
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)

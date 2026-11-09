@@ -4,16 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Support\ApplicantRecords;
 use App\Support\RegistrarData;
-use App\Support\RegistrarQuestions;
 
 class RegistrarController extends Controller
 {
     /**
-     * Registrar pages (College Registrar and IS Registrar): Dashboard, Ready for Enrollment, Reports, Questions to IATO.
+     * Registrar pages (College Registrar and IS Registrar): Dashboard, Ready for Enrollment, Reports, and Messages.
      * Records are view only (the Records pages, with "Ask IATO about this record" in the drawer).
      *
      * Real data where the database has it (College, Graduate Programs, ETEEAP); College of Law and
-     * iPACE are placeholders (see App\Support\RegistrarData). Questions and generated reports are
+     * iPACE are placeholders (see App\Support\RegistrarData). Messages and generated reports are
      * front end only for now.
      * TODO (RBAC): limit these routes to users whose role is 'registrar' (plus IATO admins).
      */
@@ -23,6 +22,13 @@ class RegistrarController extends Controller
 
         return view('registrar.dashboard', $this->shared() + [
             'counts' => RegistrarData::countsByGroup($rows),
+            'summary' => [
+                'applicants' => count($rows),
+                'passed' => collect($rows)->where('exam_passed', true)->count(),
+                'notReserved' => collect($rows)->where('exam_passed', true)->where('reservation_paid', false)->count(),
+                'reserved' => collect($rows)->where('ready_for_enrollment', true)->count(),
+            ],
+            'messages' => MessagesController::threads(),
             'latestPaid' => collect($rows)->where('status', 'Paid')->sortByDesc('paid')->take(5)->values()->all(),
         ]);
     }
@@ -30,7 +36,7 @@ class RegistrarController extends Controller
     public function enrollment()
     {
         return view('registrar.enrollment', $this->shared() + [
-            'rows' => collect(RegistrarData::rows())->where('status', 'Paid')->values()->all(),
+            'rows' => collect(RegistrarData::rows())->where('ready_for_enrollment', true)->values()->all(),
         ]);
     }
 
@@ -46,14 +52,6 @@ class RegistrarController extends Controller
         ]);
     }
 
-    public function questions()
-    {
-        return view('registrar.questions', $this->shared() + [
-            // For "New question": every record the Registrar can view
-            'records' => collect(RegistrarData::rows())->map(fn ($r) => collect($r)->only(['id', 'name', 'unit', 'dept', 'program', 'url']))->values()->all(),
-        ]);
-    }
-
     // What every Registrar page (and the Registrar sidebar) needs
     private function shared(): array
     {
@@ -62,7 +60,6 @@ class RegistrarController extends Controller
             'name' => self::lastFirst($user->name),
             'role' => RegistrarData::scope() === 'is' ? 'IS Registrar' : 'College Registrar',
         ];
-        $questions = RegistrarQuestions::sample($me);
 
         return [
             'academicYear' => ApplicantRecords::academicYear(),
@@ -70,9 +67,6 @@ class RegistrarController extends Controller
             'units' => array_keys(RegistrarData::units()),
             // IS Registrar: one unit, so pages break it down by level instead
             'levels' => RegistrarData::scope() === 'is' ? RegistrarData::IS_LEVELS : [],
-            'questions' => $questions,
-            // Amber number on the sidebar: questions IATO answered
-            'answeredCount' => collect($questions)->where('status', 'answered')->count(),
         ];
     }
 

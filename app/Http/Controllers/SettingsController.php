@@ -50,7 +50,7 @@ class SettingsController extends Controller
             'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
-            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
+            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Messages, records (view only)'],
             'toic' => ['TOIC', 'TOIC Support', 'System Support', 'System Overview, Issues, Security, Documentation, Budget & Maintenance, Reports'],
             'lamp' => ['LAMP Office', 'Director, Advancement Office and LAMP', 'Lasallian Assistance Management Program', 'Dashboard, Analytics & Reports, Scholars, Messages'],
             'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],

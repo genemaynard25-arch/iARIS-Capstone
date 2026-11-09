@@ -44,7 +44,7 @@ class MessagesController extends Controller
     }
 
     // Your conversations with IATO (as in the mockups)
-    private static function threads(): array
+    public static function threads(): array
     {
         $user = auth()->user();
         // The LAMP Office: its own messages, and the scholar checks IATO started
