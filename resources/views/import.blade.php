@@ -12,15 +12,6 @@
 @endphp
 
 @section('content')
-    <div class="alert alert-info d-flex gap-2 align-items-center" role="status">
-        <i class="bi bi-info-circle"></i>
-        <div class="small">
-            This page is for importing individual <b>applicant records</b> (one row per student).
-            Importing the Analytics &amp; Reports projection/target numbers instead?
-            <a href="{{ url('/import/admission-stats') }}" class="fw-bold alert-link">Go to Import Admission Stats →</a>
-        </div>
-    </div>
-
     @if ($errors->any())
         <div class="alert alert-danger d-flex gap-2" role="alert">
             <i class="bi bi-exclamation-circle"></i>

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdmissionStat;
 use App\Models\CachedInsight;
 use App\Services\AiAssistant;
+use App\Support\AdmissionStats;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
@@ -21,8 +21,8 @@ class AnalyticsController extends Controller
         abort_if(empty($tabs), 403, 'Your role does not have access to this module.');
         $tab = in_array($request->query('tab'), $tabs) ? $request->query('tab') : $tabs[0];
 
-        $summary = $this->computeSummary();
-        $rows = $summary['rows'];
+        $summary = AdmissionStats::summary();
+        $rows = AdmissionStats::byLevel();
 
         $stats = [
             [
@@ -60,11 +60,12 @@ class AnalyticsController extends Controller
                 'labels' => ['Previous SY', 'Current SY'],
                 'values' => [$summary['overallPrevious'], $summary['overallCurrent']],
             ],
+            // byLevel() is already sorted by current count, descending
             'programs' => $rows->isEmpty()
                 ? ['labels' => ['No data imported yet'], 'values' => [0]]
                 : [
-                    'labels' => $rows->sortByDesc('overall_total_current')->take(5)->pluck('level_program')->all(),
-                    'values' => $rows->sortByDesc('overall_total_current')->take(5)->pluck('overall_total_current')->all(),
+                    'labels' => $rows->take(5)->pluck('level_program')->all(),
+                    'values' => $rows->take(5)->pluck('current')->all(),
                 ],
             'funnel' => [
                 'labels' => $summary['funnelLabels'],
@@ -76,10 +77,10 @@ class AnalyticsController extends Controller
             ],
         ];
 
-        $comparison = $rows->mapWithKeys(fn (AdmissionStat $row) => [
-            $row->level_program => [
-                'Previous SY' => (int) ($row->overall_total_previous ?? 0),
-                'Current SY' => (int) ($row->overall_total_current ?? 0),
+        $comparison = $rows->mapWithKeys(fn (array $row) => [
+            $row['level_program'] => [
+                'Previous SY' => $row['previous'],
+                'Current SY' => $row['current'],
             ],
         ])->all();
 
@@ -87,15 +88,17 @@ class AnalyticsController extends Controller
             $comparison = ['No data imported yet' => ['Previous SY' => 0, 'Current SY' => 0]];
         }
 
+        // Auto-projected from each level's own year-over-year growth (current + the same
+        // change again) — nobody sets a target number, this is computed, not imported.
         $projection = [
-            'year' => 'Next School Year (projected)',
-            'items' => $rows->map(function (AdmissionStat $row) {
-                $current = (int) ($row->overall_total_current ?? 0);
-                $projected = (int) ($row->projection_mid ?? 0);
+            'year' => 'Next School Year (auto-projected from growth)',
+            'items' => $rows->map(function (array $row) {
+                $current = $row['current'];
+                $projected = $row['previous'] > 0 ? max(0, $current + ($current - $row['previous'])) : $current;
                 $change = $current > 0 ? (($projected - $current) / $current) * 100 : 0;
 
                 return [
-                    'dept' => $row->level_program,
+                    'dept' => $row['level_program'],
                     'current' => $current,
                     'projected' => $projected,
                     'change' => ($change >= 0 ? '+' : '') . number_format($change, 1) . '%',
@@ -113,10 +116,11 @@ class AnalyticsController extends Controller
         ]];
 
         return view('analytics.index', [
-            // Safe for the AI widget to read: built entirely from admission_stats (aggregate
-            // totals) plus the Reports tab's fictional sample preview rows - never real
-            // individual applicant records.
-            'aggregateOnlyPage' => true,
+            // Overview/Insights are safe for the AI widget to read (aggregate totals only).
+            // Reports now has real per-applicant rows (names, scores) in its "Admissions
+            // Reports" section, so that tab must NOT be readable by the widget — same leak
+            // this session already fixed once for the Applicants pipeline.
+            'aggregateOnlyPage' => $tab !== 'reports',
             'tabs' => $tabs,
             'tab' => $tab,
             'reportData' => (new ReportController)->data(),
@@ -136,14 +140,15 @@ class AnalyticsController extends Controller
 
     public function reanalyze(Request $request, AiAssistant $ai)
     {
-        $summary = $this->computeSummary();
+        $summary = AdmissionStats::summary();
+        $rows = AdmissionStats::byLevel()->filter(fn (array $r) => $r['pct_change'] !== null);
 
-        $growers = $summary['rows']->sortByDesc('overall_pct_change')->take(3)
-            ->map(fn (AdmissionStat $r) => "{$r->level_program}: " . number_format($r->overall_pct_change ?? 0, 1) . '%')
-            ->implode('; ');
-        $decliners = $summary['rows']->sortBy('overall_pct_change')->take(3)
-            ->map(fn (AdmissionStat $r) => "{$r->level_program}: " . number_format($r->overall_pct_change ?? 0, 1) . '%')
-            ->implode('; ');
+        $growers = $rows->sortByDesc('pct_change')->take(3)
+            ->map(fn (array $r) => "{$r['level_program']}: " . number_format($r['pct_change'], 1) . '%')
+            ->implode('; ') ?: 'No prior-year data to compare';
+        $decliners = $rows->sortBy('pct_change')->take(3)
+            ->map(fn (array $r) => "{$r['level_program']}: " . number_format($r['pct_change'], 1) . '%')
+            ->implode('; ') ?: 'No prior-year data to compare';
 
         $prompt = 'You are analyzing real school admissions data for the IATO office at De La Salle Lipa. '
             . "Here are the real current numbers:\n"
@@ -181,41 +186,6 @@ class AnalyticsController extends Controller
         );
 
         return redirect('/analytics?tab=insights');
-    }
-
-    protected function computeSummary(): array
-    {
-        $rows = AdmissionStat::all();
-
-        $submittedCurrent = (int) $rows->sum('submitted_current');
-        $overallCurrent = (int) $rows->sum('overall_total_current');
-        $overallPrevious = (int) $rows->sum('overall_total_previous');
-        $tookTestCurrent = (int) $rows->sum('took_test_current');
-        $tookTestPrevious = (int) $rows->sum('took_test_previous');
-        $passedCurrent = (int) $rows->sum('passed_current');
-        $passedPrevious = (int) $rows->sum('passed_previous');
-        $reservedCurrent = (int) $rows->sum('total_reserved_current');
-        $reservedPrevious = (int) $rows->sum('total_reserved_previous');
-        $enrolledCurrent = (int) $rows->sum('officially_enrolled');
-
-        return [
-            'rows' => $rows,
-            'overallCurrent' => $overallCurrent,
-            'overallPrevious' => $overallPrevious,
-            'enrolledCurrent' => $enrolledCurrent,
-            'passRateCurrent' => $tookTestCurrent > 0 ? ($passedCurrent / $tookTestCurrent) * 100 : 0,
-            'passRatePrevious' => $tookTestPrevious > 0 ? ($passedPrevious / $tookTestPrevious) * 100 : 0,
-            'conversionRateCurrent' => $overallCurrent > 0 ? ($reservedCurrent / $overallCurrent) * 100 : 0,
-            'conversionRatePrevious' => $overallPrevious > 0 ? ($reservedPrevious / $overallPrevious) * 100 : 0,
-            'funnelLabels' => ['Submitted', 'Took Exam', 'Passed Exam', 'Reserved', 'Enrolled'],
-            'funnelValues' => [
-                max($submittedCurrent, 1),
-                $tookTestCurrent,
-                $passedCurrent,
-                $reservedCurrent,
-                $enrolledCurrent,
-            ],
-        ];
     }
 
     protected function pctChange(int $current, int $previous): string

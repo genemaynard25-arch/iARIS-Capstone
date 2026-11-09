@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdmissionStat;
 use App\Models\Applicant;
 use App\Models\ImportBatch;
 use App\Models\User;
+use App\Support\AdmissionStats;
 use App\Support\ApplicantRecords;
 use Illuminate\Support\Carbon;
 
 class HomeController extends Controller
 {
     /**
-     * Admin dashboard, from the database: admission_stats (the totals, same as Analytics),
-     * applicants (this week's chart, recent applicants, pending count), import_batches and
+     * Admin dashboard, from the database: AdmissionStats (the totals, same as Analytics, both
+     * computed live from applicants), applicants (this week's chart, recent applicants, pending count), import_batches and
      * users (notifications). Applicants by Location has no data in the database yet.
      *
      * 'tone' is a Bootstrap colour name (primary, info, warning, danger); the
@@ -83,20 +83,20 @@ class HomeController extends Controller
     }
 
     /**
-     * The four cards. Totals come from admission_stats (the same numbers as Analytics);
+     * The four cards. Totals come from App\Support\AdmissionStats (the same numbers as Analytics);
      * "Pending Applications" counts the applicants table rows still pooling / not submitted.
      */
     private function stats(): array
     {
-        $rows = AdmissionStat::all();
-        $total = (int) $rows->sum('overall_total_current');
-        $previous = (int) $rows->sum('overall_total_previous');
-        $reserved = (int) $rows->sum('total_reserved_current');
-        $enrolled = (int) $rows->sum('officially_enrolled');
+        $summary = AdmissionStats::summary();
+        $total = $summary['overallCurrent'];
+        $previous = $summary['overallPrevious'];
+        $reserved = AdmissionStats::byLevel()->sum('reserved');
+        $enrolled = $summary['enrolledCurrent'];
         $change = $total - $previous;
         $pending = Applicant::whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
         $addedThisWeek = Applicant::where('created_at', '>=', now()->startOfWeek())->count();
-        $none = $rows->isEmpty();
+        $none = $total === 0;
 
         return [
             [

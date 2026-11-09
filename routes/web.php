@@ -23,7 +23,6 @@ use App\Http\Controllers\LampController;
 use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
-use App\Http\Controllers\AdmissionStatsImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\SettingsController;
@@ -31,11 +30,6 @@ use App\Http\Controllers\CollegeController;
 use App\Http\Controllers\ToicController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\IatoMessagesController;
-
-// Admission Stats Import routes
-Route::get('/import/admission-stats', [AdmissionStatsImportController::class, 'show'])->middleware('auth');
-Route::post('/import/admission-stats', [AdmissionStatsImportController::class, 'store'])->middleware('auth');
-Route::get('/import/admission-stats/{batch}', [AdmissionStatsImportController::class, 'results'])->middleware('auth');
 
 // Two-factor authentication routes
 Route::get('/two-factor', [TwoFactorAuthenticationController::class, 'show']) ->middleware(['auth']);

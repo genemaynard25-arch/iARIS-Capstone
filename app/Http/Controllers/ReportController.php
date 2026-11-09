@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdmissionStat;
+use App\Models\Applicant;
+use App\Support\AdmissionStats;
 
 class ReportController extends Controller
 {
@@ -13,122 +14,151 @@ class ReportController extends Controller
     }
 
     // The report templates, history and periods. AnalyticsController passes these to the Reports tab.
+    // NOTE: the "Admissions Reports" section below has real applicant names/scores — the Reports
+    // tab is NOT safe for the AI widget to read (see AnalyticsController::index()'s aggregateOnlyPage).
     public function data(): array
     {
-        $rows = AdmissionStat::all();
+        $schoolYear = AdmissionStats::currentSchoolYear();
+        $byLevel = AdmissionStats::byLevel();
         $passed = ['Passed', 'primary'];
+
+        // Exam passers for one level, in the report's [#, Name, App No., ...extra columns..., Result] shape.
+        // $extra maps each applicant to the columns between App No. and Result.
+        $passersFor = function (string $level) use ($schoolYear): \Illuminate\Support\Collection {
+            if (! $schoolYear) {
+                return collect();
+            }
+
+            return Applicant::where('level', $level)
+                ->where('school_year', $schoolYear)
+                ->whereNull('archived_at')
+                ->whereIn('admission_test_status', ['passed', 'qualified_other_degree', 'reconsidered'])
+                ->get();
+        };
+
+        $isPassers = $passersFor('is');
+        $collegePassers = $passersFor('college');
+        $gradPassers = $passersFor('graduate_school');
+        $eteeapPassers = $passersFor('eteeap');
+
+        $resultLabel = fn (Applicant $a) => [\App\Support\ApplicantRecords::testLabel($a->admission_test_status), 'primary'];
+        $name = fn (Applicant $a) => "{$a->last_name}, {$a->first_name}";
 
         $sections = [
             [
-                // Still placeholder: needs individual student names/records, which
-                // the admission_stats import deliberately does not have.
                 'title' => 'Admissions Reports',
-                'description' => 'Entrance exam results and applicant lists per academic unit (sample data — needs student-level records)',
+                'description' => 'Entrance exam results per academic unit, for the current school year'
+                    . ($schoolYear ? " ({$schoolYear})" : '') . ', computed from your imported applicants',
                 'reports' => [
                     [
                         'key' => 'is-exam', 'title' => 'Integrated School — Exam Passers', 'icon' => 'bi-building', 'tone' => 'primary',
-                        'description' => 'List of IS applicants (K–12) who passed the DLSL entrance exam, with strand and grade level breakdown.',
+                        'description' => 'IS applicants (K–12) who passed the DLSL entrance exam, with grade level and strand/track.',
                         'recipient' => 'IS Registrar',
-                        'columns' => ['#', 'Name', 'App No.', 'Grade Level', 'Strand', 'Score', 'Result'],
-                        'rows' => [
-                            [1, 'Lim, Ethan G.', 'APP-IS-2026-0101', 'Grade 11', 'STEM', '92.5', $passed],
-                            [2, 'Soriano, Andrea P.', 'APP-IS-2026-0102', 'Grade 11', 'ABM', '88.0', $passed],
-                        ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'columns' => ['#', 'Name', 'App No.', 'Grade/Sub-Level', 'Strand / Track', 'Result'],
+                        'rows' => $isPassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number,
+                            \App\Support\ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? '—',
+                            $a->program_or_track ?: '—', $resultLabel($a),
+                        ])->all(),
+                        'note' => $isPassers->isEmpty() ? 'No IS exam passers in the current school year yet.' : null,
                     ],
                     [
                         'key' => 'college-exam', 'title' => 'College — Exam Passers', 'icon' => 'bi-mortarboard', 'tone' => 'primary',
-                        'description' => 'List of college applicants who passed the DLSL entrance exam, organized by college and program.',
+                        'description' => 'College applicants who passed the DLSL entrance exam, organized by college and program.',
                         'recipient' => 'College Registrar',
-                        'columns' => ['#', 'Name', 'App No.', 'College', 'Program', 'Score', 'Result'],
-                        'rows' => [
-                            [1, 'Reyes, Mika D.', 'APP-2026-0381', 'CITE', 'BS Computer Science', '94.0', $passed],
-                            [2, 'Garcia, Paolo S.', 'APP-2026-0384', 'CIHTM', 'BS Tourism Management', '90.5', $passed],
-                        ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'columns' => ['#', 'Name', 'App No.', 'College', 'Program', 'Result'],
+                        'rows' => $collegePassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number, $a->college ?: '—', $a->program_or_track ?: '—', $resultLabel($a),
+                        ])->all(),
+                        'note' => $collegePassers->isEmpty() ? 'No College exam passers in the current school year yet.' : null,
                     ],
                     [
                         'key' => 'grad-exam', 'title' => 'Graduate Programs — Exam Passers', 'icon' => 'bi-journal-bookmark', 'tone' => 'info',
-                        'description' => "Applicants who passed for Graduate Programs (Master's / Doctoral), with program and specialization.",
+                        'description' => "Applicants who passed for Graduate Programs (Master's / Doctoral).",
                         'recipient' => 'Graduate School Head',
-                        'columns' => ['#', 'Name', 'App No.', 'Program', 'Level', 'Score', 'Result'],
-                        'rows' => [
-                            [1, 'Dizon, Carla M.', 'APP-GRAD-2026-001', 'Master of Business Administration', "Master's", '91.0', $passed],
-                        ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'columns' => ['#', 'Name', 'App No.', 'Program', 'Result'],
+                        'rows' => $gradPassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number, $a->program_or_track ?: '—', $resultLabel($a),
+                        ])->all(),
+                        'note' => $gradPassers->isEmpty() ? 'No Graduate Programs exam passers in the current school year yet.' : null,
+                    ],
+                    [
+                        'key' => 'eteeap-exam', 'title' => 'ETEEAP — Exam Passers', 'icon' => 'bi-briefcase', 'tone' => 'info',
+                        'description' => 'ETEEAP applicants who passed / were cleared on their competency assessment.',
+                        'recipient' => 'ETEEAP Head',
+                        'columns' => ['#', 'Name', 'App No.', 'Program', 'Result'],
+                        'rows' => $eteeapPassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number, $a->program_or_track ?: '—', $resultLabel($a),
+                        ])->all(),
+                        'note' => $eteeapPassers->isEmpty() ? 'No ETEEAP exam passers in the current school year yet.' : null,
                     ],
                     [
                         'key' => 'law-exam', 'title' => 'College of Law — Exam Passers', 'icon' => 'bi-bank2', 'tone' => 'warning',
-                        'description' => 'Applicants who passed the Law Aptitude Examination, with rankings and qualifying scores.',
+                        'description' => 'Applicants who passed the Law Aptitude Examination.',
                         'recipient' => 'College of Law Head',
                         'columns' => ['#', 'Name', 'App No.', 'Score', 'Rank', 'Result'],
                         'rows' => [
                             [1, 'Ramos, Bea L.', 'APP-LAW-2026-001', '95.0', '1st', $passed],
                         ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'note' => 'Sample data — College of Law applicants aren\'t imported yet (still placeholder records, see Records → College of Law).',
                     ],
                     [
                         'key' => 'ipace-exam', 'title' => 'iPACE — Exam Passers', 'icon' => 'bi-laptop', 'tone' => 'info',
-                        'description' => 'Applicants accepted into the iPACE (online / asynchronous) program, with course and schedule track.',
+                        'description' => 'Applicants accepted into the iPACE (online / asynchronous) program.',
                         'recipient' => 'iPACE Head',
                         'columns' => ['#', 'Name', 'App No.', 'Course', 'Schedule Track', 'Result'],
                         'rows' => [
                             [1, 'Aquino, Leo T.', 'APP-IPACE-2026-001', 'BS Information Technology', 'Asynchronous', $passed],
                         ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'note' => 'Sample data — iPACE applicants aren\'t imported yet (still placeholder records, see Records → iPACE).',
                     ],
                     [
                         'key' => 'scholars', 'title' => 'Scholars — IATO vs LAMP Cross-Check', 'icon' => 'bi-award', 'tone' => 'danger',
-                        'description' => 'Compares IATO scholar records against LAMP Office data — flags discrepancies in names, IDs, or status.',
+                        'description' => 'Applicants who checked Yes for a scholarship, compared against LAMP Office data.',
                         'recipient' => 'LAMP Office',
-                        'columns' => ['#', 'Name', 'IATO Record', 'LAMP Record', 'Match'],
-                        'rows' => [
-                            [1, 'Torres, Nicole A.', 'DLSL Scholar', 'DLSL Scholar', ['Match', 'primary']],
-                        ],
-                        'note' => 'Sample data — real data needs a student-level export, which admission_stats does not provide.',
+                        'columns' => ['#', 'Name', 'Exam Result', 'LAMP Status'],
+                        'rows' => \App\Http\Controllers\ScholarController::sample()->values()->map(fn ($s, $i) => [
+                            $i + 1, $s['name'], [$s['exam_label'], $s['exam_tone']], $s['lamp'],
+                        ])->all(),
+                        'note' => 'The specific scholarship type is LAMP\'s own call (see Scholar Records) — this report only tracks Yes/No + exam result, same as the Scholars page.',
                     ],
                 ],
             ],
             [
                 'title' => 'Institutional Reports',
-                'description' => 'Enrollment trends and per-program summaries, computed from imported admission data',
+                'description' => 'Enrollment trends and per-level summaries, computed from your imported applicants',
                 'reports' => [
                     [
                         'key' => 'trends', 'title' => 'Enrollment Trends — Executive Office', 'icon' => 'bi-graph-up-arrow', 'tone' => 'danger',
-                        'description' => 'Year-on-year applicant comparison across all levels/programs: total this SY vs last SY, with % change per level/program.',
+                        'description' => 'Year-on-year applicant comparison across all levels: total this SY vs last SY, with % change per level.',
                         'recipient' => 'Executive Office',
-                        'columns' => ['Level / Program', 'Previous SY', 'Current SY', 'Change', '% Change'],
-                        'rows' => $rows->map(function (AdmissionStat $row) {
-                            $previous = (int) ($row->overall_total_previous ?? 0);
-                            $current = (int) ($row->overall_total_current ?? 0);
-                            $change = $current - $previous;
-                            $pct = $row->overall_pct_change;
-                            $pctLabel = $pct === null ? 'N/A' : ($pct >= 0 ? '+' : '') . number_format($pct, 1) . '%';
-                            $tone = $pct === null ? 'secondary' : ($pct >= 0 ? 'primary' : 'danger');
+                        'columns' => ['Level', 'Previous SY', 'Current SY', 'Change', '% Change'],
+                        'rows' => $byLevel->map(function (array $row) {
+                            $change = $row['current'] - $row['previous'];
+                            $pctLabel = $row['pct_change'] === null ? 'N/A' : ($row['pct_change'] >= 0 ? '+' : '') . number_format($row['pct_change'], 1) . '%';
+                            $tone = $row['pct_change'] === null ? 'secondary' : ($row['pct_change'] >= 0 ? 'primary' : 'danger');
 
                             return [
-                                $row->level_program,
-                                number_format($previous),
-                                number_format($current),
+                                $row['level_program'],
+                                number_format($row['previous']),
+                                number_format($row['current']),
                                 ($change >= 0 ? '+' : '') . number_format($change),
                                 [$pctLabel, $tone],
                             ];
                         })->values()->all(),
-                        'note' => $rows->isEmpty() ? 'No admission data imported yet.' : 'Computed from the latest imported admission data.',
+                        'note' => $byLevel->isEmpty() ? 'No admission data imported yet.' : 'Computed from your imported applicants.',
                     ],
                     [
-                        'key' => 'dept', 'title' => 'Enrolled vs Target per Level/Program', 'icon' => 'bi-person-video3', 'tone' => 'info',
-                        'description' => 'Officially enrolled students per level/program compared against the reservation target (regular applicants only).',
+                        'key' => 'dept', 'title' => 'Enrolled vs Reserved per Level', 'icon' => 'bi-person-video3', 'tone' => 'info',
+                        'description' => 'Officially enrolled students per level compared against how many paid their reservation fee.',
                         'recipient' => 'Dean / Program Chair',
-                        'columns' => ['Level / Program', 'Enrolled', 'Target (approx.)', '% Filled'],
-                        'rows' => $rows->map(function (AdmissionStat $row) {
-                            $enrolled = (int) ($row->officially_enrolled ?? 0);
-                            $target = (int) ($row->remaining_slots_mid ?? 0) + (int) ($row->reserved_regular_current ?? 0);
-                            $pctFilled = $target > 0 ? number_format(($enrolled / $target) * 100, 1) . '%' : 'N/A';
+                        'columns' => ['Level', 'Enrolled', 'Paid Reservation', '% Converted'],
+                        'rows' => $byLevel->map(function (array $row) {
+                            $pct = $row['reserved'] > 0 ? number_format(($row['enrolled'] / $row['reserved']) * 100, 1) . '%' : 'N/A';
 
-                            return [$row->level_program, number_format($enrolled), number_format($target), $pctFilled];
+                            return [$row['level_program'], number_format($row['enrolled']), number_format($row['reserved']), $pct];
                         })->values()->all(),
-                        'note' => 'Target is approximated from remaining slots (mid target) plus already-reserved regular applicants.',
+                        'note' => 'There\'s no enrollment target set anywhere in iARIS yet — this compares actual enrolled vs actual paid-reservation counts, not a target.',
                     ],
                 ],
             ],
