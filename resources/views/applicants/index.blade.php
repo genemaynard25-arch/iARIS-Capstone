@@ -46,8 +46,8 @@
             'total' => 'Total Applicants', 'totalSub' => 'College + IS combined', 'noun' => 'applicant',
         ],
         'college' => [
-            'title' => 'College Records', 'subtitle' => "All college applicant and enrolled student records for AY {$academicYear}",
-            'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'student',
+            'title' => 'College Records', 'subtitle' => "College applicant records for AY {$academicYear}",
+            'total' => 'Total College Students', 'totalSub' => 'All colleges combined', 'noun' => 'applicant',
             'extras' => [
                 ['key' => 'year', 'label' => 'Year Level', 'first' => false],
                 ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
@@ -56,8 +56,8 @@
             'statuses' => $databaseStatuses,
         ],
         'is' => [
-            'title' => 'Integrated School Records', 'subtitle' => "All Integrated School applicant and enrolled student records for AY {$academicYear}",
-            'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'student',
+            'title' => 'Integrated School Records', 'subtitle' => "Preschool to Grade 12 applicant records for AY {$academicYear}",
+            'total' => 'Total IS Students', 'totalSub' => 'All sub-levels combined', 'noun' => 'applicant',
             'extras' => [
                 ['key' => 'level', 'label' => 'Grade', 'first' => true],
                 ['key' => 'scholarship', 'label' => 'Scholarship', 'first' => false],
@@ -179,27 +179,63 @@
         'program_label' => $a['program'],
     ]);
 
-    $stats = [
-        ['label' => $page['total'], 'value' => $rows->count(), 'sub' => $page['totalSub'], 'tone' => 'primary'],
+    // Presentation follows the record mockups; payment and exam values remain supplied by the controller.
+    $examResults = [
+        'not_taken' => ['Not yet taken', 'secondary'], 'passed' => ['Pass', 'primary'],
+        'failed' => ['Fail', 'danger'], 'waitlisted' => ['Waitlisted', 'warning'],
+        'reconsidered' => ['Reconsidered', 'info'], 'took_test' => ['Awaiting result', 'warning'],
+        'qualified_other_degree' => ['Qualified (other program)', 'info'], 'unknown' => ['Not recorded', 'secondary'],
     ];
-    // Then one card per status this page uses
-    $statusSubs = ['Pending' => 'Awaiting action', 'For Exam' => 'Scheduled / waiting', 'Passed' => 'Passed the entrance test',
-        'Not Qualified' => 'Did not pass the test', 'Paid' => 'Reservation confirmed', 'Enrolled' => 'Active enrollees'];
-    foreach ($page['statuses'] as $status) {
-        $stats[] = [
-            'label' => $page['statusLabels'][$status] ?? $status,
-            'value' => $rows->where('status', $status)->count(),
-            'sub' => $statusSubs[$status],
-            'tone' => $statusTones[$status],
+    $rows = $rows->map(function ($a) use ($examResults) {
+        $result = $a['exam_status'] ?? match ($a['status']) {
+            'Pending' => 'not_taken', 'Passed' => 'passed', 'Not Qualified' => 'failed', default => 'unknown',
+        };
+        [$resultLabel, $resultTone] = $examResults[$result] ?? $examResults['unknown'];
+        $examPaid = $a['exam_paid'] ?? null;
+        $reserved = $a['amount'] !== null || $a['paid'] !== null || in_array($a['status'], ['Paid', 'Enrolled']);
+        return $a + [
+            'exam_result' => $result, 'exam_result_label' => $resultLabel, 'exam_result_tone' => $resultTone,
+            'exam_fee_label' => $examPaid === null ? 'Not recorded' : ($examPaid ? 'Exam fee paid' : 'Exam fee not paid'),
+            'exam_fee_tone' => $examPaid === null ? 'secondary' : ($examPaid ? 'primary' : 'danger'),
+            'reservation_label' => $reserved ? 'Reservation paid' : 'Not yet paid',
+            'reservation_tone' => $reserved ? 'info' : 'secondary', 'reserved' => $reserved,
         ];
-    }
+    });
+    $stats = [
+        ['label' => 'Total Applicants', 'value' => $rows->count(), 'sub' => $scope === 'is' ? 'Nursery to Grade 12' : $page['totalSub'], 'tone' => 'primary'],
+        ['label' => 'Exam fee paid', 'value' => $rows->where('exam_paid', true)->count(), 'sub' => 'Updates after online payment', 'tone' => 'primary'],
+        ['label' => 'Passed', 'value' => $rows->whereIn('exam_result', ['passed', 'reconsidered', 'qualified_other_degree'])->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
+        ['label' => 'Reservation paid', 'value' => $rows->where('reserved', true)->count(), 'sub' => 'Ready for enrollment', 'tone' => 'info'],
+    ];
+    $recordColumns = match ($scope) {
+        'college' => ['group' => 'College', 'program' => 'Program', 'year' => 'Year Level'],
+        'is' => ['group' => 'Level', 'level' => 'Grade', 'program' => 'Strand'],
+        'graduate' => ['group' => 'Program', 'program' => 'Level', 'degree' => 'Undergraduate Degree'],
+        'law' => ['group' => 'Program', 'program' => 'Undergraduate Degree', 'bar' => 'Bar Exam Passer'],
+        'ipace' => ['group' => 'Program', 'program' => 'Delivery Mode', 'year' => 'Year Level', 'working' => 'Working Student'],
+        'eteeap' => ['group' => 'Program', 'age' => 'Age', 'education' => 'Highest Educ. Attainment', 'experience' => 'Work Experience', 'program' => 'Portfolio / Assessment'],
+        default => ['group' => 'College', 'program' => 'Program'],
+    };
+    $categoryField = $scope === 'ipace' ? 'program' : 'group';
+    $categoryLabel = match ($scope) { 'college' => 'College', 'is' => 'Level', 'ipace' => 'Delivery Mode', default => 'Program' };
+    $categoryOptions = collect($groupOrder ?? [])->merge($rows->pluck($categoryField))->filter(fn ($v) => $v && $v !== '—')->unique()->values();
+    if ($scope === 'ipace') $categoryOptions = collect(['Online', 'Blended']);
+    $recordColumnCount = count($recordColumns) + 6;
+
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => 'Records', 'workspaceLabel' => $page['title']])
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => 'Admin', 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
+
+@push('styles')
+    <link href="{{ asset('css/records.css') }}" rel="stylesheet">
+@endpush
 
 @section('content')
+    @unless ($fromDatabase)
+        <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview records · This division is not connected to applicant imports yet.</p>
+    @endunless
     {{-- Stat cards --}}
-    <div class="admin-stat-grid row row-cols-2 row-cols-md-3 row-cols-xl-{{ count($stats) }} g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
                 <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
@@ -213,7 +249,7 @@
         @endforeach
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
+    <div class="records-table-card card border-0 shadow-sm rounded-4">
         {{-- Tabs (the Records pages only have one unit, so no tabs there) --}}
         @if ($scope === 'all')
         <div class="card-header bg-white border-bottom rounded-top-4 px-4 pt-3 pb-0">
@@ -234,30 +270,49 @@
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 320px;">
                 <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
-                <input type="search" class="form-control" id="search" placeholder="Search by name or app number…" aria-label="Search applicants">
+                <input type="search" class="form-control" id="search" placeholder="Search name or applicant no…" aria-label="Search applicants">
             </div>
-            <select class="form-select w-auto" id="groupFilter" aria-label="Filter by college or level"></select>
+            <select class="form-select w-auto {{ in_array($scope, ['college', 'is']) ? 'd-none' : '' }}" id="groupFilter" aria-label="Filter by college or level"></select>
             <select class="form-select w-auto" id="programFilter" aria-label="Filter by program or strand"></select>
+            @if ($scope === 'is')
+                <select class="form-select w-auto" id="gradeFilter" aria-label="Filter by grade level">
+                    <option value="">All Grade Levels</option>
+                    @foreach ($rows->pluck('level')->unique()->filter(fn ($grade) => $grade && $grade !== '—')->sort() as $grade)
+                        <option>{{ $grade }}</option>
+                    @endforeach
+                </select>
+            @endif
             <select class="form-select w-auto" id="sort" aria-label="Sort">
                 <option value="newest">Sort: Newest First</option>
                 <option value="oldest">Sort: Oldest First</option>
                 <option value="az">Sort: Name A–Z</option>
                 <option value="za">Sort: Name Z–A</option>
+                <option value="status">Sort: Status</option>
+                @if ($scope === 'eteeap')<option value="experience">Sort: Work Experience</option>@endif
             </select>
-            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
-                <i class="bi bi-download me-1"></i> Export
-            </button>
             @if ($canEdit)
                 <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add">
                     <i class="bi bi-plus-lg me-1"></i> Add Applicant
                 </button>
             @endif
+            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
+                <i class="bi bi-download me-1"></i> Export
+            </button>
         </div>
 
         {{-- Status pills --}}
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
-            @foreach (['All', ...$page['statuses']] as $status)
-                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold {{ $loop->first ? 'btn-primary' : 'btn-outline-secondary' }}" data-status="{{ $status }}">{{ $page['statusLabels'][$status] ?? $status }}</button>
+            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All <span class="records-pill-count">{{ $rows->count() }}</span></button>
+            @foreach ($examResults as $result => [$label, $tone])
+                @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
+                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }} <span class="records-pill-count">{{ $rows->where('exam_result', $result)->count() }}</span></button>
+            @endforeach
+        </div>
+        <div class="records-category-pills d-flex flex-wrap align-items-center gap-2 border-bottom" id="categoryPills" aria-label="Filter by {{ strtolower($categoryLabel) }}">
+            <span class="small fw-semibold text-body-secondary me-1">{{ $categoryLabel }}:</span>
+            <button type="button" class="btn btn-sm btn-primary" data-category="" aria-pressed="true">All</button>
+            @foreach ($categoryOptions as $category)
+                <button type="button" class="btn btn-sm btn-light border" data-category="{{ $category }}" aria-pressed="false">{{ $category }}</button>
             @endforeach
         </div>
 
@@ -267,57 +322,42 @@
                 <thead class="table-light">
                     {{-- Headings may wrap onto two lines so long ones ("Undergraduate Degree") don't widen the table --}}
                     <tr class="small text-uppercase">
-                        <th class="ps-4" style="width: 1%;"><input type="checkbox" class="form-check-input" id="selectAll" aria-label="Select all on this page"></th>
-                        <th class="text-body-secondary fw-bold">Applicant</th>
-                        <th class="text-body-secondary fw-bold" id="groupHeading">College</th>
-                        @foreach ($extrasFirst as $x)
-                            <th class="text-body-secondary fw-bold">{{ $x['label'] }}</th>
+                        <th class="ps-4 text-body-secondary fw-bold"><input type="checkbox" class="visually-hidden form-check-input" id="selectAll" aria-label="Select all on this page">Applicant</th>
+                        @foreach ($recordColumns as $key => $label)
+                            <th class="text-body-secondary fw-bold" @if ($key === 'group') id="groupHeading" @elseif ($key === 'program') id="programHeading" @endif>{{ $label }}</th>
                         @endforeach
-                        <th class="text-body-secondary fw-bold" id="programHeading">Program</th>
-                        @foreach ($extrasAfter as $x)
-                            <th class="text-body-secondary fw-bold">{{ $x['label'] }}</th>
-                        @endforeach
-                        <th class="text-body-secondary fw-bold">Status</th>
-                        <th class="text-body-secondary fw-bold">Date Applied</th>
-                        <th class="text-body-secondary fw-bold">Updated</th>
-                        <th class="pe-4"></th>
+                        <th scope="col">Exam Fee</th><th scope="col">Exam Result</th><th scope="col">Reservation</th>
+                        <th scope="col">{{ $scope === 'eteeap' ? 'Updated' : 'Date Applied' }}</th>
+                        <th class="pe-4 text-end" scope="col"><span class="{{ $scope === 'is' ? '' : 'visually-hidden' }}">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody id="applicantRows">
                     @foreach ($rows as $i => $a)
                         <tr class="applicant-row" style="cursor: pointer;" tabindex="0"
-                            data-index="{{ $i }}" data-unit="{{ $a['unit'] }}" data-status="{{ $a['status'] }}"
+                            data-grade="{{ $a['level'] ?? '' }}" data-experience="{{ $a['experience'] ?? '' }}" data-exam-result="{{ $a['exam_result'] }}" data-index="{{ $i }}" data-unit="{{ $a['unit'] }}" data-status="{{ $a['status'] }}"
                             data-group="{{ $a['group'] }}" data-program="{{ $a['program'] }}"
                             data-search="{{ strtolower($a['name'] . ' ' . $a['id']) }}"
                             data-applied="{{ $a['applied'] }}" data-name="{{ $a['name'] }}">
-                            <td class="ps-4"><input type="checkbox" class="form-check-input row-check" aria-label="Select {{ $a['name'] }}"></td>
-                            <td>
+                            <td class="ps-4">
+                                <input type="checkbox" class="visually-hidden form-check-input row-check" aria-label="Select {{ $a['name'] }}">
                                 <div class="fw-semibold text-nowrap">{{ $a['name'] }}</div>
                                 <div class="small text-body-secondary">{{ $a['id'] }}</div>
                             </td>
-                            <td>
-                                @if ($page['groupBadge'])
-                                    <span class="badge bg-dark-subtle text-dark-emphasis">{{ $a['group'] }}</span>
-                                @else
-                                    {{ $a['group'] }}
-                                @endif
-                            </td>
-                            @foreach ($extrasFirst as $x)
-                                <td>{{ $a[$x['key']] }}</td>
+                            @foreach ($recordColumns as $key => $label)
+                                <td>
+                                    @if ($key === 'group' && $page['groupBadge'])
+                                        <span class="badge bg-dark-subtle text-dark-emphasis">{{ $a[$key] ?? '—' }}</span>
+                                    @elseif ($key === 'program' && ($badge = $page['programBadges'][$a['program']] ?? null))
+                                        <span class="badge bg-{{ $badge[0] }}-subtle text-{{ $badge[0] }}-emphasis">{{ $a[$key] }}</span>
+                                    @else
+                                        {{ $a[$key] ?? '—' }}
+                                    @endif
+                                </td>
                             @endforeach
-                            <td>
-                                @if ($badge = $page['programBadges'][$a['program']] ?? null)
-                                    <span class="badge rounded-pill bg-{{ $badge[0] }}-subtle text-{{ $badge[0] }}-emphasis"><i class="bi {{ $badge[1] }} me-1"></i>{{ $a['program'] }}</span>
-                                @else
-                                    {{ $a['program'] }}
-                                @endif
-                            </td>
-                            @foreach ($extrasAfter as $x)
-                                <td>{{ $a[$x['key']] }}</td>
-                            @endforeach
-                            <td><span class="badge rounded-pill text-wrap bg-{{ $a['tone'] }}-subtle text-{{ $a['tone'] }}-emphasis">{{ $a['status_label'] }}</span></td>
-                            <td class="small text-body-secondary text-nowrap">{{ $a['applied_label'] }}</td>
-                            <td class="small text-body-secondary text-nowrap">{{ $a['updated_label'] }}</td>
+                            <td><span class="records-payment badge bg-{{ $a['exam_fee_tone'] }}-subtle text-{{ $a['exam_fee_tone'] }}-emphasis">{{ $a['exam_fee_label'] }}</span></td>
+                            <td><span class="badge bg-{{ $a['exam_result_tone'] }}-subtle text-{{ $a['exam_result_tone'] }}-emphasis">{{ $a['exam_result_label'] }}</span></td>
+                            <td><span class="records-payment badge bg-{{ $a['reservation_tone'] }}-subtle text-{{ $a['reservation_tone'] }}-emphasis">{{ $a['reservation_label'] }}</span>@if ($a['paid_label'])<small class="d-block text-body-secondary mt-1">{{ $a['paid_label'] }}</small>@endif</td>
+                            <td class="small text-body-secondary text-nowrap">{{ $scope === 'eteeap' ? $a['updated_label'] : $a['applied_label'] }}</td>
                             <td class="pe-4 text-end text-nowrap">
                                 @if ($canEdit)
                                     <button type="button" class="btn btn-sm btn-light border" data-row-action="view" title="View details" aria-label="View {{ $a['name'] }}"><i class="bi bi-eye"></i></button>
@@ -331,7 +371,7 @@
                     @if ($rows->isEmpty())
                         {{-- Nothing in the database yet --}}
                         <tr>
-                            <td colspan="{{ 8 + count($page['extras']) }}" class="text-center text-body-secondary py-5">
+                            <td colspan="{{ $recordColumnCount }}" class="text-center text-body-secondary py-5">
                                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                                 @if ($fromDatabase)
                                     No applicants imported yet for AY {{ $academicYear }}.
@@ -345,7 +385,7 @@
                         </tr>
                     @endif
                     <tr id="noResults" class="d-none">
-                        <td colspan="{{ 8 + count($page['extras']) }}" class="text-center text-body-secondary py-5">
+                        <td colspan="{{ $recordColumnCount }}" class="text-center text-body-secondary py-5">
                             <i class="bi bi-search fs-3 d-block mb-2"></i>
                             No applicants match your search or filters.
                         </td>
@@ -378,6 +418,10 @@
 
         <ul class="nav nav-underline px-4 border-bottom no-print" role="tablist">
             <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabInfo" type="button" role="tab">{{ $page['guardian'] ? 'Personal & Guardian' : 'Personal Info' }}</button></li>
+            @if ($scope === 'eteeap')
+                <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabWork" type="button" role="tab">Work History</button></li>
+                <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabAssessment" type="button" role="tab">Assessment</button></li>
+            @endif
             <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabApplication" type="button" role="tab">Application</button></li>
             <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabTimeline" type="button" role="tab">Timeline</button></li>
         </ul>
@@ -428,6 +472,26 @@
             </div>
 
             {{-- Application --}}
+            @if ($scope === 'eteeap')
+                <div class="tab-pane fade" id="tabWork" role="tabpanel">
+                    <h3 class="records-drawer-section">Educational background</h3>
+                    <div class="small text-body-secondary mb-1">Highest educational attainment</div><div class="fw-semibold mb-4" data-field="education"></div>
+                    <h3 class="records-drawer-section">Employment history</h3>
+                    <div class="rounded-3 border p-3 text-body-secondary small mb-4">Detailed employment history has not been recorded for this applicant.</div>
+                    <h3 class="records-drawer-section">Summary</h3>
+                    <dl class="row g-3"><div class="col-6"><dt class="text-body-secondary small">Total work experience</dt><dd data-field="experience"></dd></div><div class="col-6"><dt class="text-body-secondary small">Current employer</dt><dd data-field="employer"></dd></div></dl>
+                </div>
+                <div class="tab-pane fade" id="tabAssessment" role="tabpanel">
+                    <h3 class="records-drawer-section">Portfolio & competency assessment</h3>
+                    <dl class="row g-3 mb-4"><div class="col-6"><dt class="text-body-secondary small">Portfolio status</dt><dd data-field="program"></dd></div><div class="col-6"><dt class="text-body-secondary small">Assessment result</dt><dd data-field="exam_result_label"></dd></div></dl>
+                    <h3 class="records-drawer-section">Competency ratings</h3>
+                    <div class="records-competencies">
+                        @foreach (['Technical / Core Competency', 'Communication Skills', 'Problem-Solving', 'Leadership / Management', 'Digital Literacy'] as $competency)
+                            <div class="d-flex justify-content-between gap-3 border-bottom py-3"><span>{{ $competency }}</span><span class="text-body-secondary">Not recorded</span></div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             <div class="tab-pane fade" id="tabApplication" role="tabpanel">
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Program Details</div>
                 <div class="row g-3 mb-4">
@@ -490,7 +554,7 @@
         // Sub-levels go in school order, not A–Z
         const GROUP_ORDER = @json($groupOrder ?? []);
         // Applicants starts on the College tab; each Records page's rows use its scope as their unit
-        const state = { unit: SCOPE === 'all' ? 'college' : SCOPE, status: 'All', group: '', program: '', search: '', sort: 'newest', page: 1 };
+        const state = { unit: SCOPE === 'all' ? 'college' : SCOPE, status: 'All', group: '', program: '', grade: '', search: '', sort: 'newest', page: 1 };
         let currentMatches = [];   // every row that passes the filters (all pages), used by Export
 
         const tbody = document.getElementById('applicantRows');
@@ -521,22 +585,25 @@
             const labels = currentLabels();
             fillSelect(groupFilter, labels.groupAll, inTab.map(r => r.dataset.group), GROUP_ORDER);
             if (labels.programAll) fillSelect(programFilter, labels.programAll, inTab.map(r => r.dataset.program));
-            programFilter.classList.toggle('d-none', !labels.programAll);
+            programFilter.classList.toggle('d-none', !labels.programAll || ['college', 'is'].includes(SCOPE));
             document.getElementById('groupHeading').textContent = labels.group;
-            document.getElementById('programHeading').textContent = labels.program;
+            document.getElementById('programHeading').textContent = SCOPE === 'is' ? 'Strand' : labels.program;
             state.group = state.program = '';
         }
 
         function render() {
             const matches = rows.filter(r =>
                 r.dataset.unit === state.unit &&
-                (state.status === 'All' || r.dataset.status === state.status) &&
+                (state.status === 'All' || r.dataset.examResult === state.status) &&
                 (!state.group || r.dataset.group === state.group) &&
                 (!state.program || r.dataset.program === state.program) &&
+                (!state.grade || r.dataset.grade === state.grade) &&
                 r.dataset.search.includes(state.search)
             );
 
             const compare = {
+                status: (a, b) => a.dataset.examResult.localeCompare(b.dataset.examResult),
+                experience: (a, b) => (parseFloat(b.dataset.experience) || 0) - (parseFloat(a.dataset.experience) || 0),
                 newest: (a, b) => b.dataset.applied.localeCompare(a.dataset.applied),
                 oldest: (a, b) => a.dataset.applied.localeCompare(b.dataset.applied),
                 az: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
@@ -599,6 +666,7 @@
         // Status pills
         document.querySelectorAll('#statusPills button').forEach(pill => pill.addEventListener('click', () => {
             document.querySelectorAll('#statusPills button').forEach(p => {
+                p.setAttribute('aria-pressed', p === pill);
                 p.classList.toggle('btn-primary', p === pill);
                 p.classList.toggle('btn-outline-secondary', p !== pill);
             });
@@ -609,9 +677,31 @@
 
         // Search, filters, sort
         document.getElementById('search').addEventListener('input', e => { state.search = e.target.value.trim().toLowerCase(); state.page = 1; render(); });
+        document.getElementById('gradeFilter')?.addEventListener('change', e => { state.grade = e.target.value; state.page = 1; render(); });
         groupFilter.addEventListener('change', e => { state.group = e.target.value; state.page = 1; render(); });
         programFilter.addEventListener('change', e => { state.program = e.target.value; state.page = 1; render(); });
         document.getElementById('sort').addEventListener('change', e => { state.sort = e.target.value; render(); });
+
+        const categoryField = @json($categoryField);
+        function syncCategoryPills() {
+            document.querySelectorAll('[data-category]').forEach(button => {
+                const active = button.dataset.category === state[categoryField];
+                button.classList.toggle('btn-primary', active);
+                button.classList.toggle('btn-light', !active);
+                button.setAttribute('aria-pressed', active);
+            });
+        }
+        document.getElementById('categoryPills').addEventListener('click', event => {
+            const button = event.target.closest('[data-category]');
+            if (!button) return;
+            const select = categoryField === 'group' ? groupFilter : programFilter;
+            select.value = button.dataset.category;
+            state[categoryField] = button.dataset.category;
+            state.page = 1;
+            syncCategoryPills();
+            render();
+        });
+        [groupFilter, programFilter].forEach(select => select.addEventListener('change', syncCategoryPills));
 
         // Checkboxes (select all = the rows visible on this page)
         document.getElementById('selectAll').addEventListener('change', e => {
@@ -622,13 +712,11 @@
         document.getElementById('exportButton').addEventListener('click', () => {
             const labels = currentLabels();
             // Same columns, in the same order, as the table
-            const first = PAGE.extras.filter(x => x.first);
-            const after = PAGE.extras.filter(x => !x.first);
-            const header = ['App No.', 'Name', labels.group, ...first.map(x => x.label), labels.program, ...after.map(x => x.label), 'Status', 'Date Applied', 'Updated'];
-
+            const columns = @json($recordColumns);
+            const header = ['App No.', 'Name', ...Object.values(columns), 'Exam Fee', 'Exam Result', 'Reservation', SCOPE === 'eteeap' ? 'Updated' : 'Date Applied'];
             const lines = currentMatches.map(row => {
                 const a = APPLICANTS[row.dataset.index];
-                return [a.id, a.name, a.group, ...first.map(x => a[x.key]), a.program, ...after.map(x => a[x.key]), a.status_label, a.applied_label, a.updated_label];
+                return [a.id, a.name, ...Object.keys(columns).map(key => a[key]), a.exam_fee_label, a.exam_result_label, a.reservation_label, SCOPE === 'eteeap' ? a.updated_label : a.applied_label];
             });
             // Wrap every value in quotes (and double any quotes inside) so commas in names don't break columns
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
