@@ -14,7 +14,7 @@ class DemoSeeder extends Seeder
     public function run(): void
     {
         // Step 3: Import Data + Applicants/Records, as a real editor rather than the admin
-        User::updateOrCreate(['email' => 'staff@gmail.com'], [
+        User::updateOrCreate(['email' => 'staff@dlsl.edu.ph'], [
             'name' => 'Test IATO Staff',
             'password' => Hash::make('password123'),
             'role' => 'iato_staff',
@@ -23,7 +23,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // Step 9: role-scoped view (CITE Dean only sees CITE applicants)
-        User::updateOrCreate(['email' => 'dean@gmail.com'], [
+        User::updateOrCreate(['email' => 'dean.cite@dlsl.edu.ph'], [
             'name' => 'Cherrie Villafuerte',
             'password' => Hash::make('password123'),
             'role' => 'dean',
@@ -35,7 +35,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // Optional: Scholars / LAMP cross-check beat
-        User::updateOrCreate(['email' => 'lamp@gmail.com'], [
+        User::updateOrCreate(['email' => 'lamp@dlsl.edu.ph'], [
             'name' => 'Test LAMP Office',
             'password' => Hash::make('password123'),
             'role' => 'lamp',
@@ -44,7 +44,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // Optional: Registrar view
-        User::updateOrCreate(['email' => 'registrar@gmail.com'], [
+        User::updateOrCreate(['email' => 'registrar@dlsl.edu.ph'], [
             'name' => 'Remian Santos',
             'password' => Hash::make('password123'),
             'role' => 'registrar',
