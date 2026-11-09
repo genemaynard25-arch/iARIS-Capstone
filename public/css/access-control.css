@@ -10,7 +10,7 @@
 .ac-institution-bar > span:last-child { font-size: 11.5px; letter-spacing: .5px; color: rgba(255,255,255,.45); }
 .access-control-page .app-shell { min-height: calc(100vh - 34px) !important; }
 .access-control-page .app-main { padding: 24px 28px !important; }
-.access-control-page .sidebar { width: 272px; --bs-offcanvas-width: 272px; height: calc(100vh - 34px) !important; top: 34px; background: linear-gradient(180deg,#00674f,#003d2e); }
+.access-control-page .sidebar { width: 272px; --bs-offcanvas-width: 272px; height: 100vh !important; top: 0; background: linear-gradient(180deg,#00674f,#003d2e); }
 .access-control-page .sidebar .nav-link { font-size: 14px; padding: 10px 12px; border-radius: 9px; }
 .access-control-page .sidebar .nav-link.active { border-left: 3px solid #a8d5c5; padding-left: 9px; }
 .access-control-page .sidebar .offcanvas-body > div:first-child { padding: 26px 24px 22px !important; }
