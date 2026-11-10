@@ -114,6 +114,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
         const PROGRAMS = @json($programs);
         const ROWS = @json($rows);
@@ -196,7 +197,9 @@
             // Pager: previous, 1 2 3 …, next
             const item = (label, target, { active = false, disabled = false } = {}) => `<li class="page-item ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}"><button type="button" class="page-link" data-page="${target}" ${disabled ? 'disabled' : ''} ${active ? 'aria-current="page"' : ''}>${label}</button></li>`;
             $('pager').innerHTML = pages > 1 ? item('<i class="bi bi-chevron-left"></i>', page - 1, { disabled: page === 1 })
-                + Array.from({ length: pages }, (_, i) => item(i + 1, i + 1, { active: i + 1 === page })).join('')
+                + IARIS_PAGINATION.pages(page, pages).map(p => p === null
+                    ? '<li class="page-item disabled" aria-hidden="true"><span class="page-link">…</span></li>'
+                    : item(p, p, { active: p === page })).join('')
                 + item('<i class="bi bi-chevron-right"></i>', page + 1, { disabled: page === pages }) : '';
             $('pager').querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { page = +b.dataset.page; draw(); }));
         }
