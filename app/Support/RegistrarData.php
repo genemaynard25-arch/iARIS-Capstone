@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Http\Controllers\IpaceRecordController;
-use App\Http\Controllers\LawRecordController;
 use Illuminate\Support\Carbon;
 
 /**
@@ -11,9 +10,9 @@ use Illuminate\Support\Carbon;
  *
  * Two kinds of Registrar, by the user's assigned_level ("scope"):
  *   College Registrar ('college'): College, Graduate Programs, College of Law, iPACE and ETEEAP.
- *     College, Graduate Programs and ETEEAP come from the applicants table (ApplicantRecords).
- *     College of Law and iPACE are still placeholder data (their controllers' sample()),
- *     because the applicants table has no level for them yet.
+ *     College, Graduate Programs, College of Law and ETEEAP come from the applicants table
+ *     (ApplicantRecords). iPACE is still placeholder data (IpaceRecordController::sample()),
+ *     because the applicants table has no level for it yet.
  *   IS Registrar ('is'): the Integrated School only, from the applicants table, by level.
  *
  * Each row: id, name, unit, dept, program, status, applied, paid, url (opens the record). No
@@ -75,12 +74,11 @@ class RegistrarData
         $rows = [];
         foreach (self::units($scope) as $unit => [$source, $url]) {
             $list = match ($source) {
-                'law' => LawRecordController::sample(),
                 'ipace' => IpaceRecordController::sample(),
                 default => ApplicantRecords::forLevel($source),
             };
             foreach ($list as $a) {
-                $preview = in_array($source, ['law', 'ipace']);
+                $preview = in_array($source, ['ipace']);
                 // Only the unconnected sample divisions infer a sample result from their sample status.
                 $examStatus = self::recordExamStatus($a, $preview);
                 $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);

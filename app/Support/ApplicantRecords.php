@@ -143,6 +143,16 @@ class ApplicantRecords
                 // have" column to read this from, so this always shows "-" for real data.
                 'degree' => '—',
             ]),
+            'law' => array_merge($row, [
+                'unit' => 'law',
+                'unit_label' => 'College of Law',
+                'group' => self::lawCode($program),
+                'program_label' => $program,
+                // Not in the portal export - no "what undergrad degree did you already
+                // have" or bar exam result columns to read these from.
+                'program' => '—',
+                'bar' => '—',
+            ]),
             'eteeap' => array_merge($row, [
                 'unit' => 'eteeap',
                 'unit_label' => 'ETEEAP',
@@ -209,6 +219,17 @@ class ApplicantRecords
         }
 
         return self::initials($program);
+    }
+
+    // Short codes for Law programs (anything else gets its initials)
+    private static function lawCode(string $program): string
+    {
+        return match (true) {
+            stripos($program, 'Juris Doctor') !== false => 'JD',
+            stripos($program, 'Master of Laws') !== false => 'LLM',
+            stripos($program, 'Juridical') !== false, stripos($program, 'Judicial') !== false => 'JSD',
+            default => self::initials($program),
+        };
     }
 
     // ETEEAP portfolio / competency assessment, from the test status column

@@ -20,6 +20,7 @@ class ApplicantEditFlow
             'is' => 'Integrated School',
             'graduate_school' => 'Graduate Programs',
             'eteeap' => 'ETEEAP',
+            'law' => 'College of Law',
             default => 'Applicants',
         };
     }
