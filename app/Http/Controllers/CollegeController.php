@@ -665,8 +665,30 @@ class CollegeController extends Controller
      */
     private static function directorApplicants(): array
     {
-        $preview = self::directorPreviewApplicants();
-        $preview['iPACE'] = array_map(fn ($row) => $row + ['preview' => true, 'exam_status' => $row['status'] === 'Paid' ? 'passed' : 'not_taken', 'exam_paid' => null], $preview['iPACE']);
+        $programs = self::realPrograms('IPACE', self::COLLEGES['IPACE']['programs']);
+        $ipaceCodes = [];
+        foreach ($programs as $code => $program) {
+            if (($program['unit'] ?? null) === 'iPACE') {
+                $ipaceCodes[$program['name']] = $code;
+            }
+        }
+        $preview = ['iPACE' => array_map(function ($a) use ($ipaceCodes) {
+            $programName = $a['program_label'] ?: 'Unspecified program';
+            return [
+                'id' => $a['id'], 'name' => trim($a['last'] . ', ' . $a['first']),
+                'program' => $ipaceCodes[$programName] ?? 'I-OTHER',
+                'program_name' => $programName,
+                'mode' => $a['program'] === '—' ? 'Not recorded' : $a['program'],
+                'year' => $a['year'], 'working' => $a['working'], 'employer' => $a['employer'],
+                'status' => $a['status'], 'applied' => $a['applied'],
+                'updated' => $a['updated'], 'dob' => $a['dob'],
+                'gender' => $a['gender'], 'email' => $a['email'],
+                'phone' => $a['contact'], 'address' => $a['address'],
+                'exam' => $a['exam'], 'paid' => $a['paid'],
+                'exam_status' => $a['exam_status'], 'exam_paid' => $a['exam_paid'],
+                'preview' => false,
+            ];
+        }, \App\Support\ApplicantRecords::forLevel('ipace'))];
         $preview['ETEEAP'] = array_map(function ($a) {
             $assessment = match ($a['program']) { 'Cleared' => 'cleared', 'Submitted' => 'submitted', default => 'pending' };
             return [
