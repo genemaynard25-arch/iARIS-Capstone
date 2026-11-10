@@ -26,6 +26,10 @@
         ->values();
 @endphp
 
+@if (auth()->user()->isExecutive())
+    @include('partials.president-workspace', ['presidentPage' => 'reports', 'presidentLabel' => 'Reports'])
+@endif
+
 @section('content')
     {{-- Two views: reports the IATO sent, and generating your own.
          canGenerate false hides the "Generate a Report" tab (its section stays, the script uses it). --}}

@@ -17,23 +17,18 @@ class CollegeRecordController extends Controller
 
         $students = collect(ApplicantRecords::forLevel("college"))
             ->map(fn($a) => $a + ["year" => "—"])
-            ->when(
-                in_array($user->role, ["dean", "program_chair"]) &&
-                    $user->assigned_college,
-                fn($rows) => $rows
-                    ->filter(
-                        fn($a) => $a["college"] === $user->assigned_college,
-                    )
-                    ->values(),
-            )
+            ->when($user->role === 'dean', fn ($rows) => $rows
+                ->where('college', CollegeController::college()['code'])->values())
+            ->when($user->role === 'program_chair' && $user->assigned_college,
+                fn ($rows) => $rows->where('college', $user->assigned_college)->values())
             ->all();
 
         return view("applicants.index", [
             "scope" => "college",
             "academicYear" => ApplicantRecords::academicYear(),
             "periodLabel" => now()->format("F Y"),
-            "applicants" => $students,
-            'groupOrder' => ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
+            "applicants" => \App\Support\RegistrarData::forRecords($students, 'college'),
+            'groupOrder' => $user->role === 'dean' ? [CollegeController::college()['code']] : ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
         ]);
     }
 }

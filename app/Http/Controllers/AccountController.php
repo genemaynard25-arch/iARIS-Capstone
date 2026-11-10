@@ -16,6 +16,7 @@ class AccountController extends Controller
         "program_chair" => ["name" => "Program Chair", "tone" => "info"],
         "dean" => ["name" => "Dean", "tone" => "info"],
         "principal" => ["name" => "SHS Principal", "tone" => "secondary"],
+        "assistant_principal" => ["name" => "Assistant Principal", "tone" => "secondary"],
         "registrar" => ["name" => "Registrar", "tone" => "warning"],
         "lamp" => ["name" => "LAMP Office", "tone" => "secondary"],
         "president" => ["name" => "President", "tone" => "danger"],

@@ -24,8 +24,11 @@
 @section('page-title', 'Budget & Maintenance')
 @section('page-subtitle', 'Estimated costs to run and maintain iARIS, and which office shoulders each one. For planning with IATO.')
 
+@section('page-actions')
+    <div id="budgetDownload"></div>
+@endsection
+
 @section('content')
-    <div class="d-flex justify-content-end mb-3" id="budgetDownload"></div>
     @include('toic.partials.privacy')
 
     {{-- Totals (worked out by the script) --}}

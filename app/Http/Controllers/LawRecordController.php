@@ -22,7 +22,7 @@ class LawRecordController extends Controller
             'scope' => 'law',
             'academicYear' => '2025–2026',
             'periodLabel' => 'June 2026',
-            'applicants' => self::sample(),
+            'applicants' => \App\Support\RegistrarData::forRecords(self::sample(), 'law'),
             'groupOrder' => ['JD', 'LLM', 'JSD'],
         ]);
     }

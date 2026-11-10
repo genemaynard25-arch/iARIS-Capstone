@@ -5,6 +5,8 @@
       - From IATO: open one to read or download it; questions go to Messages ("Ask IATO")
       - Generate a report: four ready-made reports from the same numbers as Analytics
       - Your reports: the ones you generated, each with Download (PDF, Excel or CSV)
+    Looks like the admin Reports tab (public/css/analytics.css): section headings with a line under them, report cards
+    with a coloured top edge and Preview / Generate, and a generation history table.
     FRONT END ONLY: reading a report and generating one stay until reload.
 --}}
 
@@ -13,7 +15,7 @@
     $templates = [
         'programs' => ["Applicants by {$word}", 'bi-layers', 'primary', "Pending, For Exam, and Paid for every {$word}."],
         'paid' => ['Paid reservations', 'bi-clipboard-check', 'info', 'Applicants who paid, ready for enrollment.'],
-        'trend' => ['Four-year trend', 'bi-graph-up', 'secondary', "Applicants, enrolled, and conversion since {$years[0]}."],
+        'trend' => ['Four-year trend', 'bi-graph-up', 'danger', "Applicants, enrolled, and conversion since {$years[0]}."],
         'funnel' => ['Conversion funnel', 'bi-funnel', 'warning', 'Where applicants drop off this AY.'],
     ];
     if ($isChair) {
@@ -24,10 +26,20 @@
 @section('title', 'iARIS — Reports')
 @section('page-title', 'Reports')
 @section('page-subtitle', "Reports IATO sends you, and reports you generate for {$label}")
+@unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+@section('body-class', 'analytics-page')
+@endunless
+@push('styles')
+    <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
+@endpush
+
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+    @include('partials.director-workspace', ['directorPage' => 'reports', 'directorLabel' => 'Reports'])
+@endif
 
 @section('content')
     {{-- From IATO --}}
-    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+    <div class="{{ (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean') ? 'd-flex flex-wrap align-items-baseline gap-2 mb-2 director-report-heading' : 'ar-report-section mb-3' }}">
         <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-inbox text-primary me-1"></i> From IATO</h2>
         <span class="small text-body-secondary">Open a report to read or download it. Questions go to Messages.</span>
     </div>
@@ -36,19 +48,22 @@
     </div>
 
     {{-- Generate a report --}}
-    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
-        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-lightning-charge text-warning me-1"></i> Generate a report</h2>
-        <span class="small text-body-secondary">Uses iARIS data for {{ $label }} only</span>
+    <div class="ar-report-section mb-3">
+        <h2 class="fs-6 fw-bold mb-0">Generate a report</h2>
+        <p class="text-body-secondary mb-0">Uses iARIS data for {{ $label }} only, computed from your imported applicants.</p>
     </div>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+    <div class="ar-report-grid row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($templates as $key => [$title, $icon, $tone, $text])
             <div class="col">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-body d-flex flex-column gap-2">
-                        <span class="rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;"><i class="bi {{ $icon }}"></i></span>
-                        <div class="fw-bold">{{ $title }}</div>
-                        <div class="small text-body-secondary flex-grow-1">{{ $text }}</div>
-                        <button type="button" class="btn btn-sm btn-primary fw-semibold align-self-start" data-template="{{ $key }}"><i class="bi bi-lightning-charge me-1"></i> Generate</button>
+                <div class="ar-report-card card border-0 border-top border-3 border-{{ $tone === 'primary' ? 'primary' : $tone }} shadow-sm rounded-4 h-100">
+                    <div class="card-body d-flex flex-column">
+                        <span class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center"><i class="bi {{ $icon }}"></i></span>
+                        <h3 class="fw-bold">{{ $title }}</h3>
+                        <p class="small text-body-secondary flex-grow-1">{{ $text }}</p>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-light fw-semibold flex-fill" data-preview="{{ $key }}"><i class="bi bi-eye me-1"></i> Preview</button>
+                            <button type="button" class="btn btn-primary fw-semibold flex-fill" data-template="{{ $key }}"><i class="bi bi-lightning-charge me-1"></i> Generate</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -56,16 +71,15 @@
     </div>
 
     {{-- Your reports --}}
-    <div class="card border-0 shadow-sm rounded-4">
+    <div class="ar-report-history card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
-            <h2 class="fs-6 fw-bold mb-0">Your reports</h2>
-            <span class="small text-body-secondary">Kept for 90 days</span>
+            <div><h2 class="fs-6 fw-bold mb-0">Report Generation History</h2><p class="text-body-secondary mb-0">The reports you generated, kept for 90 days</p></div>
         </div>
         <div class="table-responsive">
             <table class="table align-middle mb-0">
                 <thead class="table-light">
                     <tr class="small text-uppercase">
-                        <th class="ps-4 text-body-secondary fw-bold">Report</th>
+                        <th class="ps-4 text-body-secondary fw-bold">Report name</th>
                         <th class="text-body-secondary fw-bold">Period</th>
                         <th class="text-body-secondary fw-bold">Generated</th>
                         <th class="pe-4"></th>
@@ -93,6 +107,24 @@
             <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-1 mb-2">Question about this report?</div>
             <p class="small text-body-secondary">Ask IATO in Messages. The report's name is filled in for you.</p>
             <a class="btn btn-primary fw-semibold" id="reportAsk" href="#"><i class="bi bi-chat-dots me-1"></i> Ask IATO</a>
+        </div>
+    </div>
+
+    {{-- Preview of a report you can generate --}}
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="previewDrawer" aria-labelledby="previewTitle" style="--bs-offcanvas-width: 600px;">
+        <div class="offcanvas-header bg-iaris text-white align-items-start p-4">
+            <div>
+                <h2 class="offcanvas-title fs-5 fw-bold mb-1" id="previewTitle"></h2>
+                <div class="small text-white-50" id="previewSub"></div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="table-responsive border rounded-3 mb-3"><table class="table table-sm align-middle mb-0 small" id="previewTable"></table></div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-primary fw-semibold" id="previewGenerate"><i class="bi bi-lightning-charge me-1"></i> Generate</button>
+                <span id="previewDownload"></span>
+            </div>
         </div>
     </div>
 
@@ -225,12 +257,24 @@
                 return tr;
             }));
         }
-        document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => {
-            const key = b.dataset.template;
+        function generate(key) {
             HISTORY.forEach(h => h.isNew = false);
             HISTORY.unshift({ template: key, period: YEARS[3], at: now(), isNew: true });
             drawHistory();
             toast(`${TEMPLATES[key][0]} is ready. Click Download to pick PDF, Excel, or CSV. (Demo only — not saved yet.)`);
+        }
+        document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => generate(b.dataset.template)));
+
+        // ---- Preview: the report's table before you generate it ----
+        const previewDrawer = bootstrap.Offcanvas.getOrCreateInstance($('previewDrawer'));
+        document.querySelectorAll('[data-preview]').forEach(b => b.addEventListener('click', () => {
+            const key = b.dataset.preview, d = build(key, TEMPLATES[key][0]);
+            $('previewTitle').textContent = d.title;
+            $('previewSub').textContent = d.sub;
+            $('previewTable').innerHTML = `<thead class="table-light"><tr>${d.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+            $('previewGenerate').onclick = () => { previewDrawer.hide(); generate(key); };
+            $('previewDownload').replaceChildren(downloadMenu(() => build(key, TEMPLATES[key][0])));
+            previewDrawer.show();
         }));
 
         drawReceived();

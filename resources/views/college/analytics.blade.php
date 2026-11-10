@@ -6,33 +6,54 @@
     four tiles, then four tabs — Overview (trend and funnel), Programs (sortable table),
     Compare years, AI insights. Everything is worked out by the script from $programs,
     the same numbers as the Briefing. Tabs follow the address: #overview, #programs, #years, #insights.
+    Looks like the admin Analytics & Reports page (public/css/analytics.css): tab bar with a "Showing" chip, four tiles,
+    and the Applicant field counts ($fieldCounts).
 --}}
 
 @section('title', 'iARIS — Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', "{$label} admissions and enrollment, with AI-generated insights")
+@unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+@section('body-class', 'analytics-page')
+@endunless
+@push('styles')
+    <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
+@endpush
+
+{{-- Like the admin page's "Generate from this view": the one action, top right --}}
+@section('page-actions')
+    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
+    @endif
+    <button type="button" class="ar-generate-view btn btn-primary fw-semibold no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i> Export PDF</button>
+@endsection
+
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+    @include('partials.director-workspace', ['directorPage' => 'analytics', 'directorLabel' => 'Analytics'])
+@endif
 
 @section('content')
     {{-- Same id as the Executive Analytics, so "Export PDF" prints every tab (iaris.css section 9) --}}
     <div id="executiveReport">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
-            <button type="button" class="btn btn-primary fw-semibold ms-sm-auto no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1"></i> Export PDF</button>
-        </div>
-
-        <ul class="nav nav-pills gap-2 mb-3 no-print" role="tablist" id="analyticsTabs">
+        <div class="ar-tab-bar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+        <ul class="ar-tabs nav nav-pills gap-1" role="tablist" id="analyticsTabs">
             <li class="nav-item" role="presentation"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tabOverview" type="button" role="tab" data-hash="overview"><i class="bi bi-graph-up me-1"></i> Overview <span class="small fw-normal opacity-75 d-none d-md-inline">· trend and funnel</span></button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabPrograms" type="button" role="tab" data-hash="programs"><i class="bi bi-layers me-1"></i> {{ ucfirst($word) }}s</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabYears" type="button" role="tab" data-hash="years"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights</button></li>
         </ul>
+        @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+        <span class="ar-scope-chip badge rounded-pill text-wrap text-start"><i class="bi bi-funnel me-1"></i> Showing: <span class="text-body">{{ $label }} · AY {{ \App\Support\ApplicantRecords::academicYear() }} · View only</span></span>
+        @endunless
+        </div>
 
         {{-- Four tiles, above every tab --}}
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
+        <div class="ar-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="kpis"></div>
 
         <div class="tab-content">
             {{-- Overview: applicants vs enrolled, and the funnel --}}
             <div class="tab-pane fade show active" id="tabOverview" role="tabpanel">
+                @include('college.partials.field-counts')
                 <div class="row g-4">
                     <div class="col-12 col-xl-7">
                         <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -86,10 +107,66 @@
                 <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Generated automatically from iARIS data for {{ $label }}. They describe past patterns and are not guarantees.</p>
             </div>
         </div>
+            @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+            <section class="card border-0 shadow-sm rounded-4 mt-4" aria-labelledby="directorComparisonTitle">
+                <div class="director-comparison-heading d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h2 class="fs-6 fw-bold mb-0" id="directorComparisonTitle">Current vs previous SY</h2>
+                    <span class="small text-body-secondary">{{ $schoolYearComparison['currentLabel'] }} against {{ $schoolYearComparison['previousLabel'] }}</span>
+                </div>
+                <div class="director-comparison-body" id="cvp">
+                    <div class="director-comparison-chart"><canvas id="directorYearComparison" role="img" aria-label="Current versus previous school year: Applicants, Reservation paid, and Enrolled"></canvas></div>
+                </div>
+            </section>
+        @endif
     </div>
 @endsection
 
 @section('scripts')
+    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            const yearComparison = @json($schoolYearComparison);
+            const comparisonMetrics = ['Applicants', 'Reservation paid', 'Enrolled'];
+            const comparisonLabels = comparisonMetrics.map((label, i) => {
+                const previous = yearComparison.previous[i], current = yearComparison.current[i];
+                if (previous === null || current === null || (previous === 0 && current > 0)) return [label, '(comparison unavailable)'];
+                const change = previous > 0 ? (current - previous) / previous * 100 : 0;
+                return `${label} (${change >= 0 ? '+' : ''}${change.toFixed(1)}%)`;
+            });
+            new Chart(document.getElementById('directorYearComparison'), {
+                type: 'bar',
+                data: { labels: comparisonLabels, datasets: [
+                    { label: yearComparison.previousLabel, data: yearComparison.previous, backgroundColor: '#A8D5C5', borderRadius: 4, maxBarThickness: 30 },
+                    { label: yearComparison.currentLabel, data: yearComparison.current, backgroundColor: '#00674F', borderRadius: 4, maxBarThickness: 30 },
+                ] },
+                plugins: [{
+                    id: 'comparisonValues',
+                    afterDatasetsDraw(chart) {
+                        const { ctx } = chart;
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        chart.data.datasets.forEach((dataset, index) => {
+                            if (!chart.isDatasetVisible(index)) return;
+                            ctx.fillStyle = index === 0 ? '#6B7C77' : '#1A2B26';
+                            ctx.font = `${index === 0 ? '400' : '700'} 11px Inter, sans-serif`;
+                            chart.getDatasetMeta(index).data.forEach((bar, i) => {
+                                if (dataset.data[i] !== null) ctx.fillText(dataset.data[i].toLocaleString('en-US'), bar.x, bar.y - 6);
+                            });
+                        });
+                        ctx.restore();
+                    },
+                }],
+                options: {
+                    responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } },
+                    plugins: { legend: { position: 'bottom', align: 'start', labels: { boxWidth: 9, boxHeight: 9, color: '#6B7C77', padding: 18 } } },
+                    scales: {
+                        x: { grid: { display: false }, border: { color: '#DDE7E4' }, ticks: { color: '#4A5B56', font: { size: 12 }, autoSkip: false, maxRotation: 0 } },
+                        y: { beginAtZero: true, grace: '15%', display: false },
+                    },
+                },
+            });
+        </script>
+    @endif
     <script>
         const PROGRAMS = @json($programs);
         const YEARS = @json($years);
@@ -97,7 +174,7 @@
         const WORD = @json($word);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
-        const pc = (a, b) => (b - a) / a * 100;
+        const pc = (a, b) => a > 0 ? (b - a) / Math.max(1, a) * 100 : 0;
         const signed = (v, digits = 1, suffix = '%') => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}${suffix}`;
         const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -107,21 +184,21 @@
         const stage = i => CODES.reduce((s, c) => s + PROGRAMS[c].funnel[i], 0);
         const took = stage(1), passed = stage(2), paidNow = stage(3);
         const paidPrev = CODES.reduce((s, c) => s + PROGRAMS[c].paidLastYear, 0);
-        const conv = app.map((a, i) => enr[i] / a * 100);
+        const conv = app.map((a, i) => enr[i] / Math.max(1, a) * 100);
         const dConv = +conv[3].toFixed(1) - +conv[2].toFixed(1);
 
         // ---- Four tiles ----
         $('kpis').innerHTML = [
             ['Total applicants', fm(app[3]), pc(app[2], app[3]), '%', 'primary'],
             ['Paid reservations', fm(paidNow), pc(paidPrev, paidNow), '%', 'info'],
-            ['Enrolled', fm(enr[3]), pc(enr[2], enr[3]), '%', 'dark'],
+            ['Enrolled', fm(enr[3]), pc(enr[2], enr[3]), '%', 'primary'],
             ['Applied → Enrolled', conv[3].toFixed(1) + '%', dConv, ' pts', 'warning'],
         ].map(([label, value, d, suffix, tone]) => `
             <div class="col">
-                <div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100">
+                <div class="ar-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div>
-                        <div class="fs-2 fw-bold">${value}</div>
+                        <div class="small fw-bold text-body-secondary mb-2">${label}</div>
+                        <div class="fs-3 fw-bold mb-1">${value}</div>
                         <span class="small fw-bold ${d >= 0 ? 'text-success' : 'text-danger'}">${signed(d, 1, suffix)} vs last AY</span>
                     </div>
                 </div>
@@ -145,15 +222,15 @@
             $('funnel').innerHTML = stages.map(([name, n], i) => `
                 <div class="d-flex align-items-center gap-2 small">
                     <span class="fw-semibold" style="width: 76px;">${name}</span>
-                    <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 18px;"><div class="rounded" style="height: 18px; width: ${n / app[3] * 100}%; background: ${shades[i]};"></div></div>
-                    <span class="fw-bold text-end text-nowrap" style="width: 96px;">${fm(n)} · ${(n / app[3] * 100).toFixed(1)}%</span>
+                    <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 18px;"><div class="rounded" style="height: 18px; width: ${n / Math.max(1, app[3]) * 100}%; background: ${shades[i]};"></div></div>
+                    <span class="fw-bold text-end text-nowrap" style="width: 96px;">${fm(n)} · ${(n / Math.max(1, app[3]) * 100).toFixed(1)}%</span>
                 </div>`).join('');
         })();
 
         // ---- Programs: sortable table ----
         // Settings → Display → "Program shown first on Analytics" keeps that program at the top
         const first = window.IARIS_SETTINGS?.display?.unit || '';
-        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, unit: p.unit || '', P, E, D, T, R: D / T * 100, S: T / app[3] * 100 }; });
+        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, unit: p.unit || '', P, E, D, T, R: D / T * 100, S: T / Math.max(1, app[3]) * 100 }; });
         // The iPACE Director's programs have a unit (iPACE or ETEEAP): add a Unit column
         const hasUnits = PR.some(r => r.unit);
         const columns = [['name', WORD[0].toUpperCase() + WORD.slice(1)], ...(hasUnits ? [['unit', 'Unit']] : []), ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];
@@ -200,6 +277,23 @@
                     </div>
                 </div>
             </div>`).join('');
+
+        // ---- Applicant field counts: Cards / Table, and CSV ----
+        document.querySelectorAll('[data-field-view]').forEach(b => b.addEventListener('click', () => {
+            const cards = b.dataset.fieldView === 'cards';
+            $('fieldCountCards').classList.toggle('d-none', !cards);
+            $('fieldCountTable').classList.toggle('d-none', cards);
+            document.querySelectorAll('[data-field-view]').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b); });
+        }));
+        $('exportFieldCounts').addEventListener('click', () => {
+            const rows = [...document.querySelectorAll('#fieldCountTable tbody tr')].map(tr => [tr.children[0].textContent.trim(), tr.children[1].textContent.trim()]);
+            const csv = [['Field', 'Current school year'], ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
+            link.download = 'iaris-applicant-field-counts.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
 
         // Tabs follow the address (#overview, #programs, #years, #insights)
         document.querySelectorAll('#analyticsTabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => history.replaceState(null, '', '#' + b.dataset.hash)));

@@ -45,6 +45,27 @@ class RegistrarData
         return ($scope ?? self::scope()) === 'is' ? self::IS_UNITS : self::UNITS;
     }
 
+    /** Preserve every record in the registrar's assigned units, regardless of result or payment. */
+    public static function forRecords(array $records, string $scope): array
+    {
+        if (auth()->user()?->role === 'registrar') {
+            $allowed = self::scope() === 'is' ? ['is'] : ['college', 'graduate', 'law', 'ipace', 'eteeap'];
+            abort_unless(in_array($scope, $allowed), 403);
+        }
+
+        return $records;
+    }
+
+    private static function recordExamStatus(array $record, bool $preview): ?string
+    {
+        return $record['exam_status'] ?? ($preview && in_array($record['status'], ['Passed', 'Paid', 'Enrolled']) ? 'passed' : null);
+    }
+
+    private static function hasReservation(array $record): bool
+    {
+        return ($record['amount'] ?? null) !== null || ($record['paid'] ?? null) !== null || in_array($record['status'], ['Paid', 'Enrolled']);
+    }
+
     /** Every applicant in the Registrar's units. */
     public static function rows(?string $scope = null): array
     {
@@ -56,6 +77,16 @@ class RegistrarData
                 default => ApplicantRecords::forLevel($source),
             };
             foreach ($list as $a) {
+                $preview = in_array($source, ['law', 'ipace']);
+                // Only the unconnected sample divisions infer a sample result from their sample status.
+                $examStatus = self::recordExamStatus($a, $preview);
+                $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);
+                $reserved = self::hasReservation($a);
+                $programOrGrade = in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']);
+                if ($source === 'is') {
+                    $placement = array_filter([$a['level'] ?? null, $a['program'] ?? null], fn ($value) => $value && $value !== '—');
+                    $programOrGrade = implode(' · ', array_unique($placement)) ?: '—';
+                }
                 $rows[] = [
                     'id' => $a['id'],
                     'name' => trim("{$a['last']}, {$a['first']}" . (($a['mi'] ?? '') ? " {$a['mi']}." : '')),
@@ -63,8 +94,14 @@ class RegistrarData
                     // College: the college (CITE…); IS: the level (Junior High…); the others: the program code (MBA, JD, BSIT…)
                     'dept' => $a['college'] ?? $a['sub_level'] ?? $a['group'] ?? '—',
                     // College / IS: the program or grade as imported; the others: the program's full name
-                    'program' => in_array($source, ['college', 'is']) ? $a['program'] : ($a['program_label'] ?? $a['program']),
+                    'program' => $programOrGrade,
                     'status' => $a['status'],
+                    'exam_status' => $examStatus,
+                    'exam_result' => $examStatus ? ApplicantRecords::testLabel($examStatus) : 'Not recorded',
+                    'exam_passed' => $passed,
+                    'reservation_paid' => $reserved,
+                    'ready_for_enrollment' => $passed && $reserved,
+                    'is_preview' => $preview,
                     'applied' => $a['applied'],
                     'applied_label' => $a['applied'] ? Carbon::parse($a['applied'])->format('M j, Y') : '—',
                     // No OR/amount: that's the cashier's record, not the Registrar's.

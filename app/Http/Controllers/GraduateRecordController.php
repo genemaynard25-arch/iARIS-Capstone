@@ -32,7 +32,7 @@ class GraduateRecordController extends Controller
             'academicYear' => ApplicantRecords::academicYear(),
             'periodLabel' => now()->format('F Y'),
             // Graduate School applicants from the database (Import Data); see ApplicantRecords
-            'applicants' => ApplicantRecords::forLevel('graduate_school'),
+            'applicants' => \App\Support\RegistrarData::forRecords(ApplicantRecords::forLevel('graduate_school'), 'graduate'),
             'groupOrder' => array_keys(self::PROGRAMS),
         ]);
     }

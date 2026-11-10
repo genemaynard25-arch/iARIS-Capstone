@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'iARIS — SHS Dashboard')
+@section('page-breadcrumb', 'Dashboard')
 @section('page-title', 'Senior High School — Admissions Overview')
 @section('page-subtitle', "Academic Year {$academicYear} · {$periodLabel}")
 
@@ -92,7 +93,7 @@
 @endsection
 
 @section('scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         const WEEKLY = @json($weekly);
         const GRADE_COLORS = @json($gradeColors);

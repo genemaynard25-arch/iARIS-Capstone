@@ -1,6 +1,7 @@
 @extends('layouts.guest')
 
 @section('title', 'iARIS — Login')
+@section('body-class', 'auth-login-page')
 
 {{-- $twoFactor is true on the second step of signing in (see FortifyServiceProvider) --}}
 @php($twoFactor = $twoFactor ?? false)
@@ -9,54 +10,31 @@
 @php($openForgot = $openForgot ?? false)
 
 @section('content')
-    <div class="container-fluid">
-        <div class="row min-vh-100">
+    <div class="container-fluid auth-login-shell">
+        <div class="row g-0 auth-login-row">
 
             {{-- Left panel --}}
-            <section class="col-lg-6 bg-iaris bg-iaris-circles text-white d-flex flex-column justify-content-between gap-5 p-4 p-md-5">
-                <div class="d-flex align-items-center gap-3 position-relative">
-                    @include('partials.logo-mark', ['size' => 60])
+            <section class="auth-intro bg-iaris-circles text-white d-flex flex-column justify-content-between">
+                <div class="auth-intro-brand d-flex align-items-center position-relative">
+                    @include('partials.auth-logo', ['size' => 58, 'variant' => 'glass'])
                     <div>
-                        <div class="fs-3 fw-bold font-brand lh-1">iARIS</div>
-                        <div class="small fw-semibold text-white-50 mt-1">IATO · De La Salle Lipa</div>
+                        <div class="auth-wordmark font-brand">iARIS</div>
+                        <div class="auth-brand-subtitle">IATO · De La Salle Lipa</div>
                     </div>
                 </div>
 
-                <div class="position-relative" style="max-width: 460px;">
-                    <h1 class="display-6 fw-bold font-brand mb-3">Admissions records, organized for everyone who needs them.</h1>
-                    <p class="text-white-50 lh-lg mb-0">iARIS gives the Institutional Admissions and Testing Office, college deans, the registrar, and institutional leadership a shared, real-time view of admissions data — each from the perspective that matters to their role.</p>
+                <div class="auth-intro-copy position-relative">
+                    <h1 class="font-brand">Admissions records, organized for everyone who needs them.</h1>
+                    <p class="mb-0">iARIS gives the Institutional Admissions and Testing Office, college deans, the registrar, and institutional leadership a shared, real-time view of admissions data — each from the perspective that matters to their role.</p>
                 </div>
 
-                <div class="position-relative">
-                    <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-3">Who uses iARIS</div>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach ([
-                            ['bi-star-fill', 'Super Admin'],
-                            ['bi-person-badge', 'IATO Staff'],
-                            ['bi-person-video3', 'Dean / Program Chair'],
-                            ['bi-building', 'Integrated School Principal'],
-                            ['bi-person-vcard', 'Registrar'],
-                            ['bi-award', 'LAMP Office'],
-                            ['bi-bank', 'President'],
-                            ['bi-buildings', 'Chancellor'],
-                            ['bi-person-workspace', 'Vice Chancellor'],
-                            ['bi-briefcase', 'Vice President'],
-                            ['bi-laptop', 'iPACE Director'],
-                            ['bi-shield-lock', 'Data Protection Officer'],
-                        ] as [$icon, $role])
-                            <span class="d-inline-flex align-items-center gap-2 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2 small fw-semibold">
-                                <i class="bi {{ $icon }} text-iaris-pale"></i> {{ $role }}
-                            </span>
-                        @endforeach
-                    </div>
-                </div>
             </section>
 
             {{-- Right panel --}}
-            <section class="col-lg-6 d-flex align-items-center justify-content-center p-4 p-md-5">
-                <div class="auth-card w-100">
-                    <h2 class="fs-3 fw-bold font-brand mb-2">Welcome back</h2>
-                    <p class="text-body-secondary mb-4">Sign in with your DLSL credentials to access your dashboard.</p>
+            <section class="auth-form-panel d-flex align-items-center justify-content-center">
+                <div class="auth-login-card w-100">
+                    <h2 class="font-brand">Welcome back</h2>
+                    <p class="auth-subtitle text-body-secondary">Sign in with your DLSL credentials to access your dashboard.</p>
 
                     @if (session('status'))
                         <div class="alert alert-success d-flex gap-2" role="status">
@@ -79,9 +57,9 @@
                     <form method="POST" action="{{ route('login') }}">
                         @csrf
 
-                        <div class="mb-3">
+                        <div class="auth-field">
                             <label for="email" class="form-label small fw-bold text-uppercase">Email Address</label>
-                            <div class="input-group input-group-lg">
+                            <div class="input-group auth-input">
                                 <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-envelope"></i></span>
                                 <input type="email" name="email" id="email" value="{{ old('email') }}"
                                     class="form-control fs-6 @error('email') is-invalid @enderror"
@@ -89,9 +67,9 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="auth-field">
                             <label for="password" class="form-label small fw-bold text-uppercase">Password</label>
-                            <div class="input-group input-group-lg">
+                            <div class="input-group auth-input">
                                 <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-lock"></i></span>
                                 <input type="password" name="password" id="password"
                                     class="form-control fs-6 @error('password') is-invalid @enderror"
@@ -102,7 +80,7 @@
                             </div>
                         </div>
 
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                        <div class="auth-options d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <div class="form-check">
                                 <input type="checkbox" name="remember" id="remember" class="form-check-input" {{ old('remember') ? 'checked' : '' }}>
                                 <label for="remember" class="form-check-label text-body-secondary">Keep me signed in</label>
@@ -110,34 +88,17 @@
                             <button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotModal">Forgot password?</button>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">
+                        <button type="submit" class="btn btn-primary auth-submit w-100 fw-bold">
                             <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
                         </button>
                     </form>
 
-                    <div class="d-flex align-items-center gap-3 my-4">
-                        <hr class="flex-grow-1 m-0">
-                        <span class="small fw-semibold text-body-secondary">or</span>
-                        <hr class="flex-grow-1 m-0">
-                    </div>
-
-                    {{-- TODO: wire up Google sign-in (e.g. Laravel Socialite). Visual only for now. --}}
-                    <button type="button" class="btn btn-lg bg-white border w-100 fs-6 fw-semibold d-flex align-items-center justify-content-center gap-2">
-                        <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                        </svg>
-                        Continue with Google
-                    </button>
-
-                    <p class="text-center text-body-secondary mt-4 mb-0">
+                    <p class="auth-register text-center text-body-secondary mb-0">
                         Don't have an account?
                         <button type="button" class="btn btn-link p-0 align-baseline fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#registerModal">Request Access</button>
                     </p>
 
-                    <p class="text-center small text-body-secondary mt-3 mb-0">© 2026 Institutional Admissions and Testing Office · De La Salle Lipa</p>
+                    <p class="auth-copyright text-center text-body-secondary mb-0">© 2026 Institutional Admissions and Testing Office · De La Salle Lipa</p>
                 </div>
             </section>
 

@@ -238,8 +238,18 @@ class AccessControlController extends Controller
 
         return view("access-control.index", [
             "roles" => $roles,
+            'roleUserCounts' => \App\Models\User::query()
+                ->selectRaw('role, COUNT(*) as total')
+                ->groupBy('role')
+                ->pluck('total', 'role')
+                ->all(),
             "modules" => $modules,
             "editableModules" => $editableModules,
+            "editorPermissions" => \App\Models\RolePermission::where('can_edit', true)
+                ->get()
+                ->groupBy('role')
+                ->map(fn ($rows) => $rows->pluck('module')->all())
+                ->all(),
 
             "permanentAdmin" => [
                 "name" => auth()->user()->name,
@@ -389,7 +399,7 @@ class AccessControlController extends Controller
 
         $validated = $request->validate([
             'changes' => 'required|array',
-            'changes.*.role' => 'required|string',
+            'changes.*.role' => ['required', 'string', \Illuminate\Validation\Rule::notIn(['toic'])],
             'changes.*.module' => 'required|string',
             'changes.*.enabled' => 'sometimes|boolean',
             'changes.*.can_edit' => 'sometimes|boolean',

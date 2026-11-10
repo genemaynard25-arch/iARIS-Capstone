@@ -58,6 +58,9 @@ class User extends Authenticatable
     // Whether the user can access a module. Admins can access everything; other users must have a RolePermission with enabled = true.
    public function canAccess(string $module): bool
 {
+    if ($this->isToic()) {
+        return false;
+    }
     if ($this->isAdmin()) {
         return true;
     }
@@ -70,6 +73,9 @@ class User extends Authenticatable
     // Whether the user can edit a module. Admins can edit everything; other users must have access_type 'editor' and a RolePermission with can_edit = true.
     public function canEdit(string $module): bool
     {
+        if ($this->isToic()) {
+            return false;
+        }
         if ($this->isAdmin()) {
             return true;
         }
@@ -194,7 +200,7 @@ class User extends Authenticatable
     // isAdmin()). A 'principal' without the SHS assignment is the IS Principal (below).
     public function isShsPrincipal(): bool
     {
-        return $this->assigned_sub_level === "shs";
+        return $this->role !== "assistant_principal" && $this->assigned_sub_level === "shs";
     }
 
     // The Integrated School Principal: every IS level (Kindergarten to Senior High), view only.
@@ -202,6 +208,28 @@ class User extends Authenticatable
     public function isPrincipal(): bool
     {
         return $this->role === "principal" && ! $this->isShsPrincipal();
+    }
+
+    // An Assistant Principal: one each for Grade School (Preschool to Grade 6), Junior High and Senior High.
+    // The same pages as the Principal (CollegeController, at /principal), only for their own levels.
+    // users.assigned_sub_level says which: 'grade_school', 'jhs' or 'shs'.
+    public function isAssistantPrincipal(): bool
+    {
+        return $this->role === "assistant_principal";
+    }
+
+    // The Principal or an Assistant Principal: the pages at /principal
+    public function isPrincipalOffice(): bool
+    {
+        return $this->isPrincipal() || $this->isAssistantPrincipal();
+    }
+
+    // "Grade School", "Junior High" or "Senior High" for an Assistant Principal
+    public function assistantLevel(): ?string
+    {
+        return $this->isAssistantPrincipal()
+            ? ["grade_school" => "Grade School", "kindergarten" => "Grade School", "jhs" => "Junior High", "shs" => "Senior High"][$this->assigned_sub_level] ?? "Grade School"
+            : null;
     }
 
     // How the role is shown to people: [label, office, Bootstrap icon].
@@ -215,6 +243,9 @@ class User extends Authenticatable
         // Vice Presidents and Vice Chancellors: "VP for Finance", "VC for Academics"
         if ($this->isVice() && $this->department) {
             return [($this->role === "vice_chancellor" ? "VC" : "VP") . " for {$this->department}", "Executive Office", "bi-bank"];
+        }
+        if ($this->isAssistantPrincipal()) {
+            return ["Assistant Principal", $this->assistantLevel(), "bi-building"];
         }
         if ($this->isShsPrincipal()) {
             return ["SHS Principal", "Senior High School", "bi-building"];

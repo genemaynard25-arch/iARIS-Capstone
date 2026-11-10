@@ -12,12 +12,111 @@
 @section('page-title', 'Messages')
 @section('page-subtitle', 'Every conversation with deans, the Program Chair, leadership, the Registrars, and LAMP. Replies never change records.')
 
+@php
+    // Messaging has no persistence yet; keep a mockup preview when no conversations are available.
+    if (empty($conversations)) {
+        $conversations = json_decode(<<<'PREVIEW_JSON'
+[
+  {
+    "key": "msg:MSG-0116",
+    "kind": "msg",
+    "id": "MSG-0116",
+    "person": "preview-director_ipace",
+    "who": "Angeles, Haidee",
+    "role": "Director · iPACE",
+    "initials": "AH",
+    "group": "director",
+    "subject": "ETEEAP portfolio assessments this month",
+    "topic": "Request a report",
+    "state": "iato",
+    "record": null,
+    "messages": [
+      {
+        "from": "them",
+        "name": "Angeles, Haidee",
+        "role": "Director · iPACE",
+        "at": "Jun 12, 2026 · 1:10 PM",
+        "text": "Can IATO send the list of ETEEAP applicants whose portfolio assessment is scheduled this month? The panel needs it by Friday."
+      }
+    ],
+    "when": 1781258400
+  },
+  {
+    "key": "msg:MSG-0115",
+    "kind": "msg",
+    "id": "MSG-0115",
+    "person": "preview-principal_is",
+    "who": "Dimaculangan, Kristine Anne",
+    "role": "Principal · Integrated School",
+    "initials": "DK",
+    "group": "principal",
+    "subject": "Grade 11 STEM exam slots",
+    "topic": "Question about the data",
+    "state": "other",
+    "record": null,
+    "messages": [
+      {
+        "from": "them",
+        "name": "Dimaculangan, Kristine Anne",
+        "role": "Principal · Integrated School",
+        "at": "Jun 12, 2026 · 10:05 AM",
+        "text": "Senior High has 34 applicants who haven't paid the exam fee. Are there enough exam slots for Grade 11 STEM next week?"
+      },
+      {
+        "from": "iato",
+        "name": "Cruz, Jasmine",
+        "role": "IATO Staff",
+        "at": "Jun 12, 2026 · 11:20 AM",
+        "text": "Yes, Ms. Dimaculangan. We opened two more sessions on Jun 18. Pending applicants will be scheduled by Monday."
+      }
+    ],
+    "when": 1781258400
+  },
+  {
+    "key": "msg:MSG-0117",
+    "kind": "msg",
+    "id": "MSG-0117",
+    "person": "preview-toic",
+    "who": "TOIC Support Team",
+    "role": "TOIC · System Support",
+    "initials": "TS",
+    "group": "toic",
+    "subject": "Maintenance on Saturday, Jun 20",
+    "topic": "Other",
+    "state": "done",
+    "record": null,
+    "messages": [
+      {
+        "from": "them",
+        "name": "TOIC Support Team",
+        "role": "TOIC · System Support",
+        "at": "Jun 10, 2026 · 3:00 PM",
+        "text": "Heads-up: iARIS will be read-only on Saturday, Jun 20, 10 PM to 12 AM for security updates and database tuning."
+      },
+      {
+        "from": "iato",
+        "name": "Renegado, Randolph",
+        "role": "Super Admin",
+        "at": "Jun 10, 2026 · 3:25 PM",
+        "text": "Noted, thank you. We will tell the deans and the Registrars."
+      }
+    ],
+    "when": 1781258400
+  }
+]
+PREVIEW_JSON, true);
+    }
+@endphp
+
+@include('partials.admin-workspace', ['workspacePage' => 'messages-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Messages'])
+
 @section('content')
+    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview conversations · Messages and replies stay on this page until reload; delivery is not connected yet.</p>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="stats"></div>
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <div class="input-group" style="max-width: 320px;">
-            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <span class="input-group-text bg-white"><i class="bi bi-search" aria-hidden="true"></i></span>
             <input type="search" class="form-control border-start-0" id="search" placeholder="Search name, subject, or applicant no." aria-label="Search messages">
         </div>
         <select class="form-select w-auto" id="from" aria-label="Sender">
@@ -27,23 +126,23 @@
             @endforeach
         </select>
         <div class="d-flex flex-wrap gap-2 ms-lg-auto" id="tabs" role="group" aria-label="Filter conversations"></div>
-        <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1"></i> New message</button>
+        <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i> New message</button>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-5">
+    <div class="admin-message-grid row g-3 mb-3">
+        <div class="admin-conversation-column col-12 col-lg-5">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="list-group list-group-flush rounded-4 overflow-auto" id="list" style="max-height: 75vh;" aria-label="Conversations"></div>
             </div>
         </div>
-        <div class="col-12 col-lg-7">
+        <div class="admin-thread-column col-12 col-lg-7">
             <div class="card border-0 shadow-sm rounded-4 h-100" id="view"></div>
         </div>
     </div>
 
     <div class="small text-body-secondary d-flex flex-wrap align-items-center gap-1">
         <span>To ask LAMP about a scholar, open the scholar in</span>
-        <a href="{{ url('/records/scholars') }}" class="text-decoration-none fw-semibold"><i class="bi bi-award me-1"></i>Scholarships</a>
+        <a href="{{ url('/records/scholars') }}" class="text-decoration-none fw-semibold"><i class="bi bi-award me-1" aria-hidden="true"></i>Scholarships</a>
         <span>and use <b>Ask LAMP to check</b>. It shows up here.</span>
     </div>
 
@@ -91,7 +190,7 @@
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
                     <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-semibold flex-fill"><i class="bi bi-send me-1"></i> Send</button>
+                    <button type="submit" class="btn btn-primary fw-semibold flex-fill"><i class="bi bi-send me-1" aria-hidden="true"></i> Send</button>
                 </div>
             </form>
         </div>
@@ -123,7 +222,7 @@
         const chip = c => {
             const [label, tone, icon] = c.state === 'iato' ? ['Needs your reply', 'warning', 'bi-exclamation-circle-fill']
                 : c.state === 'other' ? [`Waiting for ${waitingFor(c)}`, 'info', 'bi-hourglass-split'] : ['Resolved', 'success', 'bi-check-circle-fill'];
-            return `<span class="badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis"><i class="bi ${icon} me-1"></i>${label}</span>`;
+            return `<span class="badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis"><i class="bi ${icon} me-1" aria-hidden="true"></i>${label}</span>`;
         };
 
         let tab = 'all', from = '', search = '', current = null;
@@ -138,7 +237,7 @@
                 ['Waiting on them', count('other'), 'You replied or asked', 'info'],
                 ['Record questions', ALL.filter(c => c.record && c.state !== 'done').length, 'Registrars and LAMP, still open', 'primary'],
                 ['Resolved', count('done'), 'Closed', 'success'],
-            ].map(([label, value, note, tone]) => `<div class="col"><div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
+            ].map(([label, value, note, tone]) => `<div class="col"><div class="admin-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}-emphasis">${value}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
 
             const list = shown();
@@ -162,11 +261,11 @@
                     <div class="small text-body-secondary text-truncate">${last.from === 'iato' ? 'IATO: ' : ''}${esc(last.text)}</div>
                     <div class="d-flex flex-wrap gap-2 align-items-center mt-1">
                         <span class="badge rounded-pill bg-body-tertiary text-body border">${esc(c.role)}</span>
-                        ${c.record ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis"><i class="bi bi-person-vcard me-1"></i>${esc(c.record.id)}</span>` : `<span class="badge rounded-pill bg-body-tertiary text-body-secondary border">${esc(c.topic)}</span>`}
+                        ${c.record ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i>${esc(c.record.id)}</span>` : `<span class="badge rounded-pill bg-body-tertiary text-body-secondary border">${esc(c.topic)}</span>`}
                         ${chip(c)}
                     </div>
                 </button>`;
-            }).join('') : '<div class="text-center text-body-secondary small py-5"><i class="bi bi-chat-square-text d-block fs-3 mb-2"></i>No conversations here.</div>';
+            }).join('') : '<div class="text-center text-body-secondary small py-5"><i class="bi bi-chat-square-text d-block fs-3 mb-2" aria-hidden="true"></i>No conversations here.</div>';
             $('list').querySelectorAll('[data-key]').forEach(b => b.addEventListener('click', () => open(b.dataset.key)));
 
             drawView();
@@ -175,13 +274,13 @@
         function drawView() {
             const c = ALL.find(x => x.key === current);
             if (!c) {
-                $('view').innerHTML = '<div class="text-center text-body-secondary small my-auto py-5"><i class="bi bi-envelope-open d-block fs-3 mb-2"></i>Choose a conversation to read and reply.</div>';
+                $('view').innerHTML = '<div class="text-center text-body-secondary small my-auto py-5"><i class="bi bi-envelope-open d-block fs-3 mb-2" aria-hidden="true"></i>Choose a conversation to read and reply.</div>';
                 return;
             }
             // The record it's about: link, and for LAMP checks both records side by side
             const record = c.record ? `<div class="border rounded-3 p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div><div class="fw-bold"><i class="bi bi-person-vcard text-primary me-1"></i>${esc(c.record.name)}</div><div class="small text-body-secondary">${esc(c.record.id)} · ${esc(c.record.unit)}</div></div>
-                    <a class="btn btn-sm btn-light border fw-semibold" href="${esc(c.record.url)}"><i class="bi bi-box-arrow-up-right me-1"></i> Open the record</a>
+                    <div><div class="fw-bold"><i class="bi bi-person-vcard text-primary me-1" aria-hidden="true"></i>${esc(c.record.name)}</div><div class="small text-body-secondary">${esc(c.record.id)} · ${esc(c.record.unit)}</div></div>
+                    <a class="btn btn-sm btn-light border fw-semibold" href="${esc(c.record.url)}"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i> Open the record</a>
                     ${c.kind === 'lamp' ? `<div class="row g-2 w-100 small"><div class="col-6"><div class="bg-body-tertiary rounded-3 p-2"><div class="text-body-secondary">IATO record</div><div class="fw-bold">${esc(c.record.iato)}</div></div></div>
                         <div class="col-6"><div class="bg-body-tertiary rounded-3 p-2"><div class="text-body-secondary">LAMP record</div><div class="fw-bold">${esc(c.record.lamp)}</div></div></div></div>` : ''}
                 </div>` : '';
@@ -189,20 +288,20 @@
                 const mine = m.from === 'iato';
                 return `<div class="rounded-3 px-3 py-2 small ${mine ? 'bg-primary-subtle align-self-end' : 'bg-body-tertiary align-self-start'}" style="max-width:88%">
                     <div class="fw-bold">${esc(m.name)} · ${esc(m.role)}<span class="fw-normal text-body-secondary"> · ${esc(m.at)}</span></div><div>${esc(m.text)}</div></div>`;
-            }).join('') + (c.outcome ? `<div class="small text-success-emphasis"><i class="bi bi-check-circle-fill me-1"></i>${esc(c.outcome)}</div>` : '');
+            }).join('') + (c.outcome ? `<div class="small text-success-emphasis"><i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>${esc(c.outcome)}</div>` : '');
 
             let actions;
             if (c.state === 'done') {
                 // IATO can reopen a LAMP check it closed; the other conversations are reopened by the sender
                 actions = c.kind === 'lamp'
-                    ? '<div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-sm btn-light border fw-semibold" id="reopen"><i class="bi bi-arrow-counterclockwise me-1"></i> Reopen</button></div>'
-                    : '<p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-check-circle-fill text-success me-1"></i>Resolved. The sender can reopen it.</p>';
+                    ? '<div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-sm btn-light border fw-semibold" id="reopen"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Reopen</button></div>'
+                    : '<p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-check-circle-fill text-success me-1" aria-hidden="true"></i>Resolved. The sender can reopen it.</p>';
             } else {
                 actions = `<div class="d-flex flex-wrap gap-2 mt-3">${QUICK.map((q, i) => `<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill text-start" data-quick="${i}">${esc(q)}</button>`).join('')}</div>
                     <textarea class="form-control mt-2" rows="2" id="reply" placeholder="Reply to ${esc(c.who)}…" aria-label="Reply"></textarea>
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                        <button type="button" class="btn btn-sm btn-primary fw-semibold" id="send"><i class="bi bi-send me-1"></i> Send</button>
-                        ${c.kind === 'lamp' ? '<button type="button" class="btn btn-sm btn-light border fw-semibold" id="resolve"><i class="bi bi-check-lg me-1"></i> Mark resolved</button>' : ''}
+                        <button type="button" class="btn btn-sm btn-primary fw-semibold" id="send"><i class="bi bi-send me-1" aria-hidden="true"></i> Send</button>
+                        ${c.kind === 'lamp' ? '<button type="button" class="btn btn-sm btn-light border fw-semibold" id="resolve"><i class="bi bi-check-lg me-1" aria-hidden="true"></i> Mark resolved</button>' : ''}
                     </div>`;
             }
 

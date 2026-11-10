@@ -3,7 +3,7 @@
     Usage: @include('analytics.partials.chart-card', ['id' => 'trends', 'title' => '...', 'subtitle' => '...', 'types' => ['bar' => 'Bar chart', 'line' => 'Line chart']])
     By default the card holds a Chart.js <canvas id="chart-{id}">. Pass 'body' => 'a.view.name' to show a custom view instead.
 --}}
-<div class="card border-0 shadow-sm rounded-4 h-100">
+<div class="ar-chart-card card border-0 shadow-sm rounded-4 h-100">
     <div class="card-body p-4">
         <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
             <div>

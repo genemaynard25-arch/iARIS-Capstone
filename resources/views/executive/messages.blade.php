@@ -5,17 +5,36 @@
     (CollegeController::messages). $base is that office's pages, for the links at the bottom.
     List on the left, the open conversation on the right. ?new=1&subject=… opens "New message" filled in
     (the Reports page's "Ask IATO" uses it).
+    A thread with 'check' => [id, name, unit, iato, lamp, url] is a scholar check IATO asked the LAMP Office
+    (LampOffice::threads): it shows both records, and LAMP can confirm IATO's record or correct it ($correctTypes).
     FRONT END ONLY: new messages, replies and "Mark resolved" stay until reload.
 --}}
 
 @section('title', 'iARIS — Messages')
+@section('page-breadcrumb', 'Messages')
 @section('page-title', 'Messages with IATO')
 @section('page-subtitle', "Every conversation with IATO in one place: your questions, IATO's replies.")
+
+@if (auth()->user()->isExecutive())
+    @include('partials.president-workspace', ['presidentPage' => 'messages', 'presidentLabel' => 'Messages'])
+    @section('page-actions')
+        <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i> New message</button>
+    @endsection
+@endif
+
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+    @include('partials.director-workspace', ['directorPage' => 'messages', 'directorLabel' => 'Messages'])
+    @section('page-actions')
+        <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i> New message</button>
+    @endsection
+@endif
 
 @section('content')
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <div class="d-flex flex-wrap gap-2 me-auto" id="tabs" role="group" aria-label="Filter conversations"></div>
+        @unless ((auth()->user()->isExecutive() || auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
         <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1"></i> New message</button>
+        @endunless
     </div>
 
     <div class="row g-3 mb-3">
@@ -33,7 +52,7 @@
     @isset($note)
     <div class="small text-body-secondary d-flex flex-wrap gap-3">
         <span><i class="bi bi-person-lock me-1"></i>{{ $note[0] }}</span>
-        <a href="{{ $base }}" class="text-decoration-none fw-semibold"><i class="bi bi-speedometer2 me-1"></i> {{ $note[1] }}</a>
+        <a href="{{ $base }}" class="text-decoration-none fw-semibold"><i class="bi {{ $note[2] ?? 'bi-speedometer2' }} me-1"></i> {{ $note[1] }}</a>
     </div>
     @else
     <div class="small text-body-secondary d-flex flex-wrap gap-3">
@@ -80,6 +99,40 @@
         </div>
     </div>
 
+    {{-- LAMP: correct the IATO record (scholar checks only) --}}
+    @isset($correctTypes)
+    <div class="modal fade" id="fixModal" tabindex="-1" aria-labelledby="fixTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content border-0 rounded-4 overflow-hidden" id="fixForm" novalidate>
+                <div class="modal-header bg-iaris text-white border-0 p-4">
+                    <div>
+                        <h3 class="modal-title fs-5 fw-bold" id="fixTitle">Correct the IATO record</h3>
+                        <p class="small text-white-50 mb-0" id="fixSub">—</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <label for="fixType" class="form-label small fw-bold text-uppercase text-body-secondary">Correct scholarship type</label>
+                    <select class="form-select" id="fixType" required>
+                        <option value="">Choose one</option>
+                        @foreach ($correctTypes as $type)
+                            <option>{{ $type }}</option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback">Choose the correct type.</div>
+                    <label for="fixNote" class="form-label small fw-bold text-uppercase text-body-secondary mt-3">Note for IATO <span class="fw-normal text-lowercase">(optional)</span></label>
+                    <textarea class="form-control" id="fixNote" rows="3" placeholder="e.g. Already on our scholarship list for this AY."></textarea>
+                    <p class="small text-body-secondary mt-3 mb-0">The correction goes to the IATO Review Queue. IATO sees it after the Super Admin approves.</p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-semibold flex-fill"><i class="bi bi-send me-1"></i> Send correction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endisset
+
     <div class="toast-container position-fixed bottom-0 start-0 p-3">
         <div class="toast align-items-center border-0 text-bg-dark" id="messageToast" role="status" aria-live="polite">
             <div class="d-flex">
@@ -103,8 +156,9 @@
             if (text !== undefined) e.textContent = text;
             return e;
         };
-        const badge = status => {
-            const [label, tone, icon] = STATUS[status];
+        // A scholar check IATO asked needs LAMP's answer (status 'answered')
+        const badge = t => {
+            const [label, tone, icon] = t.check && t.status === 'answered' ? ['Needs your answer', 'warning', 'bi-exclamation-circle-fill'] : STATUS[t.status];
             const b = el('span', `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`);
             b.innerHTML = `<i class="bi ${icon} me-1"></i>`;
             b.append(label);
@@ -137,7 +191,7 @@
                 top.append(el('span', 'fw-semibold', last.from === 'iato' ? `IATO · ${last.name}` : 'You'), el('span', '', last.at.split(' · ')[0]));
                 const preview = el('div', 'small text-body-secondary text-truncate', last.text);
                 const foot = el('div', 'd-flex flex-wrap gap-2 align-items-center mt-1');
-                foot.append(el('span', 'badge rounded-pill bg-body-tertiary text-body border', t.topic), badge(t.status));
+                foot.append(el('span', 'badge rounded-pill bg-body-tertiary text-body border', t.topic), badge(t));
                 item.append(top, el('div', `${t.status === 'answered' ? 'fw-bold' : 'fw-semibold'}`, t.subject), preview, foot);
                 item.addEventListener('click', () => { current = t.id; draw(); });
                 return item;
@@ -156,9 +210,21 @@
             }
             const head = el('div', 'card-header bg-white border-0 rounded-top-4 d-flex flex-wrap justify-content-between align-items-start gap-2 px-4 pt-4');
             const titles = el('div');
-            titles.append(el('h2', 'fs-6 fw-bold mb-1', t.subject), el('div', 'small text-body-secondary', `${t.id} · ${t.topic}`));
-            head.append(titles, badge(t.status));
+            titles.append(el('h2', 'fs-6 fw-bold mb-1', t.subject), el('div', 'small text-body-secondary', t.check ? t.topic : `${t.id} · ${t.topic}`));
+            head.append(titles, badge(t));
             const body = el('div', 'card-body px-4');
+            if (t.check) {
+                const c = t.check;
+                const card = el('div', 'border rounded-3 p-3 mb-3');
+                card.innerHTML = `<div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><div><div class="fw-bold"><i class="bi bi-person-vcard text-primary me-1"></i></div><div class="small text-body-secondary"></div></div><a class="btn btn-sm btn-light border fw-semibold" href=""><i class="bi bi-box-arrow-up-right me-1"></i> Open the record</a></div>
+                    <div class="row g-2 small mt-1"><div class="col-6"><div class="bg-body-tertiary rounded-3 p-2"><div class="text-body-secondary">IATO record</div><div class="fw-bold" data-iato></div></div></div><div class="col-6"><div class="bg-body-tertiary rounded-3 p-2"><div class="text-body-secondary">LAMP record</div><div class="fw-bold" data-lamp></div></div></div></div>`;
+                card.querySelector('.fw-bold').append(c.name);
+                card.querySelector('.small').textContent = `${c.id} · ${c.unit}`;
+                card.querySelector('a').href = `${c.url}?open=${encodeURIComponent(c.id)}`;
+                card.querySelector('[data-iato]').textContent = c.iato;
+                card.querySelector('[data-lamp]').textContent = c.lamp;
+                body.appendChild(card);
+            }
             const thread = el('div', 'vstack gap-2');
             t.messages.forEach(m => {
                 const mine = m.from === 'me';
@@ -170,6 +236,12 @@
                 thread.appendChild(b);
             });
             body.appendChild(thread);
+            if (t.outcome) {
+                const o = el('div', 'small text-success-emphasis mt-2');
+                o.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>';
+                o.append(t.outcome);
+                body.appendChild(o);
+            }
 
             if (t.status !== 'resolved') {
                 const reply = el('textarea', 'form-control mt-3');
@@ -190,7 +262,23 @@
                     toast('Sent to IATO. (Demo only — not saved yet.)');
                 });
                 actions.appendChild(send);
-                if (t.status === 'answered') {
+                if (t.check) {
+                    const ok = el('button', 'btn btn-sm btn-success fw-semibold');
+                    ok.type = 'button';
+                    ok.innerHTML = '<i class="bi bi-check-lg me-1"></i> IATO is right, update our record';
+                    ok.addEventListener('click', () => {
+                        t.messages.push({ from: 'me', at: nowLabel(), text: `Confirmed. Our record now shows ${t.check.iato}.` });
+                        t.status = 'resolved';
+                        t.outcome = `LAMP updated its record to ${t.check.iato}`;
+                        draw();
+                        toast(`${t.check.name}: records now match. IATO was notified. (Demo only — not saved yet.)`);
+                    });
+                    const fix = el('button', 'btn btn-sm btn-light border fw-semibold');
+                    fix.type = 'button';
+                    fix.innerHTML = '<i class="bi bi-pencil me-1"></i> Correct the IATO record';
+                    fix.addEventListener('click', () => openFix(t));
+                    actions.append(ok, fix);
+                } else if (t.status === 'answered') {
                     const done = el('button', 'btn btn-sm btn-light border fw-semibold');
                     done.type = 'button';
                     done.innerHTML = '<i class="bi bi-check-lg me-1"></i> Mark resolved';
@@ -201,6 +289,28 @@
             }
             view.append(head, body);
         }
+
+        // ---- Correct the IATO record (LAMP's scholar checks) ----
+        let fixing = null;
+        function openFix(t) {
+            fixing = t;
+            $('fixForm').reset();
+            $('fixForm').classList.remove('was-validated');
+            $('fixSub').textContent = `${t.check.name} · IATO has ${t.check.iato}`;
+            bootstrap.Modal.getOrCreateInstance($('fixModal')).show();
+        }
+        $('fixForm')?.addEventListener('submit', e => {
+            e.preventDefault();
+            e.target.classList.add('was-validated');
+            if (!e.target.checkValidity()) return $('fixType').focus();
+            const t = fixing, v = $('fixType').value, note = $('fixNote').value.trim();
+            t.messages.push({ from: 'me', at: nowLabel(), text: `IATO record should be ${v}. Sent a correction to your Review Queue.` + (note ? ` ${note}` : '') });
+            t.status = 'resolved';
+            t.outcome = `Sent a correction to the IATO Review Queue: ${t.check.iato} → ${v}`;
+            bootstrap.Modal.getOrCreateInstance($('fixModal')).hide();
+            draw();
+            toast('Correction sent to the IATO Review Queue. (Demo only — not saved yet.)');
+        });
 
         // ---- New message ----
         const newModal = bootstrap.Modal.getOrCreateInstance($('newModal'));
@@ -217,7 +327,7 @@
             e.preventDefault();
             e.target.classList.add('was-validated');
             if (!e.target.checkValidity()) return e.target.querySelector(':invalid')?.focus();
-            const next = 'MSG-' + String(Math.max(...THREADS.map(t => +t.id.split('-')[1]), 0) + 1).padStart(4, '0');
+            const next = 'MSG-' + String(Math.max(...THREADS.filter(t => t.id.startsWith('MSG-')).map(t => +t.id.split('-')[1]), 0) + 1).padStart(4, '0');
             THREADS.unshift({ id: next, topic: $('newTopic').value, subject: $('newSubject').value.trim(), status: 'waiting', messages: [{ from: 'me', at: nowLabel(), text: $('newMessage').value.trim() }] });
             current = next;
             tab = 'all';

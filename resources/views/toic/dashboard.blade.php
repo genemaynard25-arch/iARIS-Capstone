@@ -12,10 +12,13 @@
 @section('page-title', 'System Overview')
 @section('page-subtitle', 'How iARIS is running this week. Updated every 5 minutes.')
 
-@section('content')
-    <div class="d-flex justify-content-end mb-3">
+@section('page-actions')
+    <div>
         <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle px-3 py-2"><i class="bi bi-person-lock me-1"></i> No applicant data</span>
     </div>
+@endsection
+
+@section('content')
     @include('toic.partials.privacy')
 
     {{-- Four tiles --}}

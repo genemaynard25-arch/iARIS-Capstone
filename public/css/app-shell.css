@@ -1,0 +1,48 @@
+/* Shared v2 workspace frame; page-specific styles remain separate. */
+.iaris-workspace { --workspace-muted: rgba(26,43,38,.52); background: #f2f5f4; font-size: 14px; }
+@font-face { font-family: Inter; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/auth/inter-400.woff2') format('woff2'); }
+@font-face { font-family: Inter; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/auth/inter-500.woff2') format('woff2'); }
+@font-face { font-family: Inter; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/auth/inter-600.woff2') format('woff2'); }
+@font-face { font-family: Inter; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/auth/inter-700.woff2') format('woff2'); }
+@font-face { font-family: Montserrat; font-style: normal; font-weight: 800; font-display: swap; src: url('../fonts/auth/montserrat-800.woff2') format('woff2'); }
+.ac-institution-bar { min-height: 34px; padding: 8px 28px; background: #0d0d0d; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.75); font-size: 12px; line-height: 1.5; }
+.ac-institution-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.ac-institution-name strong { color: rgba(255,255,255,.92); }
+.ac-institution-bar > span:last-child { font-size: 11.5px; letter-spacing: .5px; color: rgba(255,255,255,.45); }
+.iaris-workspace .app-shell { min-height: calc(100vh - 34px) !important; }
+.iaris-workspace .app-main { padding: 24px 28px !important; }
+.iaris-workspace .sidebar { width: 272px; --bs-offcanvas-width: 272px; height: 100vh !important; top: 0; background: linear-gradient(180deg,#00674f,#003d2e); }
+.iaris-workspace .sidebar .nav-link { font-size: 14px; padding: 10px 12px; border-radius: 9px; }
+.iaris-workspace .sidebar .nav-link.active { border-left: 3px solid #a8d5c5; padding-left: 9px; }
+.iaris-workspace .sidebar .offcanvas-body > div:first-child { padding: 26px 24px 22px !important; }
+.iaris-workspace .sidebar .tracking-wide { font-size: 10.5px; letter-spacing: 2px; }
+.iaris-workspace .sidebar .small { font-size: 11.5px; }
+.iaris-workspace .auth-logo { display: inline-flex; align-items: center; justify-content: center; width: var(--logo-size); height: var(--logo-size); border-radius: 12px; background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.18); flex-shrink: 0; }
+.iaris-workspace .auth-logo svg { width: 55%; height: 55%; }
+.iaris-workspace .app-topbar { background: transparent !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 22px !important; }
+.iaris-workspace .app-topbar h1 { font-size: 20px !important; line-height: 1.4; }
+.iaris-workspace .app-topbar p { font-size: 13px; margin-top: 3px; }
+.iaris-workspace .app-topbar .badge { font-size: 13px; border: 1px solid #c5e4d8; }
+.ac-breadcrumb { font-size: 12.5px; color: var(--workspace-muted); margin-bottom: 4px; }
+.ac-breadcrumb i { font-size: 9px; margin: 0 5px; }
+.ac-breadcrumb span { color: var(--ac-green, #00674f); font-weight: 600; }
+
+@media (max-width: 991.98px) {
+    .iaris-workspace .app-main { padding: 20px !important; }
+    .iaris-workspace .sidebar { top: 0; height: 100vh !important; }
+    .ac-institution-bar { padding-right: 20px; padding-left: 20px; }
+}
+@media (max-width: 575.98px) {
+    .iaris-workspace .app-main { padding: 16px !important; }
+    .ac-institution-bar { padding: 8px 16px; font-size: 10px; }
+}
+
+.toic-workspace .app-topbar [data-avatar] { width: 38px; height: 38px; background: #a8d5c5 !important; color: #00503d !important; border: 2px solid rgba(168,213,197,.5); }
+
+.toic-workspace .app-topbar { flex-wrap: wrap; }
+.toic-workspace .app-topbar-actions { flex-shrink: 0; }
+
+/* Let long office headings fit alongside the menu and profile on narrow screens. */
+.iaris-workspace .app-topbar > .d-flex:first-child { min-width: 0; }
+.iaris-workspace .app-topbar > .d-flex:first-child > div { min-width: 0; overflow-wrap: anywhere; }
+.iaris-workspace .app-topbar > .d-flex:first-child > button { flex-shrink: 0; }

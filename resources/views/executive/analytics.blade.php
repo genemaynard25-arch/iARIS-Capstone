@@ -20,10 +20,24 @@
     $confidenceTones = ['High' => 'primary', 'Medium' => 'warning', 'Low' => 'danger'];
 @endphp
 
+@if (auth()->user()->isExecutive())
+    @include('partials.president-workspace', ['presidentPage' => 'analytics', 'presidentLabel' => 'Analytics'])
+    @section('page-actions')
+        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
+        <select class="form-select w-auto" id="presidentYear" aria-label="Academic year comparison">
+            @foreach (array_reverse($years, true) as $index => $year)
+                <option value="{{ $index }}">{{ $year }}</option>
+            @endforeach
+        </select>
+        <button type="button" class="btn btn-primary fw-semibold no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1"></i> Export PDF</button>
+    @endsection
+@endif
+
 @section('content')
     {{-- Same id as the dashboard, so "Export PDF" prints this page the same way (iaris.css section 9) --}}
     <div id="executiveReport">
         {{-- Toolbar: read-only notice, academic year, export --}}
+        @unless (auth()->user()->isExecutive())
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2">
                 <i class="bi bi-eye me-1"></i> Read-only view
@@ -36,6 +50,10 @@
             </button>
         </div>
 
+        @endunless
+        @if (auth()->user()->isExecutive())
+            <p class="small text-body-secondary mb-3"><i class="bi bi-info-circle me-1"></i>Preview data · Executive analytics is not connected to imported records yet.</p>
+        @endif
         {{-- Unit filter: changes the stat cards, trend chart and funnel --}}
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body d-flex flex-wrap align-items-center gap-2 px-4 py-3" id="unitPills">
@@ -54,13 +72,10 @@
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights <span class="badge rounded-pill bg-body-secondary text-body-secondary ms-1">{{ count($insights) }}</span></button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabEstimate" type="button" role="tab" data-hash="estimate"><i class="bi bi-magic me-1"></i> Next AY estimate</button></li>
         </ul>
-        <div class="tab-content">
-        <div class="tab-pane fade show active" id="tabOverview" role="tabpanel">
-        {{-- Stat cards (numbers filled in by the script) --}}
         <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
             @foreach ([['applicants', 'Total Applicants', 'primary'], ['paid', 'Paid Reservations', 'info'], ['enrolled', 'Enrolled', 'dark'], ['conversion', 'Applied → Enrolled', 'warning']] as [$key, $label, $tone])
                 <div class="col">
-                    <div class="card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
+                    <div class="admin-stat-card card border-0 border-top border-3 border-{{ $tone }} shadow-sm rounded-4 h-100">
                         <div class="card-body">
                             <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $label }}</div>
                             <div class="fs-2 fw-bold" data-stat="{{ $key }}"></div>
@@ -71,6 +86,9 @@
             @endforeach
         </div>
 
+        <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabOverview" role="tabpanel">
+        {{-- Stat cards (numbers filled in by the script) --}}
         <div class="row g-4 mb-4">
             {{-- Applicants vs enrolled over the years --}}
             <div class="col-12 col-xl-7">
@@ -283,7 +301,7 @@
 @endsection
 
 @section('scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         const YEARS = @json($years);
         const UNITS = @json($units);
@@ -481,6 +499,13 @@
         }));
         document.getElementById('generate').addEventListener('click', () => { pickNote.textContent = ''; renderCompare(); });
 
+        document.getElementById('presidentYear')?.addEventListener('change', event => {
+            const selected = Number(event.target.value);
+            document.querySelectorAll('#yearPicks input').forEach(box => { box.checked = Number(box.value) === selected || Number(box.value) === LAST; });
+            renderCompare();
+            bootstrap.Tab.getOrCreateInstance(document.querySelector(`[data-hash="${selected === LAST ? 'overview' : 'compare'}"]`)).show();
+        });
+
         // Start with the unit and chart type chosen in Settings → Display
         const display = window.IARIS_SETTINGS?.display || {};
         if (display.unit in UNITS) { unit = display.unit; choose(unitButtons, document.querySelector(`#unitPills [data-unit="${unit}"]`)); }
@@ -491,7 +516,12 @@
         renderCompare();
 
         // Tabs follow the address (#overview, #compare, #insights, #estimate); #unit=College picks that unit
-        document.querySelectorAll('#analyticsTabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => history.replaceState(null, '', '#' + b.dataset.hash)));
+        document.querySelectorAll('#analyticsTabs [data-hash]').forEach(b => b.addEventListener('shown.bs.tab', () => {
+            history.replaceState(null, '', '#' + b.dataset.hash);
+            const yearSelect = document.getElementById('presidentYear');
+            if (yearSelect && b.dataset.hash !== 'compare') yearSelect.value = String(LAST);
+            Object.values(charts).forEach(chart => chart.resize());
+        }));
         (() => {
             const hash = decodeURIComponent(location.hash.slice(1));
             if (hash.startsWith('unit=')) document.querySelector(`#unitPills [data-unit="${CSS.escape(hash.slice(5))}"]`)?.click();

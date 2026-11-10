@@ -22,6 +22,7 @@ class ToicController extends Controller
         'dean' => ['Dean', 'Own college only'],
         'program_chair' => ['Program Chair, Graduate Programs', 'Graduate Programs only'],
         'principal' => ['Integrated School Principal', 'Integrated School'],
+        'assistant_principal' => ['Assistant Principal', 'Own levels only'],
         'shs_principal' => ['SHS Principal', 'Senior High School'],
         'registrar' => ['Registrar', 'Assigned unit (College or IS)'],
         'lamp' => ['LAMP Office', 'Scholarships'],

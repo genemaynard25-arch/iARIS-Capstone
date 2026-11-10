@@ -19,9 +19,11 @@
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'succession-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Super User Succession'])
+
 @section('content')
     <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 small">
-        <i class="bi bi-info-circle"></i>
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
         <span class="me-auto"><strong>Front end only:</strong> the steps below run on this page and nothing changes in the database.</span>
         {{-- Demo switch: see the page as the nominee would --}}
         <span class="fw-bold text-uppercase">View as</span>
@@ -33,20 +35,20 @@
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="admin-succession-grid row g-4">
         <div class="col-12 col-xl-8">
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-4">
                     <h2 class="fs-6 fw-bold mb-1">Handover</h2>
                     <p class="small text-body-secondary">iARIS always has exactly one Super User. A handover moves the role to another account in four steps.</p>
 
-                    <div class="d-flex align-items-center gap-3 rounded-3 bg-iaris text-white p-3 mb-4">
+                    <div class="succession-current-user d-flex flex-wrap align-items-center gap-3 rounded-3 bg-iaris text-white p-3 mb-4">
                         <span class="rounded-circle bg-white bg-opacity-25 fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;" id="currentInitials">{{ $initials($me['name']) }}</span>
                         <div class="flex-grow-1">
                             <div class="fw-bold" id="currentName">{{ $me['name'] }}</div>
                             <div class="small text-white-50" id="currentMeta">Super User since {{ $me['since'] }} · {{ $me['email'] }}</div>
                         </div>
-                        <span class="badge rounded-pill bg-white text-primary-emphasis"><i class="bi bi-star-fill me-1"></i> Current Super User</span>
+                        <span class="badge rounded-pill bg-white text-primary-emphasis"><i class="bi bi-star-fill me-1" aria-hidden="true"></i> Current Super User</span>
                     </div>
 
                     {{-- The four steps: the script marks done / current --}}
@@ -97,7 +99,7 @@
                         ['bi-journal-text', 'Every step is logged', 'Each step appears in the history.'],
                     ] as [$icon, $title, $text])
                         <div class="d-flex gap-3 {{ $loop->first ? '' : 'border-top pt-3' }} pb-3">
-                            <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}"></i></span>
+                            <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}" aria-hidden="true"></i></span>
                             <div class="small"><div class="fw-bold">{{ $title }}</div><div class="text-body-secondary">{{ $text }}</div></div>
                         </div>
                     @endforeach
@@ -135,7 +137,7 @@
                     <h3 class="fs-5 fw-bold mb-1" id="authTitle">Set up a new authenticator</h3>
                     <p class="small text-body-secondary">Super User accounts need their own authenticator entry. Open Google Authenticator or Authy, tap <strong>Add account</strong>, scan the code, then enter the 6-digit number.</p>
                     <div class="rounded-3 border bg-body-tertiary d-flex align-items-center justify-content-center mx-auto mb-3 text-body-secondary small" style="width: 160px; height: 160px;">
-                        <span class="text-center"><i class="bi bi-qr-code fs-1 d-block"></i>QR code appears here once the backend makes it</span>
+                        <span class="text-center"><i class="bi bi-qr-code fs-1 d-block" aria-hidden="true"></i>QR code appears here once the backend makes it</span>
                     </div>
                     <input type="text" class="form-control font-monospace fs-5 text-center" id="authCode" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="••••••" aria-label="6-digit code" required>
                     <div class="invalid-feedback">Enter all 6 digits.</div>
@@ -207,7 +209,7 @@
                 const i = Number(li.dataset.step), dot = li.querySelector('[data-dot]');
                 dot.className = 'rounded-circle border border-2 fw-bold small d-flex align-items-center justify-content-center flex-shrink-0 '
                     + (i < index ? 'bg-primary border-primary text-white' : i === index ? 'border-primary text-primary' : 'text-body-secondary');
-                dot.innerHTML = i < index ? '<i class="bi bi-check-lg"></i>' : i + 1;
+                dot.innerHTML = i < index ? '<i class="bi bi-check-lg" aria-hidden="true"></i>' : i + 1;
             });
 
             const n = state.nominee;
@@ -215,27 +217,27 @@
             if (state.view === 'nominee') {
                 html = state.step === 'nominated'
                     ? `<div class="alert alert-info small"><strong>${esc(ME.name)} nominated you as the next Super User.</strong> Accepting asks you to set up a new authenticator. Then ${esc(ME.name)} confirms once more before the role moves.</div>
-                       ${nomineeCard(n)}<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-primary fw-semibold" data-act="accept"><i class="bi bi-check2-circle me-1"></i> Accept and set up authenticator</button>
+                       ${nomineeCard(n)}<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-primary fw-semibold" data-act="accept"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Accept and set up authenticator</button>
                        <button type="button" class="btn btn-outline-danger" data-act="decline">Decline</button></div>`
-                    : `<p class="small text-body-secondary mb-0"><i class="bi bi-info-circle me-1"></i> ${state.step === 'idle' ? 'No one has been nominated yet. Switch back to the Current Super User to nominate someone.' : state.step === 'accepted' ? 'You accepted. Waiting for the Current Super User to confirm.' : 'The handover is complete.'}</p>`;
+                    : `<p class="small text-body-secondary mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> ${state.step === 'idle' ? 'No one has been nominated yet. Switch back to the Current Super User to nominate someone.' : state.step === 'accepted' ? 'You accepted. Waiting for the Current Super User to confirm.' : 'The handover is complete.'}</p>`;
             } else if (state.step === 'idle') {
                 html = `<div class="small fw-bold text-uppercase text-body-secondary mb-2">Choose a successor</div>
                     <div class="list-group mb-2">${ACCOUNTS.map(a => `<label class="list-group-item d-flex align-items-center gap-3 ${a.eligible ? '' : 'bg-body-tertiary text-body-secondary'}">
                         <input class="form-check-input m-0" type="radio" name="successor" value="${a.id}" ${a.eligible ? '' : 'disabled'} ${state.picked === a.id ? 'checked' : ''}>
                         <span class="flex-grow-1"><span class="d-block fw-semibold">${esc(a.name)}</span><span class="d-block small">${esc(a.role)} · ${esc(a.office)}</span></span>
                         <span class="badge rounded-pill ${a.eligible ? 'bg-primary-subtle text-primary-emphasis' : 'bg-body-secondary text-body-secondary'}">${esc(a.why)}</span></label>`).join('')}</div>
-                    <p class="small text-body-secondary"><i class="bi bi-info-circle me-1"></i> Only active accounts with MFA set up can be nominated.</p>
-                    <button type="button" class="btn btn-primary fw-semibold" data-act="nominate" ${state.picked === null ? 'disabled' : ''}><i class="bi bi-person-plus me-1"></i> Nominate as successor</button>`;
+                    <p class="small text-body-secondary"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Only active accounts with MFA set up can be nominated.</p>
+                    <button type="button" class="btn btn-primary fw-semibold" data-act="nominate" ${state.picked === null ? 'disabled' : ''}><i class="bi bi-person-plus me-1" aria-hidden="true"></i> Nominate as successor</button>`;
             } else if (state.step === 'nominated') {
-                html = `<div class="alert alert-warning small d-flex gap-2"><i class="bi bi-hourglass-split mt-1"></i><div><strong>Waiting for ${esc(n.name)} to accept.</strong> They'll see the request when they sign in. The nomination expires on ${expires()}.</div></div>
-                    ${nomineeCard(n)}<button type="button" class="btn btn-outline-danger" data-act="cancel"><i class="bi bi-x-lg me-1"></i> Cancel nomination</button>`;
+                html = `<div class="alert alert-warning small d-flex gap-2"><i class="bi bi-hourglass-split mt-1" aria-hidden="true"></i><div><strong>Waiting for ${esc(n.name)} to accept.</strong> They'll see the request when they sign in. The nomination expires on ${expires()}.</div></div>
+                    ${nomineeCard(n)}<button type="button" class="btn btn-outline-danger" data-act="cancel"><i class="bi bi-x-lg me-1" aria-hidden="true"></i> Cancel nomination</button>`;
             } else if (state.step === 'accepted') {
-                html = `<div class="alert alert-info small d-flex gap-2"><i class="bi bi-person-check mt-1"></i><div><strong>${esc(n.name)} accepted and set up a new authenticator.</strong> Confirm once more to move the role. Your account becomes Inactive afterwards.</div></div>
-                    ${nomineeCard(n)}<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-danger fw-semibold" data-act="confirm"><i class="bi bi-arrow-left-right me-1"></i> Confirm handover</button>
+                html = `<div class="alert alert-info small d-flex gap-2"><i class="bi bi-person-check mt-1" aria-hidden="true"></i><div><strong>${esc(n.name)} accepted and set up a new authenticator.</strong> Confirm once more to move the role. Your account becomes Inactive afterwards.</div></div>
+                    ${nomineeCard(n)}<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-danger fw-semibold" data-act="confirm"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i> Confirm handover</button>
                     <button type="button" class="btn btn-light border" data-act="cancel">Cancel nomination</button></div>`;
             } else {
-                html = `<div class="alert alert-success small d-flex gap-2"><i class="bi bi-check-circle mt-1"></i><div><strong>Handover shown as complete.</strong> ${esc(n.name)} would now be the Super User and your account Inactive. Nothing was changed: this needs the backend.</div></div>
-                    <button type="button" class="btn btn-light border" data-act="reset"><i class="bi bi-arrow-counterclockwise me-1"></i> Start the demo again</button>`;
+                html = `<div class="alert alert-success small d-flex gap-2"><i class="bi bi-check-circle mt-1" aria-hidden="true"></i><div><strong>Handover shown as complete.</strong> ${esc(n.name)} would now be the Super User and your account Inactive. Nothing was changed: this needs the backend.</div></div>
+                    <button type="button" class="btn btn-light border" data-act="reset"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Start the demo again</button>`;
             }
             $('stage').innerHTML = html;
         }

@@ -7,14 +7,16 @@
 @php
     // IATO Staff (not a Temporary Admin): imports go to the Review Queue (front end only for now, see the script)
     $staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin();
-    $steps = ['Upload File', 'Preview', $staffReview ? 'Submit for Review' : 'Import'];
+    $steps = ['Upload applicant list', 'Check rows', $staffReview ? 'Submit for Review' : 'Import'];
     $currentSchoolYear = now()->month >= 6 ? now()->year . '-' . (now()->year + 1) : (now()->year - 1) . '-' . now()->year;
 @endphp
+
+@include('partials.admin-workspace', ['workspacePage' => 'import-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Import Data'])
 
 @section('content')
     @if ($errors->any())
         <div class="alert alert-danger d-flex gap-2" role="alert">
-            <i class="bi bi-exclamation-circle"></i>
+            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
             <div>
                 @foreach ($errors->all() as $error)
                     <div>{{ $error }}</div>
@@ -23,7 +25,7 @@
         </div>
     @endif
 
-    <div class="row g-4">
+    <div class="admin-import-grid row g-4">
     <div class="col-12 col-xl-8">
     <form method="POST" action="{{ url('/import') }}" enctype="multipart/form-data" id="importForm">
         @csrf
@@ -33,7 +35,7 @@
             <div class="card-body p-4">
                 <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
                     <div>
-                        <h2 class="fs-6 fw-bold mb-1">Upload File</h2>
+                        <h2 class="fs-6 fw-bold mb-1">Upload the applicant list</h2>
                         <p class="small text-body-secondary mb-0">Upload the export straight from the admissions portal — one file for every level. Each row's level (Integrated School, College, Graduate Programs, ETEEAP) is read from the file's own section headers and Year Level column.</p>
                     </div>
                 </div>
@@ -42,7 +44,7 @@
                 {{-- IATO Staff: shown after "Submit for review" (the script fills in the numbers) --}}
                 @if ($staffReview)
                     <div class="alert alert-success d-none d-flex gap-3 rounded-4 mb-4" id="reviewBanner" role="status">
-                        <i class="bi bi-check-circle-fill fs-4"></i>
+                        <i class="bi bi-check-circle-fill fs-4" aria-hidden="true"></i>
                         <div class="small">
                             <b id="reviewBannerTitle"></b> Other users see them after the Super Admin approves.
                             <a href="{{ url('/submissions') }}" class="fw-bold alert-link">Track it in My Submissions →</a>
@@ -63,7 +65,7 @@
                 {{-- The whole box is a <label>, so clicking anywhere opens the file picker --}}
                 <label for="file" id="dropzone" class="d-block text-center rounded-4 border border-2 border-primary-subtle p-5" style="--bs-border-style: dashed; cursor: pointer;">
                     <span class="icon-circle rounded-circle bg-primary-subtle text-primary fs-4 d-flex align-items-center justify-content-center mx-auto mb-3">
-                        <i class="bi bi-cloud-arrow-up"></i>
+                        <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
                     </span>
                     <span class="d-block fw-bold mb-1">Drag and drop your file here</span>
                     <span class="d-block small text-body-secondary mb-3">Supported formats: .xlsx, .csv</span>
@@ -74,7 +76,7 @@
                 {{-- Selected file --}}
                 <div class="d-none align-items-center gap-3 rounded-3 border bg-body-tertiary p-3 mt-3" id="fileRow">
                     <span class="icon-circle rounded-3 bg-primary-subtle text-primary fs-5 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
                     </span>
                     <div class="flex-grow-1 overflow-hidden">
                         <div class="small fw-semibold text-truncate" id="fileName"></div>
@@ -112,7 +114,7 @@
                 <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
                     <button type="button" class="btn btn-light border px-4" id="cancelImport">Cancel</button>
                     <button type="submit" class="btn btn-primary fw-semibold px-4" id="importButton">
-                        <i class="bi bi-upload me-1"></i> Import Data
+                        <i class="bi bi-upload me-1" aria-hidden="true"></i> Import Data
                     </button>
                 </div>
             </div>
@@ -127,16 +129,20 @@
                 <h2 class="fs-6 fw-bold mb-1">Sample File</h2>
                 <p class="small text-body-secondary mb-3">One file, every level — the portal's own export layout, with a section header per department/grade/program</p>
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-0 border-0" id="downloadSample">
-                    <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi bi-file-earmark-spreadsheet"></i></span>
+                    <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
                     <span class="flex-grow-1 text-start">
                         <span class="d-block small fw-bold">Download Sample Template</span>
                         <span class="d-block small text-body-secondary">Shows the expected columns and a section header example</span>
                     </span>
-                    <i class="bi bi-download text-body-secondary"></i>
+                    <i class="bi bi-download text-body-secondary" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
 
+    </div>
+    </div>
+
+    <section class="admin-import-history mt-4" aria-label="Import history">
         {{-- Import History: real uploads (import_batches) --}}
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-4">
@@ -151,7 +157,7 @@
                         };
                     @endphp
                     <a href="{{ url('/import/' . $batch->id) }}" class="d-flex gap-3 py-3 text-decoration-none text-body {{ $loop->first ? '' : 'border-top' }}">
-                        <span class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}"></i></span>
+                        <span class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}" aria-hidden="true"></i></span>
                         <span class="overflow-hidden">
                             <span class="d-block small fw-bold text-truncate">{{ $batch->original_filename }}</span>
                             <span class="d-block small text-body-secondary">By {{ $batch->uploader ?? 'Unknown user' }} · {{ \Illuminate\Support\Carbon::parse($batch->created_at)->format('M j, Y · g:i A') }}</span>
@@ -166,13 +172,12 @@
                 @endforelse
             </div>
         </div>
-    </div>
-    </div>
+    </section>
 @endsection
 
 @section('scripts')
     {{-- SheetJS reads the file in the browser for a raw preview only; the real import happens on the server --}}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         // The portal's own column order. App\Imports\ApplicantsImport reads these by position,
         // not by header name, since section header rows share the sheet with data rows.
@@ -233,7 +238,7 @@
                 const i = Number(li.dataset.step), dot = li.querySelector('[data-dot]');
                 dot.className = 'rounded-circle border border-2 fw-bold small d-flex align-items-center justify-content-center flex-shrink-0 '
                     + (i <= n ? 'bg-primary border-primary text-white' : 'text-body-secondary');
-                dot.innerHTML = i < n ? '<i class="bi bi-check-lg"></i>' : i;
+                dot.innerHTML = i < n ? '<i class="bi bi-check-lg" aria-hidden="true"></i>' : i;
                 li.querySelector('[data-label]').className = 'small fw-bold text-nowrap d-none d-md-inline ' + (i <= n ? 'text-primary' : 'text-body-secondary');
                 li.querySelector('[data-line]')?.classList.toggle('border-primary', i < n);
                 if (i === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
@@ -300,7 +305,7 @@
 
             show(previewCard);
             setStep(2);
-            if (STAFF_REVIEW) importButton.innerHTML = `<i class="bi bi-send me-1"></i> Submit for review (${plural(rowCount, 'record')})`;
+            if (STAFF_REVIEW) importButton.innerHTML = `<i class="bi bi-send me-1" aria-hidden="true"></i> Submit for review (${plural(rowCount, 'record')})`;
         }
 
         // Built with textContent (not innerHTML) so nothing in the file can inject HTML into the page

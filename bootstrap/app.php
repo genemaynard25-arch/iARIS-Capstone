@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             append: [
                 \App\Http\Middleware\EnsureAccountIsActive::class,
                 \App\Http\Middleware\EnsureTwoFactorIsEnabled::class,
+                \App\Http\Middleware\EnsureToicScope::class,
             ],
         );
     })

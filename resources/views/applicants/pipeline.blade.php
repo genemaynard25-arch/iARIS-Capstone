@@ -38,25 +38,27 @@
     ]);
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'pipeline-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Applicants'])
+
+@push('styles')
+    <link href="{{ asset('css/records.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
-    {{-- Stat cards: the numbers follow the filters (the script fills them in) --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
-        <div class="col">
-            <div class="card border-0 border-top border-3 border-dark shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">Total Applicants</div>
-                    <div class="fs-3 fw-bold" data-stat="All">0</div>
-                    <div class="small text-body-secondary" id="scopeLabel">All divisions</div>
-                </div>
-            </div>
-        </div>
-        @foreach ($statuses as $key => $status)
+    {{-- The same four summary cards as the Records pages; totals follow the active scope. --}}
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+        @foreach ([
+            ['key' => 'All', 'label' => 'Total Applicants', 'sub' => 'All divisions', 'tone' => 'primary'],
+            ['key' => 'examPaid', 'label' => 'Exam fee paid', 'sub' => 'Updates after online payment', 'tone' => 'primary'],
+            ['key' => 'passedExam', 'label' => 'Passed', 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
+            ['key' => 'reserved', 'label' => 'Reservation paid', 'sub' => 'Ready for enrollment', 'tone' => 'info'],
+        ] as $summary)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $status['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $summary['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
-                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $status['label'] }}</div>
-                        <div class="fs-3 fw-bold text-{{ $status['tone'] }}-emphasis" data-stat="{{ $key }}">0</div>
-                        <div class="small text-body-secondary">{{ $status['sub'] }}</div>
+                        <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $summary['label'] }}</div>
+                        <div class="fs-3 fw-bold text-{{ $summary['tone'] === 'primary' ? 'body' : $summary['tone'] . '-emphasis' }}" data-stat="{{ $summary['key'] }}">0</div>
+                        <div class="small text-body-secondary" @if ($summary['key'] === 'All') id="scopeLabel" @endif>{{ $summary['sub'] }}</div>
                     </div>
                 </div>
             </div>
@@ -67,12 +69,12 @@
         {{-- Search, Export, Add --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 pt-4 pb-3">
             <div class="input-group flex-grow-1" style="max-width: 420px;">
-                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control border-start-0" id="search" placeholder="Search name or applicant number…" aria-label="Search applicants">
             </div>
             <div class="d-flex gap-2 ms-md-auto">
-                <button type="button" class="btn btn-light border fw-semibold" id="exportCsv"><i class="bi bi-download me-1"></i> Export</button>
-                <button type="button" class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i> Add Applicant</button>
+                <button type="button" class="btn btn-light border fw-semibold" id="exportCsv"><i class="bi bi-download me-1" aria-hidden="true"></i> Export</button>
+                <button type="button" class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add Applicant</button>
             </div>
         </div>
 
@@ -230,8 +232,8 @@
 
         {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
         <div class="d-flex flex-wrap gap-2 p-3 border-top no-print">
-            <a class="btn btn-primary fw-semibold" id="drawerRecords" href="#"><i class="bi bi-pencil me-1"></i> Edit in records</a>
-            <button type="button" class="btn btn-light border fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+            <a class="btn btn-primary fw-semibold" id="drawerRecords" href="#"><i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit in records</a>
+            <button type="button" class="btn btn-light border fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i> Print</button>
         </div>
     </div>
 
@@ -267,7 +269,7 @@
                         </div>
                     </div>
                     {{-- TODO: the Records pages' Add buttons are disabled until the backend is ready --}}
-                    <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i> The add forms on the records pages come with the backend.</p>
+                    <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> The add forms on the records pages come with the backend.</p>
                 </div>
             </div>
         </div>
@@ -344,7 +346,12 @@
         // ---- Stat cards, chips, status pills and department pills ----
         function renderFilters() {
             const base = baseRows();
-            const counts = { All: base.length };
+            const counts = {
+                All: base.length,
+                examPaid: base.filter(a => a.exam_paid).length,
+                passedExam: base.filter(a => ['passed', 'reconsidered', 'qualified_other_degree'].includes(a.exam_status) || (!a.exam_status && a.status === 'Passed')).length,
+                reserved: base.filter(a => a.amount != null || a.paid != null || ['Paid', 'Enrolled'].includes(a.status)).length,
+            };
             Object.keys(STATUSES).forEach(k => counts[k] = base.filter(a => a.status === k).length);
             document.querySelectorAll('[data-stat]').forEach(el => el.textContent = counts[el.dataset.stat].toLocaleString());
             $('scopeLabel').textContent = scopeLabel();
@@ -391,11 +398,11 @@
                     <td><span class="badge rounded-pill fw-semibold" style="color:${color};background:${background}">${esc(a.division)}</span></td>
                     <td><span class="badge bg-body-tertiary text-body border fw-semibold" title="${esc(a.dept_label)}">${esc(a.dept)}</span></td>
                     <td class="small">${esc(a.program)}</td>
-                    <td>${a.scholarship ? `<span class="badge bg-warning-subtle text-warning-emphasis fw-semibold"><i class="bi bi-award me-1"></i>${esc(a.scholarship)}</span>` : '<span class="text-body-secondary">—</span>'}</td>
+                    <td>${a.scholarship ? `<span class="badge bg-warning-subtle text-warning-emphasis fw-semibold"><i class="bi bi-award me-1" aria-hidden="true"></i>${esc(a.scholarship)}</span>` : '<span class="text-body-secondary">—</span>'}</td>
                     <td><span class="badge rounded-pill bg-${STATUSES[a.status].tone}-subtle text-${STATUSES[a.status].tone}-emphasis">${esc(statusLabel(a))}</span></td>
                     <td class="small text-body-secondary text-nowrap">${formatDate(a.applied)}</td>
-                    <td class="pe-4 text-end"><i class="bi bi-chevron-right text-body-secondary"></i></td></tr>`;
-            }).join('') : `<tr><td colspan="8" class="text-center text-body-secondary py-5"><i class="bi bi-folder2-open fs-3 d-block mb-2"></i>No applicants match these filters.</td></tr>`;
+                    <td class="pe-4 text-end"><i class="bi bi-chevron-right text-body-secondary" aria-hidden="true"></i></td></tr>`;
+            }).join('') : `<tr><td colspan="8" class="text-center text-body-secondary py-5"><i class="bi bi-folder2-open fs-3 d-block mb-2" aria-hidden="true"></i>No applicants match these filters.</td></tr>`;
 
             $('footerText').textContent = rows.length
                 ? `Showing ${start + 1}–${start + pageRows.length} of ${rows.length} applicant${rows.length === 1 ? '' : 's'}`
@@ -403,9 +410,9 @@
 
             const pageButton = (label, page, { disabled = false, active = false, aria = '' } = {}) =>
                 `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}"><button type="button" class="page-link" data-page="${page}" ${aria ? `aria-label="${aria}"` : ''} ${active ? 'aria-current="page"' : ''}>${label}</button></li>`;
-            $('pagination').innerHTML = pageButton('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' })
+            $('pagination').innerHTML = pageButton('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' })
                 + Array.from({ length: pages }, (_, i) => pageButton(i + 1, i + 1, { active: i + 1 === state.page })).join('')
-                + pageButton('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
+                + pageButton('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
         function render() { renderFilters(); renderRows(); }
@@ -505,7 +512,7 @@
                 ['bi-check-circle', 'Reservation Confirmed', paid ? formatDate(a.paid) : 'Waiting for payment', paid, 'primary'],
             ];
             $('timeline').innerHTML = steps.map(([icon, title, date, done, color]) => `<li class="d-flex gap-3 pb-3">
-                <span class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${done ? `bg-${color} text-white` : 'bg-body-secondary text-body-secondary'}" style="width:32px;height:32px"><i class="bi ${icon}"></i></span>
+                <span class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${done ? `bg-${color} text-white` : 'bg-body-secondary text-body-secondary'}" style="width:32px;height:32px"><i class="bi ${icon}" aria-hidden="true"></i></span>
                 <div><div class="fw-bold small ${done ? '' : 'text-body-secondary'}">${esc(title)}</div><div class="small text-body-secondary">${esc(date)}</div></div></li>`).join('');
 
             // "Edit in records" opens this person on their Records page (ETEEAP has none yet)
@@ -513,7 +520,7 @@
             link.classList.toggle('disabled', !records);
             link.setAttribute('aria-disabled', !records);
             link.href = records ? `${records}?open=${encodeURIComponent(a.id)}` : '#';
-            link.innerHTML = records ? '<i class="bi bi-pencil me-1"></i> Edit in records' : '<i class="bi bi-clock me-1"></i> Records page coming soon';
+            link.innerHTML = records ? '<i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit in records' : '<i class="bi bi-clock me-1" aria-hidden="true"></i> Records page coming soon';
 
             bootstrap.Tab.getOrCreateInstance(drawerEl.querySelector('[data-bs-target="#paneInfo"]')).show();
             drawer.show();
@@ -545,7 +552,7 @@
                 $('drawerBadge').textContent = statusLabel(drawerApplicant);
                 render();
 
-                btn.innerHTML = '<i class="bi bi-check-lg"></i> Saved';
+                btn.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i> Saved';
                 setTimeout(() => { btn.innerHTML = original; }, 1500);
             } catch (err) {
                 btn.innerHTML = original;

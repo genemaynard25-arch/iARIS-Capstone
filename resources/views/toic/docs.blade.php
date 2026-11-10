@@ -51,8 +51,11 @@
 @section('page-title', 'Documentation')
 @section('page-subtitle', 'What iARIS does, who uses it, and how it protects data. The agreed basis for planning and support.')
 
+@section('page-actions')
+    <div id="docDownload"></div>
+@endsection
+
 @section('content')
-    <div class="d-flex justify-content-end mb-3" id="docDownload"></div>
     @include('toic.partials.privacy')
 
     <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">

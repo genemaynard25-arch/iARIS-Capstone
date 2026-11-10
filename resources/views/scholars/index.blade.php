@@ -1,31 +1,37 @@
 @extends('layouts.app')
 
-@section('title', 'iARIS — Scholar Records')
-@section('page-title', 'Scholar Records')
-@section('page-subtitle', "Scholar applicants for AY {$academicYear} — cross-checked against LAMP Office records")
+@section('title', 'iARIS — Scholarship Applicants')
+@section('page-title', 'Scholarship Applicants')
+@section('page-subtitle', 'Applicants who answered Yes to the scholarship question. LAMP checks them after they pass the entrance exam.')
 
 @php
     // Records that don't match the LAMP Office (a different type, or missing from LAMP's list)
-    $needsReview = $scholars->where('lamp', '!=', 'Match')->count();
+    $needsReview = $scholars->whereIn('lamp', ['Discrepancy', 'Not Found'])->count();
 
     // Admissions' own job here is just "did they check Yes for scholarship, and did they
     // pass or fail the exam" — the specific scholarship type is LAMP's call, not shown here.
+    $passedScholars = $scholars->whereIn('exam', ['passed', 'qualified_other_degree', 'reconsidered']);
     $stats = [
-        ['label' => 'Total Scholars', 'value' => $scholars->count(), 'sub' => 'Applied for a scholarship', 'tone' => 'primary'],
-        ['label' => 'Passed Exam', 'value' => $scholars->whereIn('exam', ['passed', 'qualified_other_degree', 'reconsidered'])->count(), 'sub' => 'Cleared the entrance exam', 'tone' => 'primary'],
-        ['label' => 'Awaiting Result', 'value' => $scholars->whereIn('exam', ['not_taken', 'took_test', 'waitlisted'])->count(), 'sub' => 'Not yet taken or pending', 'tone' => 'warning'],
-        ['label' => 'Failed Exam', 'value' => $scholars->where('exam', 'failed')->count(), 'sub' => 'Did not pass', 'tone' => 'danger'],
-        ['label' => 'LAMP Discrepancies', 'value' => $needsReview, 'sub' => 'Records need review', 'tone' => 'danger'],
+        ['label' => 'Scholarship applicants', 'value' => $scholars->count(), 'sub' => 'Answered Yes on the application', 'tone' => 'primary'],
+        ['label' => 'Passed the exam', 'value' => $passedScholars->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
+        ['label' => 'Confirmed scholars', 'value' => $scholars->where('lamp', 'Match')->count(), 'sub' => 'Checked by LAMP', 'tone' => 'primary'],
+        ['label' => 'Waiting for LAMP', 'value' => $passedScholars->where('lamp', 'Pending Check')->count(), 'sub' => 'Passed, not yet checked', 'tone' => 'warning'],
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'scholars-page', 'workspaceGroup' => auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin', 'workspaceLabel' => 'Records · Scholarships'])
+
+@push('styles')
+    <link href="{{ asset('css/records.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
     {{-- Stat cards --}}
-    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
                 {{-- Clicking the LAMP Discrepancies card does the same as "View Discrepancies" --}}
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100"
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100"
                      @if ($stat['label'] === 'LAMP Discrepancies' && $needsReview) data-show-review role="button" tabindex="0" style="cursor: pointer;" title="Show the scholars that don't match LAMP" @endif>
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
@@ -40,7 +46,7 @@
     {{-- LAMP notice, only when something needs review --}}
     @if ($needsReview > 0)
         <div class="alert alert-warning d-flex flex-wrap flex-md-nowrap align-items-center gap-3 rounded-4 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <i class="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true"></i>
             <div class="flex-grow-1 small">
                 <strong>{{ $needsReview }} {{ $needsReview === 1 ? 'record doesn\'t' : 'records don\'t' }} match LAMP Office data.</strong>
                 {{-- The two numbers are kept up to date by the Ask LAMP script --}}
@@ -50,52 +56,60 @@
                 @endif
             </div>
             <button type="button" class="btn btn-warning btn-sm fw-semibold text-nowrap" id="showReview">
-                <i class="bi bi-eye me-1"></i> View Discrepancies
+                <i class="bi bi-eye me-1" aria-hidden="true"></i> View Discrepancies
             </button>
         </div>
     @endif
 
-    <div class="card border-0 shadow-sm rounded-4">
+    <div class="records-scholar-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Admissions only notes Yes when an applicant applies for a scholarship, and their exam result. The LAMP Office decides the scholarship type and collects the documents, so iARIS does not show them.</span></div>
+
+    <div class="records-table-card card border-0 shadow-sm rounded-4">
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search by name or app number…" aria-label="Search scholars">
             </div>
+            <select class="form-select w-auto" id="unitFilter" aria-label="Filter by unit">
+                <option value="">All units</option>
+                @foreach ($scholars->pluck('unit')->unique()->sort() as $unit)
+                    <option>{{ $unit }}</option>
+                @endforeach
+            </select>
             <select class="form-select w-auto" id="examFilter" aria-label="Filter by exam result">
                 <option value="">All Exam Results</option>
                 @foreach ($examStatuses as $key => [$tone, $label])
                     <option value="{{ $key }}">{{ $label }}</option>
                 @endforeach
             </select>
-            <select class="form-select w-auto" id="scholarshipFilter" aria-label="Filter by scholarship status">
+            <select class="form-select w-auto d-none" id="scholarshipFilter" aria-label="Filter by scholarship status">
                 <option value="">All Scholarship Status</option>
                 @foreach ($scholarshipTones as $status => $tone)
                     <option>{{ $status }}</option>
                 @endforeach
             </select>
-            <select class="form-select w-auto" id="lampFilter" aria-label="Filter by LAMP cross-check">
+            <select class="form-select w-auto d-none" id="lampFilter" aria-label="Filter by LAMP cross-check">
                 <option value="">All LAMP Status</option>
                 <option value="review">Needs Review (both below)</option>
                 @foreach ($lampBadges as $lamp => $badge)
                     <option>{{ $lamp }}</option>
                 @endforeach
             </select>
-            <select class="form-select w-auto" id="sort" aria-label="Sort">
+            <select class="form-select w-auto d-none" id="sort" aria-label="Sort">
                 <option value="newest">Sort: Newest First</option>
                 <option value="az">Sort: Name A–Z</option>
                 <option value="review">Sort: Discrepancies First</option>
             </select>
             <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
-                <i class="bi bi-download me-1"></i> Export
+                <i class="bi bi-download me-1" aria-hidden="true"></i> Download list
             </button>
             @if ($canEdit)
-                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1"></i> Add Scholar</button>
+                <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add Scholar</button>
             @endif
         </div>
 
         {{-- Admission status pills --}}
-        <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom" id="statusPills">
+        <div class="d-none" id="statusPills">
             <span class="small fw-bold text-body-secondary me-1">Admission:</span>
             @foreach (['All', ...array_keys($statusTones)] as $status)
                 <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold {{ $loop->first ? 'btn-primary' : 'btn-outline-secondary' }}" data-status="{{ $status }}">{{ $status }}</button>
@@ -108,13 +122,12 @@
                 <thead class="table-light">
                     <tr class="small text-uppercase">
                         <th class="ps-4 text-body-secondary fw-bold">Applicant</th>
-                        <th class="text-body-secondary fw-bold">Program</th>
+                        <th class="text-body-secondary fw-bold">Unit</th>
+                        <th class="text-body-secondary fw-bold">Program / Grade</th>
                         <th class="text-body-secondary fw-bold">Exam Result</th>
-                        <th class="text-body-secondary fw-bold">Scholarship Status</th>
-                        <th class="text-body-secondary fw-bold">Admission</th>
                         <th class="text-body-secondary fw-bold">LAMP Check</th>
                         {{-- No arrow column here: the table is wide, and clicking anywhere on a row opens it --}}
-                        <th class="text-body-secondary fw-bold">Updated</th>
+                        <th class="text-body-secondary fw-bold">Date applied</th>
                         <th class="pe-4"></th>
                     </tr>
                 </thead>
@@ -124,7 +137,7 @@
                             [$lampTone, $lampIcon] = $lampBadges[$s['lamp']];
                         @endphp
                         <tr class="scholar-row" style="cursor: pointer;" tabindex="0"
-                            data-index="{{ $i }}" data-status="{{ $s['status'] }}" data-exam="{{ $s['exam'] }}"
+                            data-unit="{{ $s['unit'] }}" data-index="{{ $i }}" data-status="{{ $s['status'] }}" data-exam="{{ $s['exam'] }}"
                             data-scholarship="{{ $s['scholarship_status'] }}" data-lamp="{{ $s['lamp'] }}"
                             data-search="{{ strtolower($s['name'] . ' ' . $s['id']) }}"
                             data-applied="{{ $s['applied'] }}" data-name="{{ $s['name'] }}">
@@ -132,32 +145,28 @@
                                 <div class="fw-semibold text-nowrap">{{ $s['name'] }}</div>
                                 <div class="small text-body-secondary">{{ $s['id'] }}</div>
                             </td>
-                            <td>
-                                <div>{{ $s['program'] }}</div>
-                                <div class="small text-body-secondary">{{ $s['unit'] }}</div>
-                            </td>
+                            <td>{{ $s['unit'] }}</td>
+                            <td>{{ $s['program'] }}</td>
                             <td><span class="badge rounded-pill bg-{{ $s['exam_tone'] }}-subtle text-{{ $s['exam_tone'] }}-emphasis">{{ $s['exam_label'] }}</span></td>
-                            <td><span class="badge rounded-pill bg-{{ $scholarshipTones[$s['scholarship_status']] }}-subtle text-{{ $scholarshipTones[$s['scholarship_status']] }}-emphasis"><i class="bi bi-circle-fill me-1" style="font-size: 0.45rem; vertical-align: middle;"></i>{{ $s['scholarship_status'] }}</span></td>
-                            <td><span class="badge rounded-pill bg-{{ $statusTones[$s['status']] }}-subtle text-{{ $statusTones[$s['status']] }}-emphasis">{{ $s['status'] }}</span></td>
                             <td>
-                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1"></i>{{ $s['lamp'] }}</span>
+                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1" aria-hidden="true"></i>{{ $s['lamp'] }}</span>
                                 {{-- "Waiting for LAMP" / "LAMP replied" / "Resolved" (filled in by the Ask LAMP script) --}}
                                 <div data-thread-tag></div>
                             </td>
-                            <td class="small text-body-secondary text-nowrap">{{ $s['updated_label'] }}</td>
+                            <td class="small text-body-secondary text-nowrap">{{ $s['applied_label'] }}</td>
                             <td class="pe-4 text-end text-nowrap">
                                 @if ($canEdit)
-                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye"></i></button>
-                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                                 @else
-                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></span>
+                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                     <tr id="noResults" class="d-none">
-                        <td colspan="8" class="text-center text-body-secondary py-5">
-                            <i class="bi bi-search fs-3 d-block mb-2"></i>
+                        <td colspan="7" class="text-center text-body-secondary py-5">
+                            <i class="bi bi-search fs-3 d-block mb-2" aria-hidden="true"></i>
                             No scholars match your search or filters.
                         </td>
                     </tr>
@@ -258,10 +267,10 @@
 
         {{-- Buttons on the left: the AI button sits in the bottom-right corner --}}
         <div class="d-flex flex-wrap gap-2 border-top p-3 no-print">
-            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+            <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i> Print</button>
             @if ($canEdit)
-                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1"></i> Remove</button>
-                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1"></i> Edit Record</button>
+                <button type="button" class="btn btn-outline-danger" data-record-remove><i class="bi bi-trash me-1" aria-hidden="true"></i> Remove</button>
+                <button type="button" class="btn btn-primary fw-semibold" data-record-form="edit"><i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit Record</button>
             @endif
         </div>
     </div>
@@ -282,7 +291,7 @@
         const PAGE_SIZE = 10;
         const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
 
-        const state = { status: 'All', exam: '', scholarship: '', lamp: '', search: '', sort: 'newest', page: 1 };
+        const state = { unit: '', status: 'All', exam: '', scholarship: '', lamp: '', search: '', sort: 'newest', page: 1 };
         const tbody = document.getElementById('scholarRows');
         const rows = [...tbody.querySelectorAll('.scholar-row')];
         let currentMatches = [];   // rows passing the filters (all pages), used by Export
@@ -290,9 +299,10 @@
         // ---- Filtering, sorting, paging ----
         function render() {
             const lampMatches = r => !state.lamp
-                || (state.lamp === 'review' ? r.dataset.lamp !== 'Match' : r.dataset.lamp === state.lamp);
+                || (state.lamp === 'review' ? ['Discrepancy', 'Not Found'].includes(r.dataset.lamp) : r.dataset.lamp === state.lamp);
 
             const matches = rows.filter(r =>
+                (!state.unit || r.dataset.unit === state.unit) &&
                 (state.status === 'All' || r.dataset.status === state.status) &&
                 (!state.exam || r.dataset.exam === state.exam) &&
                 (!state.scholarship || r.dataset.scholarship === state.scholarship) &&
@@ -339,13 +349,14 @@
                 li.appendChild(btn);
                 ul.appendChild(li);
             };
-            item('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
+            item('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
             for (let p = 1; p <= pages; p++) item(p, p, { active: p === state.page });
-            item('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
+            item('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
         const setFilter = (key, value) => { state[key] = value; state.page = 1; render(); };
         document.getElementById('search').addEventListener('input', e => setFilter('search', e.target.value.trim().toLowerCase()));
+        document.getElementById('unitFilter').addEventListener('change', e => setFilter('unit', e.target.value));
         document.getElementById('examFilter').addEventListener('change', e => setFilter('exam', e.target.value));
         document.getElementById('scholarshipFilter').addEventListener('change', e => setFilter('scholarship', e.target.value));
         document.getElementById('lampFilter').addEventListener('change', e => setFilter('lamp', e.target.value));
@@ -371,10 +382,10 @@
 
         // ---- Export: the filtered rows as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
-            const header = ['App No.', 'Name', 'College / Unit', 'Program', 'Exam Result', 'Scholarship Status', 'Admission', 'LAMP Check', 'LAMP Record', 'Updated'];
+            const header = ['App No.', 'Name', 'Unit', 'Program / Grade', 'Exam result', 'LAMP check', 'Date applied'];
             const lines = currentMatches.map(row => {
                 const s = SCHOLARS[row.dataset.index];
-                return [s.id, s.name, s.unit, s.program, s.exam_label, s.scholarship_status, s.status, s.lamp, s.lamp_record, s.updated_label];
+                return [s.id, s.name, s.unit, s.program, s.exam_label, s.lamp, s.applied_label];
             });
             const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const link = document.createElement('a');
@@ -418,7 +429,7 @@
 
             const card = LAMP_CARD[s.lamp];
             document.getElementById('lampCard').className = `alert alert-${card.alert} mb-0`;
-            document.getElementById('lampHeading').innerHTML = `<i class="bi ${card.icon} me-1"></i>`;
+            document.getElementById('lampHeading').innerHTML = `<i class="bi ${card.icon} me-1" aria-hidden="true"></i>`;
             document.getElementById('lampHeading').append(card.heading);
             document.getElementById('lampRecord').className = `bg-transparent fw-semibold ${card.record}`;
 
@@ -448,7 +459,7 @@
                 li.className = `d-flex gap-3 ${i < steps.length - 1 ? 'pb-4' : ''} ${step.done ? '' : 'opacity-50'}`;
                 li.innerHTML = `
                     <div class="icon-circle rounded-circle bg-${step.tone}-subtle text-${step.tone}-emphasis d-flex align-items-center justify-content-center">
-                        <i class="bi ${step.icon}"></i>
+                        <i class="bi ${step.icon}" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="fw-bold small"></div>

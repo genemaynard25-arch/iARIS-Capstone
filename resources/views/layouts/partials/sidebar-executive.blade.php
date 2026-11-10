@@ -5,7 +5,7 @@
         {{-- Logo --}}
         <div class="d-flex align-items-center justify-content-between px-4 py-4 border-bottom border-white border-opacity-25">
             <div class="d-flex align-items-center gap-2">
-                @include('partials.logo-mark', ['size' => 40])
+                @include('partials.auth-logo', ['size' => 44, 'variant' => 'glass'])
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
                     <div class="small text-white-50">Executive View</div>

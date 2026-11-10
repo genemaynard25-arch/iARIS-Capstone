@@ -11,7 +11,7 @@
         'notifications' => ['Notifications', 'bi-bell'],
         'briefing' => ['Briefing', 'bi-compass'],
         'reports' => ['Report Preferences', 'bi-file-earmark-text'],
-        'ai' => ['AI Assistant', 'bi-stars'],
+        'ai' => ['AI Chatbot', 'bi-stars'],
         'display' => ['Display', 'bi-sliders'],
         // Super Admin only (see settings/partials/system.blade.php)
         'year' => ['Academic Year', 'bi-calendar3'],
@@ -25,8 +25,10 @@
     $openSection = $passwordErrors->any() || session('status') === 'password-updated' ? 'security' : $sections[0];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'settings-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Settings'])
+
 @section('content')
-    <div class="row g-4">
+    <div class="admin-settings-grid row g-4">
         {{-- Section menu --}}
         <div class="col-12 col-lg-3">
             <div class="card border-0 shadow-sm rounded-4 sticky-lg-top" style="top: 1.5rem;">
@@ -38,7 +40,7 @@
                                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary px-3 pt-3 pb-1 d-none d-lg-block">System</div>
                             @endif
                             <button class="nav-link text-start fw-semibold {{ $key === $openSection ? 'active' : '' }}" data-bs-toggle="pill" data-bs-target="#section-{{ $key }}" type="button" role="tab" data-section="{{ $key }}">
-                                <i class="bi {{ $sectionInfo[$key][1] }} me-2"></i>{{ $sectionInfo[$key][0] }}
+                                <i class="bi {{ $sectionInfo[$key][1] }} me-2" aria-hidden="true"></i>{{ $sectionInfo[$key][0] }}
                             </button>
                         @endforeach
                     </nav>
@@ -64,9 +66,9 @@
                                         <div class="small text-body-secondary mb-2">{{ $profile['title'] }} · {{ $profile['office'] }}</div>
                                         <div class="d-flex flex-wrap align-items-center gap-2">
                                             <input type="file" class="d-none" id="photoInput" accept="image/*">
-                                            <button type="button" class="btn btn-sm btn-light border" onclick="document.getElementById('photoInput').click()"><i class="bi bi-camera me-1"></i> Change photo</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger d-none" id="photoRemove"><i class="bi bi-trash me-1"></i> Remove</button>
-                                            <span class="small text-body-secondary"><i class="bi bi-lock me-1"></i>Name and title managed by IATO Admin</span>
+                                            <button type="button" class="btn btn-sm btn-light border" onclick="document.getElementById('photoInput').click()"><i class="bi bi-camera me-1" aria-hidden="true"></i> Change photo</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger d-none" id="photoRemove"><i class="bi bi-trash me-1" aria-hidden="true"></i> Remove</button>
+                                            <span class="small text-body-secondary"><i class="bi bi-lock me-1" aria-hidden="true"></i>Name and title managed by IATO Admin</span>
                                         </div>
                                     </div>
                                 </div>
@@ -77,12 +79,12 @@
                                             <label class="form-label small fw-bold text-uppercase text-body-secondary" for="profile{{ $loop->index }}">{{ $label }}</label>
                                             <div class="input-group">
                                                 <input type="text" class="form-control bg-body-tertiary" id="profile{{ $loop->index }}" value="{{ $value }}" readonly>
-                                                <span class="input-group-text bg-body-tertiary text-body-secondary"><i class="bi bi-lock"></i></span>
+                                                <span class="input-group-text bg-body-tertiary text-body-secondary"><i class="bi bi-lock" aria-hidden="true"></i></span>
                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
-                                <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Your photo is saved in this browser for now.</p>
+                                <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Your photo is saved in this browser for now.</p>
                             </div>
                         </div>
 
@@ -114,110 +116,7 @@
                 {{-- ========== SECURITY ========== --}}
                 @if (in_array('security', $sections))
                     <div class="tab-pane fade {{ $openSection === 'security' ? 'show active' : '' }}" id="section-security" role="tabpanel">
-                        {{-- Change password: Fortify's PUT /user/password (fields current_password, password, password_confirmation) --}}
-                        <form method="POST" action="{{ route('user-password.update') }}" class="card border-0 shadow-sm rounded-4 mb-4" id="passwordForm" novalidate>
-                            @csrf
-                            @method('PUT')
-                            <div class="card-body p-4">
-                                <h2 class="fs-6 fw-bold mb-0">Change password</h2>
-                                <p class="small text-body-secondary">Use at least 8 characters with a mix of letters and numbers.</p>
-                                @if (session('status') === 'password-updated')
-                                    <div class="alert alert-success small py-2"><i class="bi bi-check-circle me-1"></i> Your password was updated.</div>
-                                @endif
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <label for="currentPassword" class="form-label small fw-bold text-uppercase text-body-secondary">Current password</label>
-                                        <input type="password" name="current_password" id="currentPassword" autocomplete="current-password" required
-                                            class="form-control {{ $passwordErrors->has('current_password') ? 'is-invalid' : '' }}">
-                                        <div class="invalid-feedback">{{ $passwordErrors->first('current_password') ?: 'Enter your current password.' }}</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="newPassword" class="form-label small fw-bold text-uppercase text-body-secondary">New password</label>
-                                        <input type="password" name="password" id="newPassword" autocomplete="new-password" required
-                                            class="form-control {{ $passwordErrors->has('password') ? 'is-invalid' : '' }}">
-                                        <div class="invalid-feedback">{{ $passwordErrors->first('password') ?: 'Use 8+ characters with letters and numbers.' }}</div>
-                                        <div class="progress mt-2" style="height: 6px;" role="progressbar" aria-label="Password strength">
-                                            <div class="progress-bar" id="strengthBar" style="width: 0%;"></div>
-                                        </div>
-                                        <div class="small text-body-secondary mt-1" id="strengthText">Strength: —</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="confirmPassword" class="form-label small fw-bold text-uppercase text-body-secondary">Confirm new password</label>
-                                        <input type="password" name="password_confirmation" id="confirmPassword" autocomplete="new-password" required class="form-control">
-                                        <div class="invalid-feedback">Passwords do not match.</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-transparent border-top d-flex justify-content-end p-3">
-                                <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-key me-1"></i> Update password</button>
-                            </div>
-                        </form>
-
-                        <div class="card border-0 shadow-sm rounded-4 mb-4">
-                            <div class="card-body p-4">
-                                <h2 class="fs-6 fw-bold mb-0">Two-factor authentication</h2>
-                                <p class="small text-body-secondary">A code from your phone, asked for after your password.</p>
-                                <div class="d-flex flex-wrap align-items-center gap-3 rounded-3 border p-3 mb-3 {{ $twoFactorOn ? 'border-primary-subtle bg-primary-subtle' : 'border-warning-subtle bg-warning-subtle' }}">
-                                    <div class="icon-circle rounded-3 bg-white d-flex align-items-center justify-content-center {{ $twoFactorOn ? 'text-primary' : 'text-warning-emphasis' }}">
-                                        <i class="bi {{ $twoFactorOn ? 'bi-shield-check' : 'bi-shield-exclamation' }} fs-5"></i>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        @if ($twoFactorOn)
-                                            <div class="fw-bold">Authenticator app is active</div>
-                                            <div class="small text-body-secondary">Turned on {{ $twoFactorSince }}</div>
-                                        @else
-                                            <div class="fw-bold text-warning-emphasis">Not set up yet</div>
-                                            <div class="small text-body-secondary">Set it up now to protect your account.</div>
-                                        @endif
-                                    </div>
-                                    <a href="{{ url('/two-factor') }}" class="btn btn-sm {{ $twoFactorOn ? 'btn-light border' : 'btn-primary' }} fw-semibold">
-                                        <i class="bi bi-phone me-1"></i> {{ $twoFactorOn ? 'View recovery codes' : 'Set up two-factor' }}
-                                    </a>
-                                </div>
-                                <div class="small text-body-secondary d-flex gap-2"><i class="bi bi-info-circle"></i>
-                                    <span>Lost your phone? Use one of your recovery codes to sign in, or contact the IATO Admin to reset two-factor.</span></div>
-                            </div>
-                        </div>
-
-                        <div class="card border-0 shadow-sm rounded-4">
-                            <div class="card-body p-4 pb-2">
-                                <h2 class="fs-6 fw-bold mb-0">Recent sign-ins</h2>
-                                <p class="small text-body-secondary mb-0">Check for activity you do not recognize.</p>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0 small">
-                                    <thead class="table-light">
-                                        <tr class="text-uppercase text-nowrap">
-                                            <th class="ps-4 text-body-secondary">Last active</th>
-                                            <th class="text-body-secondary">Device</th>
-                                            <th class="text-body-secondary">IP address</th>
-                                            <th class="pe-4"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($signIns as $signIn)
-                                            <tr>
-                                                <td class="ps-4 text-nowrap">{{ $signIn['when'] }}</td>
-                                                <td>{{ $signIn['device'] }}</td>
-                                                <td class="font-monospace">{{ $signIn['ip'] }}</td>
-                                                <td class="pe-4 text-end">
-                                                    @if ($signIn['current'])
-                                                        <span class="badge bg-primary-subtle text-primary-emphasis">This device</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr><td colspan="4" class="text-center text-body-secondary py-4">No sign-ins recorded yet.</td></tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-footer bg-transparent border-top d-flex flex-wrap align-items-center gap-2 p-3">
-                                <span class="small text-body-secondary me-auto"><i class="bi bi-clock me-1"></i>You are signed out automatically after a period of inactivity.</span>
-                                {{-- TODO (backend): a route that calls Auth::logoutOtherDevices($password) --}}
-                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Coming soon"><i class="bi bi-box-arrow-right me-1"></i> Sign out of other devices</button>
-                            </div>
-                        </div>
+                        @include('settings.partials.security')
                     </div>
                 @endif
 
@@ -319,18 +218,18 @@
                     </div>
                 @endif
 
-                {{-- ========== AI ASSISTANT ========== --}}
+                {{-- ========== AI CHATBOT ========== --}}
                 @if (in_array('ai', $sections))
                     <div class="tab-pane fade {{ $openSection === 'ai' ? 'show active' : '' }}" id="section-ai" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="ai">
                             <div class="card-body p-4">
-                                <h2 class="fs-6 fw-bold mb-0">AI Assistant</h2>
-                                <p class="small text-body-secondary">The assistant helps you read enrollment figures in plain language.</p>
+                                <h2 class="fs-6 fw-bold mb-0">AI Chatbot</h2>
+                                <p class="small text-body-secondary">The chatbot helps you read enrollment figures in plain language.</p>
                                 @include('settings.partials.switch', ['name' => 'button', 'label' => 'Show the AI button on every page', 'description' => 'The round button at the bottom-right of your pages. Turn it off to hide it.', 'checked' => true])
                                 @include('settings.partials.switch', ['name' => 'takeaways', 'label' => 'Show AI-written takeaways', 'description' => 'AI summaries on your pages, such as Key Takeaways on the Dashboard and AI Insights on Analytics.', 'checked' => true])
                                 <div class="small text-body-secondary bg-body-tertiary rounded-3 p-3 mt-3 d-flex gap-2">
-                                    <i class="bi bi-info-circle"></i>
-                                    <span>The assistant only reads the figures on the page you are viewing. It never changes data, and each page starts a new chat. AI answers can contain mistakes, so verify important figures.</span>
+                                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                                    <span>The chatbot only reads the figures on the page you are viewing. It never changes data, and each page starts a new chat. AI answers can contain mistakes, so verify important figures.</span>
                                 </div>
                             </div>
                             @include('settings.partials.save-footer')
@@ -380,7 +279,7 @@
     <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3">
         <div class="toast align-items-center text-bg-dark border-0" id="settingsToast" role="status" aria-live="polite">
             <div class="d-flex">
-                <div class="toast-body"><i class="bi bi-check-circle me-1"></i> <span id="settingsToastText"></span></div>
+                <div class="toast-body"><i class="bi bi-check-circle me-1" aria-hidden="true"></i> <span id="settingsToastText"></span></div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
@@ -510,33 +409,6 @@
             toast('Photo removed');
         });
 
-        // ---- Password: strength meter, and check the two new passwords match before sending ----
-        const newPassword = document.getElementById('newPassword');
-        newPassword?.addEventListener('input', () => {
-            const v = newPassword.value;
-            let score = 0;
-            if (v.length >= 8) score++;
-            if (v.length >= 12) score++;
-            if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
-            if (/\d/.test(v)) score++;
-            if (/[^A-Za-z0-9]/.test(v)) score++;
-            score = v ? Math.max(1, Math.min(score, 4)) : 0;
-            const [label, tone] = [['—', ''], ['Weak', 'danger'], ['Fair', 'warning'], ['Good', 'info'], ['Strong', 'primary']][score];
-            const bar = document.getElementById('strengthBar');
-            bar.style.width = score * 25 + '%';
-            bar.className = `progress-bar ${tone ? 'bg-' + tone : ''}`;
-            document.getElementById('strengthText').textContent = 'Strength: ' + label;
-        });
-        document.getElementById('passwordForm')?.addEventListener('submit', e => {
-            const current = document.getElementById('currentPassword');
-            const confirm = document.getElementById('confirmPassword');
-            const checks = [
-                [current, !current.value],
-                [newPassword, !(newPassword.value.length >= 8 && /[A-Za-z]/.test(newPassword.value) && /\d/.test(newPassword.value))],
-                [confirm, !confirm.value || confirm.value !== newPassword.value],
-            ];
-            checks.forEach(([field, bad]) => field.classList.toggle('is-invalid', bad));
-            if (checks.some(([, bad]) => bad)) e.preventDefault();
-        });
     </script>
+    @include('settings.partials.password-script')
 @endsection

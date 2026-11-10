@@ -30,8 +30,8 @@ class SettingsController extends Controller
             : ['profile', 'security', 'notifications', 'ai'];
         // (Vice Presidents and Vice Chancellors are view only, so no Report Preferences.)
         // Deans, Program Chairs and the IS Principal have the same Briefing, Reports and Analytics, so the same preferences.
-        $collegeView = $user->isDeanOrChair() || $user->isPrincipal() || $user->isDirector();
-        $officeHead = $user->role === 'dean' || $user->isPrincipal() || $user->isDirector() || $user->isGradChair();
+        $collegeView = $user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector();
+        $officeHead = $user->role === 'dean' || $user->isPrincipalOffice() || $user->isDirector() || $user->isGradChair();
         if ($user->isExecutive() || $collegeView) {
             array_splice($sections, 3, 0, $user->isVice() ? ['briefing'] : ['briefing', 'reports']);
             $sections[] = 'display';
@@ -47,12 +47,12 @@ class SettingsController extends Controller
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
             'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Analytics & Reports, all records, Import Data, My Submissions, Audit Logs (view)'],
-            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
-            'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
+            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot'],
+            'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
-            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Questions to IATO, records (view only)'],
+            'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Messages, records (view only)'],
             'toic' => ['TOIC', 'TOIC Support', 'System Support', 'System Overview, Issues, Security, Documentation, Budget & Maintenance, Reports'],
-            'lamp' => ['LAMP Office', 'LAMP Officer', 'Lasallian Assistance Management Program', 'Dashboard, Scholars, Reports'],
+            'lamp' => ['LAMP Office', 'Director, Advancement Office and LAMP', 'Lasallian Assistance Management Program', 'Dashboard, Analytics & Reports, Scholars, Messages'],
             'president' => ['President', 'President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
             'vice_president' => ['Vice President', 'Vice President', 'Office of the President', 'Briefing, Analytics, Reports, Messages'],
             'chancellor' => ['Chancellor', 'Chancellor', 'Office of the Chancellor', 'Briefing, Analytics, Reports, Messages'],
@@ -64,9 +64,15 @@ class SettingsController extends Controller
         // Deans: "Dean, CBEAM" and their college's full name. The IS Principal: "Principal, Integrated School".
         if ($officeHead) {
             $college = CollegeController::college();
-            $roleLabel = $title = ($user->isPrincipal() ? 'Principal, ' : ($user->isDirector() ? 'Director, ' : ($user->isGradChair() ? 'Program Chair, ' : 'Dean, '))) . ($college['title'] ?? $college['code']);
+            $roleLabel = $title = match (true) {
+                $user->isAssistantPrincipal() => 'Assistant Principal, ',
+                $user->isPrincipal() => 'Principal, ',
+                $user->isDirector() => 'Director, ',
+                $user->isGradChair() => 'Program Chair, ',
+                default => 'Dean, ',
+            } . ($college['title'] ?? $college['code']);
             $office = $college['office'] ?? $college['name'];
-            $modules = 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant';
+            $modules = 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot';
         }
         // Registrars: "College Registrar" or "IS Registrar"
         if ($user->role === 'registrar') {
@@ -87,7 +93,7 @@ class SettingsController extends Controller
         $currentYear = \App\Support\ApplicantRecords::academicYear();
         $startYear = (int) substr($currentYear, 0, 4);
 
-        return view('settings.index', [
+        return view($user->isToic() ? 'toic.settings' : 'settings.index', [
             'sections' => $sections,
             'academicYears' => [$currentYear, ($startYear + 1) . '–' . ($startYear + 2)],
             'profile' => [
@@ -116,6 +122,7 @@ class SettingsController extends Controller
                     $user->role === 'registrar' && $user->assigned_level !== 'is' => 'College, Graduate Programs, College of Law, iPACE, ETEEAP',
                     $user->role === 'iato_staff' => 'All units',
                     $user->role === 'dean' => (CollegeController::college()['label'] ?? CollegeController::college()['code']) . ' only',
+                    $user->isAssistantPrincipal() => $user->assistantLevel() . ' only',
                     $user->isPrincipal() => 'Integrated School only',
                     $user->isDirector() => 'iPACE + ETEEAP only',
                     $user->isGradChair() => 'Graduate Programs only',
@@ -137,7 +144,7 @@ class SettingsController extends Controller
             'units' => $collegeView
                 ? ($user->isProgramChair() ? ['BS Computer Science'] : CollegeController::programNames())
                 : ['College', 'Integrated School', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'],
-            'unitWord' => $user->isPrincipal() ? 'level' : ($collegeView ? 'program' : 'unit'),
+            'unitWord' => $user->isPrincipalOffice() ? 'level' : ($collegeView ? 'program' : 'unit'),
             // "Send a copy to": the IATO and the rest of the Executive Office (not you)
             // The iPACE Director, Graduate Programs and College of Law send copies to IATO and the VC for Academics only
             'recipients' => $user->isDirector() || $user->isGradChair() || ($user->role === 'dean' && CollegeController::college()['code'] === 'LAW') ? [
@@ -189,7 +196,7 @@ class SettingsController extends Controller
                 ],
             ];
         }
-        if ($user->isExecutive() || $user->isDeanOrChair() || $user->isPrincipal() || $user->isDirector()) {
+        if ($user->isExecutive() || $user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector()) {
             return [
                 'Reports' => [
                     ['newReport', 'New report from IATO', 'Get an email when IATO sends a report to ' . ($user->isExecutive() ? 'the Executive Office.' : 'your office.'), true],

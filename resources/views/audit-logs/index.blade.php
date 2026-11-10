@@ -14,12 +14,14 @@
     ];
 @endphp
 
+@include('partials.admin-workspace', ['workspacePage' => 'audit-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Audit Logs'])
+
 @section('content')
     {{-- Stat cards --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="admin-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold text-{{ $stat['tone'] === 'primary' ? 'body' : $stat['tone'] . '-emphasis' }}" data-stat="{{ $stat['key'] }}">0</div>
@@ -34,7 +36,7 @@
         {{-- Search and filters --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
-                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search"></i></span>
+                <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
                 <input type="search" class="form-control" id="search" placeholder="Search user, action, or record…" aria-label="Search logs">
             </div>
             <select class="form-select w-auto" id="userFilter" aria-label="Filter by user">
@@ -64,7 +66,7 @@
                 <input type="date" class="form-control form-control-sm w-auto" id="rangeTo" aria-label="To date">
             </div>
             <button type="button" class="btn btn-light border fw-semibold ms-lg-auto" id="exportButton">
-                <i class="bi bi-download me-1"></i> Export Logs
+                <i class="bi bi-download me-1" aria-hidden="true"></i> Export Logs
             </button>
         </div>
 
@@ -96,7 +98,7 @@
             </table>
         </div>
         <div class="text-center text-body-secondary py-5 d-none" id="noResults">
-            <i class="bi bi-clipboard-x fs-2 d-block mb-2"></i> No log entries match your search or filters.
+            <i class="bi bi-clipboard-x fs-2 d-block mb-2" aria-hidden="true"></i> No log entries match your search or filters.
         </div>
 
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-3 border-top">
@@ -127,7 +129,7 @@
                 <div class="text-body-secondary" data-cell="time"></div>
             </td>
             <td class="pe-4 text-end">
-                <button type="button" class="btn btn-sm btn-light border" data-cell="view" title="View details"><i class="bi bi-eye"></i></button>
+                <button type="button" class="btn btn-sm btn-light border" data-cell="view" title="View details"><i class="bi bi-eye" aria-hidden="true"></i></button>
             </td>
         </tr>
     </template>
@@ -213,7 +215,7 @@
         function setActionBadge(el, key) {
             const a = ACTIONS[key];
             el.className = `badge rounded-2 text-wrap text-start lh-sm bg-${a.tone}-subtle text-${a.tone}-emphasis`;
-            el.innerHTML = `<i class="bi ${a.icon} me-1"></i>`;
+            el.innerHTML = `<i class="bi ${a.icon} me-1" aria-hidden="true"></i>`;
             el.append(a.label);
         }
 
@@ -308,9 +310,9 @@
                 li.appendChild(btn);
                 ul.appendChild(li);
             };
-            item('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
+            item('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
             for (let p = 1; p <= pages; p++) item(p, p, { active: p === state.page });
-            item('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
+            item('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
         // The stat cards always count today's entries, whatever the filters say

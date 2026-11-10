@@ -9,16 +9,16 @@
 
 {{-- Report cards, one section at a time --}}
 @foreach ($sections as $section)
-    <div class="mb-3">
+    <div class="ar-report-section mb-3">
         <h2 class="fs-6 fw-bold mb-1">{{ $section['title'] }}</h2>
         <p class="small text-body-secondary mb-0">{{ $section['description'] }}</p>
     </div>
 
     {{-- As many columns as there are cards (max 3), so fewer cards stretch to fill the row --}}
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-{{ min(count($section['reports']), 3) }} g-3 mb-4">
+    <div class="ar-report-grid row row-cols-1 row-cols-md-2 row-cols-xl-{{ min(count($section['reports']), 3) }} g-3 mb-4">
         @foreach ($section['reports'] as $report)
             <div class="col">
-                <div class="card border-0 border-top border-3 border-{{ $report['tone'] }} shadow-sm rounded-4 h-100">
+                <div class="ar-report-card card border-0 border-top border-3 border-{{ $report['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body d-flex flex-column p-4">
                         <div class="icon-circle rounded-3 bg-{{ $report['tone'] }}-subtle text-{{ $report['tone'] }}-emphasis fs-5 d-flex align-items-center justify-content-center mb-3">
                             <i class="bi {{ $report['icon'] }}"></i>
@@ -44,7 +44,7 @@
 @endforeach
 
 {{-- Report history --}}
-<div class="card border-0 shadow-sm rounded-4">
+<div class="ar-report-history card border-0 shadow-sm rounded-4">
     <div class="card-body p-4">
         <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
             <div>

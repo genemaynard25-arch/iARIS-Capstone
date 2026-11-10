@@ -42,13 +42,27 @@ Route::get('/import', [ImportController::class, 'show'])->middleware(['auth', 'm
 Route::post('/import', [ImportController::class, 'store'])->middleware(['auth', 'module:import']);
 
 Route::get('/', function () {
-    return auth()->check() ? redirect('/home') : redirect()->route('login');
+    return auth()->check()
+        ? redirect(auth()->user()->isLamp() ? '/lamp' : (auth()->user()->role === 'registrar' ? '/registrar' : (auth()->user()->isExecutive() ? '/executive' : '/home')))
+        : redirect()->route('login');
 });
 
 // Splash screen shown right after signing in (see App\Http\Responses\LoginResponse),
 // then on to the page the user was heading to, or the dashboard.
 Route::get('/loading', function () {
-    return view('splash', ['next' => session()->pull('url.intended', url('/home'))]);
+    $next = session()->pull('url.intended');
+    // These roles have their own dashboards; /home checks the shared dashboard permission.
+    $dashboard = match (true) {
+        auth()->user()->isLamp() => '/lamp',
+        auth()->user()->role === 'registrar' => '/registrar',
+        auth()->user()->isExecutive() => '/executive',
+        default => '/home',
+    };
+    if (! $next || rtrim(parse_url($next, PHP_URL_PATH) ?? '', '/') === '/home') {
+        $next = url($dashboard);
+    }
+
+    return view('splash', ['next' => $next ?? url('/home')]);
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
@@ -114,7 +128,7 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard');
     Route::get('/enrollment', [RegistrarController::class, 'enrollment'])->name('enrollment');
     Route::get('/reports', [RegistrarController::class, 'reports'])->name('reports');
-    Route::get('/questions', [RegistrarController::class, 'questions'])->name('questions');
+    Route::redirect('/questions', '/registrar/messages');
 });
 
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
@@ -168,7 +182,7 @@ Route::middleware(['auth', 'role:isDirector'])->prefix('director')->name('direct
     Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
 });
 
-Route::middleware(['auth', 'role:isPrincipal'])->prefix('principal')->name('principal.')->group(function () {
+Route::middleware(['auth', 'role:isPrincipalOffice'])->prefix('principal')->name('principal.')->group(function () {
     Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
     Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
     Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');

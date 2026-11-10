@@ -1,0 +1,56 @@
+/* Records mockups: four summaries, exam-result chips, category chips and payment columns. */
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-grid { --bs-gutter-x: 14px; --bs-gutter-y: 14px; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body { padding: 16px 18px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .fs-3 { font-size: 26px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body > .small:first-child { font-size: 11px; letter-spacing: 1px; margin-bottom: 8px !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card .card-body > .small:last-child { margin-top: 4px; font-size: 12px; }
+:is(.records-page, .scholars-page, .pipeline-page) .border-purple { border-color: #7c3aed !important; }
+:is(.records-page, .scholars-page, .pipeline-page) .text-purple-emphasis { color: #7c3aed !important; }
+.records-page .records-table-card > .d-flex:first-child { padding: 18px 22px !important; gap: 10px !important; }
+.records-page .records-table-card .input-group { max-width: 300px !important; }
+.records-page :is(#groupFilter, #programFilter) { max-width: 240px; }
+.records-page #statusPills { background: #fff; }
+.records-page #statusPills .btn { font-size: 13px; padding: 7px 16px; border-width: 1.5px; }
+.records-page #statusPills .btn-outline-secondary { color: var(--admin-muted); border-color: var(--admin-border); }
+.records-page .records-category-pills { padding: 12px 22px; background: #fafcfb; }
+.records-page .records-category-pills .btn { padding: 6px 14px; font-size: 12.5px; border-radius: 8px; border-width: 1.5px; font-weight: 700; }
+.records-page .records-category-pills .btn-light { background: #fff; color: var(--admin-muted); }
+.records-page .records-table-card table { min-width: 1100px; }
+.records-page.records-eteeap .records-table-card table { min-width: 1280px; }
+.records-page .records-table-card thead th { padding: 13px 14px; }
+.records-page .records-table-card tbody td { padding: 14px; font-size: 13px; }
+.records-page .records-table-card tbody td:first-child { padding-left: 22px; }
+.records-page .records-payment { white-space: nowrap; }
+.records-page .records-table-card .badge { font-size: 11px; font-weight: 600; padding: 5px 9px; }
+.records-page .records-table-card .card-footer { padding: 14px 22px !important; border-top-color: var(--admin-border); }
+.records-page .records-table-card .form-select { border-width: 1.5px; }
+.records-page #applicantDrawer { --bs-offcanvas-width: 600px !important; }
+.records-page #applicantDrawer .nav-underline { --bs-nav-underline-gap: 0; padding: 0 24px !important; }
+.records-page #applicantDrawer .nav-underline .nav-link { padding: 14px 16px !important; font-size: 13px; }
+.records-page #applicantDrawer .offcanvas-header { padding: 24px 28px !important; }
+.records-page #drawerInitials { width: 56px !important; height: 56px !important; font-size: 20px !important; border-radius: 12px !important; }
+.records-scholar-note { display: flex; gap: 10px; align-items: flex-start; padding: 14px 18px; background: #eaf5f0; border: 1px solid #c5e4d8; border-radius: 10px; font-size: 12.5px; color: #005c46; margin-bottom: 18px; line-height: 1.6; }
+.scholars-page .records-table-card table { min-width: 950px; }
+@media (max-width: 575.98px) {
+    .records-page .records-category-pills { padding: 12px 16px; }
+    .records-page #statusPills .btn { font-size: 12px; padding: 6px 12px; }
+    .records-page .records-table-card > .d-flex:first-child { padding: 16px !important; }
+    .records-page :is(#groupFilter, #programFilter) { max-width: 100%; }
+    .records-page #applicantDrawer .nav-underline { padding: 0 12px !important; }
+    .records-page #applicantDrawer .nav-underline .nav-link { padding: 12px 10px !important; }
+}
+
+.records-page .records-table-card .table-responsive { position: relative; }
+.records-page .records-table-card :is(th, td):first-child { position: relative; }
+.records-page .records-drawer-section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--admin-muted); border-bottom: 1px solid var(--admin-border); padding-bottom: 10px; margin-bottom: 16px; }
+.records-page .records-competencies { font-size: 12.5px; }
+.records-eteeap #applicantDrawer > .nav { flex-wrap: nowrap; overflow-x: auto; }
+.records-eteeap #applicantDrawer > .nav .nav-link { white-space: nowrap; }
+
+:is(.records-page, .scholars-page, .pipeline-page) .admin-stat-card.border-info .fs-3 { color: #2558d9 !important; }
+/* Dean / Program Chair / Principal / Director Applicants (college/applicants.blade.php): fewer columns than the admin Records */
+.records-page.college-records .records-table-card table { min-width: 900px; }
+.records-page.college-records #statusBar { background: #fbfcfc; }
+.records-page.college-records #statusPills { background: transparent; }
+.records-page.college-records .pagination .page-link { color: var(--admin-muted); border-color: var(--admin-border); }
+.records-page.college-records .pagination .active .page-link { background: #00674f; border-color: #00674f; color: #fff; }

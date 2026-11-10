@@ -11,37 +11,37 @@
 @section('page-title', 'My Submissions')
 @section('page-subtitle', 'Edits, new records, removals, and imports you sent to the Review Queue')
 
+@include('partials.admin-workspace', ['workspacePage' => 'submissions-page', 'workspaceGroup' => 'Staff', 'workspaceLabel' => 'My Work · My Submissions'])
+
 @section('content')
-    {{-- How a submission moves --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-3 row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-2 small mx-0">
-            @foreach ([
-                ['1', 'You submit', 'Edits, new applicants, removals, imports', 'primary'],
-                ['2', 'Super Admin reviews', 'Only you and the Super Admin see it until then', 'primary'],
-                ['bi-check-lg', 'Approved', 'Visible to every user', 'success'],
-                ['bi-arrow-counterclockwise', 'Sent back', 'Read the reason, fix, and resubmit', 'danger'],
-            ] as [$mark, $title, $text, $tone])
-                <div class="col"><div class="d-flex align-items-center gap-2 rounded-3 bg-body-tertiary border px-3 py-2 h-100">
-                    <span class="rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width: 26px; height: 26px;">
-                        @if (str_starts_with($mark, 'bi-'))<i class="bi {{ $mark }}"></i>@else{{ $mark }}@endif
-                    </span>
-                    <div class="lh-sm"><div class="fw-bold">{{ $title }}</div><div class="text-body-secondary">{{ $text }}</div></div>
-                </div></div>
-            @endforeach
-        </div>
+    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview submissions · Fix, resubmit, and withdraw actions stay on this page until reload. The review workflow is not connected yet.</p>
+    {{-- Four workflow tiles from the staff submissions mockup. --}}
+    <div class="staff-submission-flow">
+        @foreach ([
+            ['1', 'You submit', 'Edits, new applicants, removals, imports', 'submit'],
+            ['2', 'Super Admin reviews', 'Only you and the Super Admin see it until then', 'review'],
+            ['bi-check-lg', 'Approved', 'Visible to every user', 'approved'],
+            ['bi-arrow-counterclockwise', 'Sent back', 'Read the reason, fix, and resubmit', 'sent'],
+        ] as [$mark, $title, $text, $state])
+            <div class="staff-flow-tile staff-flow-{{ $state }}">
+                <span class="staff-flow-mark">@if (str_starts_with($mark, 'bi-'))<i class="bi {{ $mark }}" aria-hidden="true"></i>@else{{ $mark }}@endif</span>
+                <strong>{{ $title }}</strong><small>{{ $text }}</small>
+            </div>
+            @if ($loop->index < 2)<i class="bi bi-arrow-right staff-flow-arrow" aria-hidden="true"></i>@endif
+        @endforeach
     </div>
 
-    {{-- How to submit --}}
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
+    {{-- Always-visible guidance matches the supplied staff mockup. --}}
+    <div class="staff-submission-help card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4" id="submissionHelp">
             <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-question-circle me-1 text-primary"></i> How to submit</h2>
             <p class="small text-body-secondary mb-3">There is no separate form. Every change you make in iARIS is sent here automatically when you press <b>Submit for review</b>.</p>
             <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
                 @foreach ([
-                    ['bi-pencil', 'primary', 'Edit a record', 'Open a records page, press the pen icon on a row (or <b>Edit Record</b> in its details), change the fields, then <b>Submit for review</b>.', '/records/college', 'Open College records'],
-                    ['bi-person-plus', 'info', 'Add an applicant', 'Press <b>Add Applicant</b>, choose the division, fill in the form, then <b>Submit for review</b>.', '/applicants', 'Add applicant'],
+                    ['bi-pencil', 'info', 'Edit a record', 'Open a records page, press the pen icon on a row (or <b>Edit Record</b> in its details), change the fields, then <b>Submit for review</b>.', '/records/college', 'Open College records'],
+                    ['bi-person-plus', 'primary', 'Add an applicant', 'Press <b>Add Applicant</b>, choose the division, fill in the form, then <b>Submit for review</b>.', '/applicants', 'Add applicant'],
                     ['bi-trash', 'danger', 'Remove an applicant', 'Open the applicant, press <b>Remove</b>, choose a reason, then <b>Request removal</b>. The record stays until approved.', '/records/is', 'Open IS records'],
-                    ['bi-cloud-arrow-up', 'warning', 'Import a file', 'Upload an Excel or CSV file, check the preview, then press <b>Submit for review</b> on the last step.', '/import', 'Import data'],
+                    ['bi-cloud-arrow-up', 'purple', 'Import a file', 'Upload an Excel or CSV file, check the preview, then press <b>Submit for review</b> on the last step.', '/import', 'Import data'],
                 ] as [$icon, $tone, $title, $text, $url, $link])
                     <div class="col">
                         <div class="border rounded-4 p-3 h-100 d-flex flex-column">
@@ -53,14 +53,14 @@
                     </div>
                 @endforeach
             </div>
-            <div class="small text-body-secondary bg-body-tertiary rounded-3 px-3 py-2 mt-3">
+            <div class="staff-lamp-help small rounded-3 px-3 py-2 mt-3">
                 <i class="bi bi-chat-dots me-1"></i> Messages you send to the LAMP Office from Scholarships also show here, under <b>LAMP requests</b>. They don't need approval because they don't change any data.
             </div>
         </div>
     </div>
 
     {{-- Counts; clicking one filters the list --}}
-    <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="statCards"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
@@ -77,12 +77,12 @@
     <div class="modal fade" id="fixModal" tabindex="-1" aria-labelledby="fixTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <form class="modal-content border-0 rounded-4 overflow-hidden" id="fixForm" novalidate>
-                <div class="modal-header bg-iaris text-white border-0 p-4">
+                <div class="modal-header border-0 p-4">
                     <div>
                         <h3 class="modal-title fs-5 fw-bold" id="fixTitle">Fix and resubmit</h3>
-                        <p class="small text-white-50 mb-0" id="fixSubtitle"></p>
+                        <p class="small text-body-secondary mb-0" id="fixSubtitle"></p>
                     </div>
-                    <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="alert alert-danger small py-2 px-3">
@@ -172,7 +172,7 @@
         };
         const badge = status => {
             const [label, tone, icon] = STATUS[status];
-            const b = el('span', `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`);
+            const b = el('span', `staff-status-${status} badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`);
             b.innerHTML = `<i class="bi ${icon} me-1"></i>`;
             b.append(label);
             return b;
@@ -198,8 +198,9 @@
                 ['withdrawn', 'Withdrawn', 'secondary', 'Taken back by you'],
             ].map(([key, label, tone, sub]) => {
                 const col = el('div', 'col');
-                const card = el('button', `card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100 w-100 text-start ${filter === key ? 'bg-body-tertiary' : ''}`);
+                const card = el('button', `admin-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100 w-100 text-start ${filter === key ? 'bg-body-tertiary' : ''}`);
                 card.type = 'button';
+                card.setAttribute('aria-pressed', filter === key);
                 card.innerHTML = `<div class="card-body"><div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2"></div><div class="fs-3 fw-bold text-${tone}-emphasis"></div><div class="small text-body-secondary"></div></div>`;
                 const [l, v, s] = card.querySelectorAll('.card-body > div');
                 l.textContent = label; v.textContent = count(key); s.textContent = sub;
@@ -216,6 +217,7 @@
             ].map(([key, label, n]) => {
                 const pill = el('button', `btn btn-sm rounded-pill px-3 fw-semibold ${filter === key ? 'btn-primary' : 'btn-outline-secondary'}`);
                 pill.type = 'button';
+                pill.setAttribute('aria-pressed', filter === key);
                 pill.append(label, el('span', 'ms-2 opacity-75', String(n)));
                 pill.addEventListener('click', () => { filter = key; draw(); });
                 return pill;
@@ -233,37 +235,42 @@
 
         // One submission: a header row that opens and closes its details
         function item(x) {
-            const wrap = el('div', `list-group-item p-0 ${x.status === 'sent' ? 'border-start border-4 border-danger' : ''}`);
-            const head = el('button', 'btn w-100 text-start d-flex flex-wrap align-items-center gap-3 px-4 py-3 border-0 rounded-0');
+            const wrap = el('div', `staff-submission-item list-group-item p-0 ${x.status === 'sent' ? 'staff-needs-fix' : ''}`);
+            const head = el('button', 'staff-submission-row btn w-100 text-start border-0 rounded-0');
             head.type = 'button';
             head.setAttribute('aria-expanded', open.has(x.id));
             const [icon, tone] = TYPES[x.type] || TYPES.edit;
-            const ic = el('span', `rounded-3 bg-${tone}-subtle text-${tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0`);
+            const ic = el('span', `staff-submission-icon staff-icon-${x.type} rounded-3 bg-${tone}-subtle text-${tone}-emphasis d-flex align-items-center justify-content-center flex-shrink-0`);
             ic.style.width = ic.style.height = '40px';
             ic.innerHTML = `<i class="bi ${icon}"></i>`;
             const text = el('div', 'flex-grow-1');
-            text.style.minWidth = '220px';
+            text.classList.add('staff-submission-title');
             const title = el('div', 'fw-bold', x.title);
             title.appendChild(el('span', 'small fw-normal text-body-secondary font-monospace ms-2', x.id));
             text.append(title, el('div', 'small text-body-secondary', `${x.subject} · ${x.ref} · ${x.unit}`));
-            const when = el('span', 'small text-body-secondary text-nowrap', x.when);
+            const when = el('span', 'staff-submission-when small text-body-secondary text-nowrap', x.when);
             const chev = el('i', `bi bi-chevron-${open.has(x.id) ? 'down' : 'right'} text-body-secondary`);
-            head.append(ic, text, badge(x.status), when, chev);
+            when.appendChild(chev);
+            head.append(ic, text, badge(x.status), when);
             head.addEventListener('click', () => { open.has(x.id) ? open.delete(x.id) : open.add(x.id); draw(); });
             wrap.appendChild(head);
             if (!open.has(x.id)) return wrap;
 
-            const body = el('div', 'px-4 pb-3 ms-lg-5 ps-lg-4');
+            const body = el('div', 'staff-submission-body');
             if (x.status === 'sent') {
-                const r = el('div', 'alert alert-danger small py-2 px-3 mb-2');
-                r.append(el('div', 'fw-bold', x.reviewed || 'Sent back by the Super Admin'), el('div', '', x.reason || ''));
+                const r = el('div', 'staff-submission-reason alert alert-danger small');
+                const reasonText = el('div');
+                reasonText.append(el('div', 'fw-bold', x.reviewed || 'Sent back by the Super Admin'), el('div', '', x.reason || ''));
+                const reasonIcon = el('i', 'bi bi-chat-left-text');
+                reasonIcon.setAttribute('aria-hidden', 'true');
+                r.append(reasonIcon, reasonText);
                 body.appendChild(r);
             }
             if (x.status === 'approved') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-success-subtle text-success-emphasis fw-semibold', `${x.reviewed || 'Approved'}. It is now visible to every user.`));
             if (x.status === 'resubmitted') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-body-tertiary', `Fixed and resubmitted as ${x.resubmittedAs}.`));
             if (x.status === 'withdrawn') body.appendChild(el('div', 'small rounded-3 px-3 py-2 mb-2 bg-body-tertiary', `You withdrew this on ${x.withdrawnAt}. The record was not changed.`));
             if (x.note) {
-                const n = el('div', 'small mb-2');
+                const n = el('div', 'staff-submission-note small mb-2');
                 n.append(el('span', 'text-body-secondary', 'Your note: '), x.note);
                 body.appendChild(n);
             }
@@ -283,7 +290,7 @@
                 const tb = el('tbody');
                 x.changes.forEach(([f, before, after]) => {
                     const tr = el('tr');
-                    tr.append(el('td', '', f), el('td', 'text-body-secondary', before), el('td', 'fw-semibold', after));
+                    tr.append(el('td', '', f), el('td', 'staff-change-before text-body-secondary', before), el('td', 'staff-change-after fw-semibold', after));
                     tb.appendChild(tr);
                 });
                 tbl.appendChild(tb);

@@ -89,9 +89,10 @@ class CollegeController extends Controller
                 'funnel' => [10, 8, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
         ]],
         // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
-        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Kindergarten to Grade 12',
-            'office' => 'Integrated School · Kindergarten to Grade 12', 'word' => 'level', 'programs' => [
-            'K' => ['name' => 'Kindergarten', 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
+        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Preschool to Grade 12',
+            'office' => 'Integrated School · Preschool to Grade 12', 'word' => 'level', 'programs' => [
+            // 'match': what the applicants table calls this level (the import says Kindergarten)
+            'K' => ['name' => 'Preschool', 'match' => ['Kindergarten', 'Preschool'], 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
                 'funnel' => [58, 46, 39, 18, 14], 'status' => [10, 30, 18], 'paidLastYear' => 17],
             'GS' => ['name' => 'Grade School', 'applicants' => [194, 199, 204, 214], 'enrolled' => [49, 52, 54, 55],
                 'funnel' => [214, 173, 146, 74, 55], 'status' => [32, 108, 74], 'paidLastYear' => 72],
@@ -99,6 +100,31 @@ class CollegeController extends Controller
                 'funnel' => [236, 190, 160, 82, 61], 'status' => [36, 118, 82], 'paidLastYear' => 78],
             'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
                 'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
+        ]],
+        // The Assistant Principals: the Principal's pages for their own levels. Each group says which applicants it holds
+        // (see inGroup): 'subs' = sub-levels, 'grades' = grade numbers, 'strand' = Senior High strand.
+        // The numbers come from the applicants table (realPrograms), so a group needs only its name and what it holds.
+        'IS_GS' => ['name' => 'Integrated School', 'title' => 'Grade School', 'label' => 'Grade School', 'subtitle' => 'Preschool to Grade 6',
+            'office' => 'Integrated School · Grade School', 'word' => 'level', 'programs' => [
+            // Preschool = Nursery 1, Nursery 2 and Kinder
+            'PS' => ['name' => 'Preschool', 'subs' => ['kindergarten']],
+            'G13' => ['name' => 'Grades 1–3', 'subs' => ['grade_school'], 'grades' => [1, 2, 3]],
+            'G46' => ['name' => 'Grades 4–6', 'subs' => ['grade_school'], 'grades' => [4, 5, 6]],
+        ]],
+        'IS_JHS' => ['name' => 'Integrated School', 'title' => 'Junior High', 'label' => 'Junior High', 'subtitle' => 'Grades 7 to 10',
+            'office' => 'Integrated School · Junior High', 'word' => 'level', 'programs' => [
+            'G7' => ['name' => 'Grade 7', 'subs' => ['jhs'], 'grades' => [7]],
+            'G8' => ['name' => 'Grade 8', 'subs' => ['jhs'], 'grades' => [8]],
+            'G9' => ['name' => 'Grade 9', 'subs' => ['jhs'], 'grades' => [9]],
+            'G10' => ['name' => 'Grade 10', 'subs' => ['jhs'], 'grades' => [10]],
+        ]],
+        'IS_SHS' => ['name' => 'Integrated School', 'title' => 'Senior High', 'label' => 'Senior High', 'subtitle' => 'Grades 11 and 12, by strand',
+            'office' => 'Integrated School · Senior High', 'word' => 'strand', 'programs' => [
+            'STEM' => ['name' => 'STEM', 'strand' => 'STEM'],
+            'ABM' => ['name' => 'ABM', 'strand' => 'ABM'],
+            'HUMSS' => ['name' => 'HUMSS', 'strand' => 'HUMSS'],
+            'GAS' => ['name' => 'GAS', 'strand' => 'GAS'],
+            'TVL' => ['name' => 'TVL', 'strand' => 'TVL'],
         ]],
         // The Graduate Programs (under CBEAM), for their Program Chair. 'level': Master's or Doctoral.
         // 'middle': what "For Exam" is called here.
@@ -169,6 +195,10 @@ class CollegeController extends Controller
     {
         $user = auth()->user();
         $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : null));
+        // An Assistant Principal: IS_GS, IS_JHS or IS_SHS, by the level they are assigned to
+        if ($user?->isAssistantPrincipal()) {
+            $code = ['jhs' => 'IS_JHS', 'shs' => 'IS_SHS'][$user->assigned_sub_level] ?? 'IS_GS';
+        }
         $code ??= strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
         // A college can also be stored by its full name ("College of Law")
         $code = isset(self::COLLEGES[$code]) ? $code
@@ -182,14 +212,14 @@ class CollegeController extends Controller
     {
         $user = auth()->user();
 
-        return url($user?->isPrincipal() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
+        return url($user?->isPrincipalOffice() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
     }
 
     // The applicants.level value a college code's records actually live under.
     private static function levelFor(string $collegeCode): string
     {
         return match ($collegeCode) {
-            'IS' => 'is',
+            'IS', 'IS_GS', 'IS_JHS', 'IS_SHS' => 'is',
             'GRAD' => 'graduate_school',
             'IPACE' => 'ipace',
             'LAW' => 'law',
@@ -207,11 +237,12 @@ class CollegeController extends Controller
     private static function realPrograms(string $collegeCode, array $programs): array
     {
         $level = self::levelFor($collegeCode);
-        $applicants = \App\Models\Applicant::where('level', $level)->get();
+        $applicants = \App\Models\Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])->get();
 
         $result = [];
         foreach ($programs as $code => $p) {
-            $matched = $applicants->where('program_or_track', $p['name']);
+            $matched = $applicants->filter(fn ($a) => self::inGroup($a, $p));
+            if ($collegeCode === 'IPACE') $matched = $matched->where('level', $p['unit'] === 'ETEEAP' ? 'eteeap' : 'ipace');
             $submitted = $matched->count();
             $tookExam = $matched->where('admission_test_status', '!=', 'not_taken')->count();
             $passed = $matched->where('admission_test_status', 'passed')->count();
@@ -234,6 +265,57 @@ class CollegeController extends Controller
     }
 
     /**
+     * Is this applicant in this group of programs / levels? A group says what it holds:
+     *   'subs' (+ 'grades')  Integrated School sub-levels (kindergarten, grade_school, jhs, shs), and grade numbers
+     *   'strand'             a Senior High strand (program_or_track)
+     *   otherwise            program_or_track equals its name (or one of its 'match' names)
+     */
+    private static function inGroup(\App\Models\Applicant $a, array $p): bool
+    {
+        if (isset($p['strand'])) {
+            return self::subLevelOf($a) === 'shs' && strtoupper((string) $a->program_or_track) === $p['strand'];
+        }
+        if (isset($p['subs'])) {
+            if (! in_array(self::subLevelOf($a), $p['subs'], true)) {
+                return false;
+            }
+            if (isset($p['grades'])) {
+                preg_match('/\d+/', (string) $a->year_level, $m);
+
+                return isset($m[0]) && in_array((int) $m[0], $p['grades'], true);
+            }
+
+            return true;
+        }
+
+        return in_array($a->program_or_track, (array) ($p['match'] ?? $p['name']), true);
+    }
+
+    // An Integrated School applicant's sub-level; older rows without one are read from the program column
+    private static function subLevelOf(\App\Models\Applicant $a): ?string
+    {
+        return $a->sub_level ?: match (true) {
+            $a->program_or_track === 'Kindergarten' => 'kindergarten',
+            $a->program_or_track === 'Grade School' => 'grade_school',
+            $a->program_or_track === 'Junior High School' => 'jhs',
+            in_array(strtoupper((string) $a->program_or_track), ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'ICT', 'HE', 'AFA'], true) => 'shs',
+            default => null,
+        };
+    }
+
+    // The code of the group an applicant is in (null when none)
+    private static function groupOf(\App\Models\Applicant $a, array $scope): ?string
+    {
+        foreach ($scope as $code => $p) {
+            if (self::inGroup($a, $p)) {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Real applicant rows for the given programs/level, matched the same way as realPrograms().
      * email/phone/address/dob/exam/paid are null: the regular import doesn't fill those in
      * (only the Add/Edit Applicant form does), so they're honestly blank, not fabricated.
@@ -241,7 +323,6 @@ class CollegeController extends Controller
     private static function realApplicantsIn(array $scope, string $collegeCode): array
     {
         $level = self::levelFor($collegeCode);
-        $byName = collect($scope)->mapWithKeys(fn ($p, $code) => [$p['name'] => $code]);
         $statusLabel = fn ($s) => match ($s) {
             'submitted' => 'For Exam',
             'completed' => 'Paid',
@@ -250,12 +331,14 @@ class CollegeController extends Controller
 
         return \App\Models\Applicant::where('level', $level)
             ->get()
-            ->filter(fn ($a) => $byName->has($a->program_or_track))
+            ->filter(fn ($a) => self::groupOf($a, $scope) !== null)
             ->map(fn ($a) => [
                 'id' => $a->reference_number,
                 'name' => "{$a->last_name}, {$a->first_name}",
-                'program' => $byName[$a->program_or_track],
+                'program' => self::groupOf($a, $scope),
                 'status' => $statusLabel($a->application_status),
+                // Yes on the scholarship question (the type stays with LAMP)
+                'scholar' => (bool) $a->applying_for_scholarship,
                 'applied' => optional($a->created_at)->toDateString(),
                 'updated' => optional($a->updated_at)->format('M j, g:i A'),
                 'dob' => optional($a->date_of_birth)->format('F j, Y'),
@@ -292,7 +375,7 @@ class CollegeController extends Controller
             'college' => ['code' => $college['code'], 'name' => $college['name'], 'subtitle' => $college['subtitle'] ?? $college['name']],
             // What the groups are called ("program" or "level") and what you see ("your college", "your school", "iPACE and ETEEAP")
             'word' => $college['word'] ?? 'program',
-            'whole' => $college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college'),
+            'whole' => $college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college'),
             // What "For Exam" is called ("For Exam / Interview" in the Graduate Programs)
             'middle' => $college['middle'] ?? 'For Exam',
             // The Learner profile on the Briefing (iPACE Director only)
@@ -326,18 +409,39 @@ class CollegeController extends Controller
     // The iPACE Director gets their own page: iPACE or ETEEAP (?unit=eteeap), each with its own columns.
     public function applicants(Request $request)
     {
+        // The IS Principal sees the same page as the admin's Integrated School Records, view only
+        if (auth()->user()->isPrincipalOffice()) {
+            return app(IsRecordController::class)->index();
+        }
+
+        if (auth()->user()->isGradChair()) {
+            return app(GraduateRecordController::class)->index();
+        }
+
+        if (auth()->user()->role === 'dean') {
+            return match (self::college()['code']) {
+                'LAW' => app(LawRecordController::class)->index(),
+                'GRAD' => app(GraduateRecordController::class)->index(),
+                default => app(CollegeRecordController::class)->index(),
+            };
+        }
+
         $common = $this->common();
         if (auth()->user()->isDirector()) {
             $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';
             $programs = array_filter($common['programs'], fn ($p) => $p['unit'] === $unit);
+            $datasets = self::directorApplicants();
+            foreach ($datasets[$unit] as $row) {
+                $programs[$row['program']] ??= ['name' => $row['program_name'] ?? $row['program'], 'unit' => $unit];
+            }
 
             return view('college.applicants-director', $common + [
                 'unit' => $unit,
                 'unitPrograms' => $programs,
                 // Applicants in each unit (for the switch at the top)
-                'unitTotals' => array_map(fn ($u) => array_sum(array_map(fn ($p) => array_sum($p['status']), array_filter($common['programs'], fn ($p) => $p['unit'] === $u))), ['iPACE' => 'iPACE', 'ETEEAP' => 'ETEEAP']),
+                'unitTotals' => array_map('count', $datasets),
                 'selected' => isset($programs[$request->query('program')]) ? $request->query('program') : '',
-                'rows' => self::directorApplicants()[$unit],
+                'rows' => $datasets[$unit],
             ]);
         }
 
@@ -350,7 +454,53 @@ class CollegeController extends Controller
     // Analytics: Overview (trend and funnel), Programs, Compare years, AI insights. Worked out by the page from $programs.
     public function analytics()
     {
-        return view('college.analytics', $this->common());
+        $data = $this->common();
+        if (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean') {
+            $current = \App\Support\AdmissionStats::currentSchoolYear();
+            $previous = \App\Support\AdmissionStats::previousSchoolYear();
+            $levels = auth()->user()->isGradChair() ? ['graduate_school'] : ['ipace', 'eteeap'];
+            $deanCollege = auth()->user()->role === 'dean' ? self::college()['code'] : null;
+            if ($deanCollege) $levels = [self::levelFor($deanCollege)];
+            $counts = function ($year) use ($levels, $deanCollege) {
+                if (! $year) return [null, null, null];
+                $applicants = \App\Models\Applicant::where('school_year', $year)
+                    ->whereIn('level', $levels)->whereNull('archived_at')->get()
+                    ->when($deanCollege && $levels === ['college'], fn ($rows) => $rows->filter(
+                        fn ($a) => ($a->college ?: \App\Support\ApplicantRecords::collegeFor($a->program_or_track ?? '')) === $deanCollege
+                    ));
+                $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
+                return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
+            };
+            $data['schoolYearComparison'] = [
+                'currentLabel' => $current ? 'AY ' . $current : 'Current SY (no import)',
+                'previousLabel' => $previous ? 'AY ' . $previous : 'Previous SY (unavailable)',
+                'current' => $counts($current), 'previous' => $counts($previous),
+            ];
+        }
+        return view('college.analytics', $data + ['fieldCounts' => self::fieldCounts($data)]);
+    }
+
+    /**
+     * "Applicant field counts" (the same eight cards as the admin Analytics page), for the applicants in these programs:
+     * what the import reads from the portal file, and the payments. Directors' sample units have no database rows, so 0.
+     */
+    private static function fieldCounts(array $common): array
+    {
+        $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))->get()
+            ->filter(fn ($a) => self::groupOf($a, $common['programs']) !== null);
+        $ids = $applicants->pluck('id');
+        $paid = fn ($fee) => $ids->intersect(array_keys(\App\Support\ApplicantRecords::paidFees($fee)))->count();
+
+        return [
+            ['label' => 'Male', 'value' => $applicants->where('gender', 'male')->count(), 'icon' => 'bi-gender-male', 'tone' => 'blue'],
+            ['label' => 'Female', 'value' => $applicants->where('gender', 'female')->count(), 'icon' => 'bi-gender-female', 'tone' => 'red'],
+            ['label' => 'Applying for scholarship', 'value' => $applicants->where('applying_for_scholarship', true)->count(), 'icon' => 'bi-award', 'tone' => 'purple'],
+            ['label' => 'Paid entrance exam', 'value' => $paid('application_fee'), 'icon' => 'bi-cash-coin', 'tone' => 'green'],
+            ['label' => 'Paid reservation', 'value' => $paid('reservation_fee'), 'icon' => 'bi-bookmark-check', 'tone' => 'blue'],
+            ['label' => 'NOA issued', 'value' => $applicants->where('noa_issued', true)->count(), 'icon' => 'bi-patch-check', 'tone' => 'green'],
+            ['label' => 'PWD', 'value' => $applicants->where('pwd', true)->count(), 'icon' => 'bi-person-wheelchair', 'tone' => 'orange'],
+            ['label' => 'SSEN', 'value' => $applicants->where('ssen', true)->count(), 'icon' => 'bi-person-badge', 'tone' => 'orange'],
+        ];
     }
 
     // Reports: what IATO sent, four reports you can generate, and the ones you generated
@@ -362,7 +512,7 @@ class CollegeController extends Controller
             'received' => self::received($common['isChair']),
             // For the "Paid reservations" report: applicants in scope who paid. Real rows never have
             // a 'paid' value (payments aren't tracked yet), so this is honestly empty outside Director.
-            'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'], $a['paid']],
+            'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'] ?? $a['program_name'] ?? $a['program'], $a['paid']],
                 array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::realApplicantsIn($common['programs'], $common['college']['code']), fn ($a) => $a['paid']))),
             // Reports you generated before (kept for 90 days)
             'history' => [['template' => 'programs', 'period' => 'AY 2025–26', 'at' => 'Jun 5, 2026 · 10:12 AM']],
@@ -413,15 +563,36 @@ class CollegeController extends Controller
                 'message' => 'Attached is the list of paid reservations as of May 30.'],
             ['title' => "{$name} Enrollment Trends — AY 2024–25", 'kind' => 'trend', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
                 'at' => 'Jun 14, 2025 · 8:30 AM', 'status' => 'read',
-                'message' => 'Year-end enrollment trends for ' . ($college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college')) . '.'],
+                'message' => 'Year-end enrollment trends for ' . ($college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college')) . '.'],
         ];
     }
 
     /**
-     * The iPACE Director's sample applicants (as in the mockups), per unit. 'program' is a code in COLLEGES['IPACE'].
+     * Director applicants: iPACE preview records and imported ETEEAP records.
      * iPACE: delivery mode, year level, working student, employer. ETEEAP: age, education, work history, portfolio.
      */
     private static function directorApplicants(): array
+    {
+        $preview = self::directorPreviewApplicants();
+        $preview['iPACE'] = array_map(fn ($row) => $row + ['preview' => true, 'exam_status' => $row['status'] === 'Paid' ? 'passed' : 'not_taken', 'exam_paid' => null], $preview['iPACE']);
+        $preview['ETEEAP'] = array_map(function ($a) {
+            $assessment = match ($a['program']) { 'Cleared' => 'cleared', 'Submitted' => 'submitted', default => 'pending' };
+            return [
+                'id' => $a['id'], 'name' => trim($a['last'] . ', ' . $a['first']),
+                'program' => 'E-' . $a['group'], 'program_name' => $a['program_label'],
+                'age' => $a['age'], 'education' => $a['education'], 'workYears' => null, 'work' => [],
+                'employer' => null, 'assess' => $assessment, 'portfolio' => $a['program'],
+                'status' => $a['status'] === 'For Exam' ? 'For Assessment' : $a['status'],
+                'applied' => $a['applied'], 'updated' => $a['updated'], 'dob' => $a['dob'],
+                'gender' => $a['gender'], 'email' => $a['email'], 'phone' => $a['contact'], 'address' => $a['address'],
+                'paid' => $a['paid'], 'amount' => $a['amount'] === null ? null : '₱' . number_format($a['amount'], 2),
+                'exam_status' => $a['exam_status'], 'exam_paid' => $a['exam_paid'], 'preview' => false,
+            ];
+        }, \App\Support\ApplicantRecords::forLevel('eteeap'));
+        return $preview;
+    }
+
+    private static function directorPreviewApplicants(): array
     {
         $paid = fn ($on, $amount) => ['paid' => $on, 'amount' => $amount];
 
@@ -443,34 +614,7 @@ class CollegeController extends Controller
                     'dob' => 'February 14, 2000', 'gender' => 'Male', 'email' => 'aj.ramos@dlsl.edu.ph', 'phone' => '0919 700 3333', 'address' => 'Tanauan City, Batangas',
                     'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 28, 10:00 AM', 'exam' => 'Jun 8, 2026 · 8:00 AM'] + $paid('May 28, 2026', '₱2,000.00'),
             ],
-            // assess: pending (portfolio not yet submitted), submitted (being assessed) or cleared. work: [title, company, period, years]
-            'ETEEAP' => [
-                ['id' => 'APP-2026-E005', 'name' => 'Villanueva, Dario Cortez M.', 'program' => 'E-BSHRM', 'age' => 39, 'dob' => 'June 17, 1987', 'gender' => 'Male',
-                    'email' => 'dc.villanueva@dlsl.edu.ph', 'phone' => '0921 555 6666', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS HRM — DLSL, 2006, incomplete)',
-                    'workYears' => 16, 'employer' => 'Dusit Thani Manila · Food & Beverage Supervisor', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 4, 2026',
-                    'work' => [['F&B Supervisor', 'Dusit Thani Manila', '2015 – Present', '9 years'], ['Head Waiter', 'Crimson Hotel Filinvest City', '2009 – 2015', '6 years']],
-                    'status' => 'For Assessment', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 11:00 AM'] + $paid(null, null),
-                ['id' => 'APP-2026-E004', 'name' => 'Santos, Loreta Manalo A.', 'program' => 'E-BSN', 'age' => 35, 'dob' => 'September 4, 1991', 'gender' => 'Female',
-                    'email' => 'lm.santos@dlsl.edu.ph', 'phone' => '0920 444 5555', 'address' => 'Tanauan City, Batangas', 'education' => 'High School Graduate — Tanauan City National High School, 2008',
-                    'workYears' => 10, 'employer' => 'Adventist Medical Center · Senior Nursing Aide', 'assess' => 'pending', 'portfolio' => 'Not yet submitted',
-                    'work' => [['Senior Nursing Aide', 'Adventist Medical Center', '2016 – Present', '8 years'], ['Caregiver', 'Mabini Medical Center', '2014 – 2016', '2 years']],
-                    'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'May 14, 3:30 PM'] + $paid(null, null),
-                ['id' => 'APP-2026-E002', 'name' => 'Dela Cruz, Maricel Santos B.', 'program' => 'E-BEED', 'age' => 42, 'dob' => 'July 8, 1984', 'gender' => 'Female',
-                    'email' => 'ms.delacruz@dlsl.edu.ph', 'phone' => '0918 222 3333', 'address' => 'Batangas City, Batangas', 'education' => 'High School Graduate — Batangas National High School, 2001',
-                    'workYears' => 18, 'employer' => 'DepEd Batangas · Paraprofessional Teacher', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 3, 2026',
-                    'work' => [['Paraprofessional Teacher', 'DepEd Batangas', '2006 – Present', '18 years'], ['Daycare Teacher', "City Gov't of Batangas", '2003 – 2006', '3 years']],
-                    'status' => 'For Assessment', 'applied' => '2026-05-07', 'updated' => 'Jun 3, 2:00 PM'] + $paid(null, null),
-                ['id' => 'APP-2026-E003', 'name' => 'Reyes, Ernesto Datu C.', 'program' => 'E-BSBA', 'age' => 45, 'dob' => 'January 20, 1981', 'gender' => 'Male',
-                    'email' => 'ed.reyes@dlsl.edu.ph', 'phone' => '0919 333 4444', 'address' => 'San Jose, Batangas', 'education' => '3 Years College (BS Commerce — Lyceum of the Philippines, 1999, incomplete)',
-                    'workYears' => 22, 'employer' => 'Jollibee Foods Corporation · Area Manager', 'assess' => 'cleared', 'portfolio' => 'Submitted — May 30, 2026',
-                    'work' => [['Area Manager', 'Jollibee Foods Corporation', '2010 – Present', '14 years'], ['Store Manager', "McDonald's Philippines", '2003 – 2010', '7 years']],
-                    'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 10:00 AM'] + $paid('Jun 1, 2026', '₱2,500.00'),
-                ['id' => 'APP-2026-E001', 'name' => 'Pascual, Roberto Miguel A.', 'program' => 'E-BSIT', 'age' => 38, 'dob' => 'March 12, 1988', 'gender' => 'Male',
-                    'email' => 'rm.pascual@dlsl.edu.ph', 'phone' => '0917 111 2222', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS Computer Engineering — DLSL, 2007, incomplete)',
-                    'workYears' => 14, 'employer' => 'Philippine Long Distance Telephone Co. · IT Specialist', 'assess' => 'cleared', 'portfolio' => 'Submitted — Jun 1, 2026',
-                    'work' => [['IT Specialist', 'PLDT', '2012 – Present', '12 years'], ['IT Support Technician', 'Globe Telecom', '2009 – 2012', '3 years']],
-                    'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'Jun 2, 9:00 AM'] + $paid('Jun 2, 2026', '₱2,500.00'),
-            ],
+
         ];
     }
 
