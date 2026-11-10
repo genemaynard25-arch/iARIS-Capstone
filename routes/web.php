@@ -42,7 +42,7 @@ Route::post('/import', [ImportController::class, 'store'])->middleware(['auth', 
 
 Route::get('/', function () {
     return auth()->check()
-        ? redirect(auth()->user()->isLamp() ? '/lamp' : (auth()->user()->role === 'registrar' ? '/registrar' : '/home'))
+        ? redirect(auth()->user()->isLamp() ? '/lamp' : (auth()->user()->role === 'registrar' ? '/registrar' : (auth()->user()->isExecutive() ? '/executive' : '/home')))
         : redirect()->route('login');
 });
 
@@ -54,6 +54,7 @@ Route::get('/loading', function () {
     $dashboard = match (true) {
         auth()->user()->isLamp() => '/lamp',
         auth()->user()->role === 'registrar' => '/registrar',
+        auth()->user()->isExecutive() => '/executive',
         default => '/home',
     };
     if (! $next || rtrim(parse_url($next, PHP_URL_PATH) ?? '', '/') === '/home') {
