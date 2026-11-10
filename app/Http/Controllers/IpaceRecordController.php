@@ -25,12 +25,14 @@ class IpaceRecordController extends Controller
      */
     public function index()
     {
+        $applicants = \\App\\Support\\ApplicantRecords::forLevel('ipace');
+
         return view('applicants.index', [
             'scope' => 'ipace',
-            'academicYear' => '2025–2026',
-            'periodLabel' => 'June 2026',
-            'applicants' => \App\Support\RegistrarData::forRecords(self::sample(), 'ipace'),
-            'groupOrder' => array_keys(self::PROGRAMS),
+            'academicYear' => \\App\\Support\\ApplicantRecords::academicYear(),
+            'periodLabel' => 'Imported applicant records',
+            'applicants' => \\App\\Support\\RegistrarData::forRecords($applicants, 'ipace'),
+            'groupOrder' => collect($applicants)->pluck('group')->filter()->unique()->values()->all(),
         ]);
     }
 
