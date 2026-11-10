@@ -8,6 +8,7 @@ use App\Support\AdmissionLevelClassifier;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -34,7 +35,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * payments row (fee_type: reservation_fee). No amount/OR is recorded (cashier-only,
  * out of scope) — just that it's paid.
  */
-class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
+class ApplicantsImport implements ToModel, WithChunkReading, WithCustomCsvSettings, WithStartRow
 {
     protected ?string $currentSection = null;
 
@@ -55,8 +56,11 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
     /** Only populated when $preview is true: one entry per row that passed validation. */
     public array $previewRows = [];
 
-    public function __construct(protected ImportBatch $batch, protected string $schoolYear)
+    public function __construct(protected ImportBatch $batch, protected string $schoolYear) {}
+
+    public function chunkSize(): int
     {
+        return 500;
     }
 
     public function startRow(): int
@@ -115,8 +119,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         $problem = match (true) {
             $externalAppNo === null => 'Missing APP. NO. - can\'t tell this applicant apart on a re-import',
             $gender === null => 'SEX is blank or not recognized (expected Male/Female)',
-            $classified['level'] === 'college' && $classified['college'] === null
-                => 'No section header to classify this row under (file structure problem)',
+            $classified['level'] === 'college' && $classified['college'] === null => 'No section header to classify this row under (file structure problem)',
             default => null,
         };
 
@@ -168,7 +171,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         if ($this->preview) {
             $this->previewRows[] = [
                 'fields' => $fields,
-                'is_new' => Applicant::where('external_app_no', $externalAppNo)->doesntExist(),
+                'is_new' => Applicant::where('external_app_no', $externalAppNo)->where('school_year', $this->schoolYear)->doesntExist(),
                 'name' => $fullName,
                 'program' => $programOrTrack ?? self::LEVEL_LABELS[$classified['level']] ?? $classified['level'],
                 'applied_at' => $appliedAt?->toDateTimeString(),
@@ -195,7 +198,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
      */
     public static function commitRow(array $fields, ?Carbon $appliedAt, array $fees, int $batchId, string $schoolYear, string $level): Applicant
     {
-        $applicant = Applicant::where('external_app_no', $fields['external_app_no'])->first();
+        $applicant = Applicant::where('external_app_no', $fields['external_app_no'])->where('school_year', $schoolYear)->first();
         $isNew = $applicant === null;
         $applicant ??= new Applicant;
 
@@ -313,11 +316,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         $year = substr($schoolYear, 0, 4);
         $levelCode = strtoupper(substr($level, 0, 3));
 
-        $count = Applicant::where('school_year', $schoolYear)
-            ->where('level', $level)
-            ->count();
-
-        $sequence = str_pad($count + 1, 6, '0', STR_PAD_LEFT);
+        $sequence = strtoupper(bin2hex(random_bytes(8)));
 
         return "IATO-{$year}-{$levelCode}-{$sequence}";
     }

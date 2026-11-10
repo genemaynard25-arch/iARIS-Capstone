@@ -28,6 +28,7 @@
         const label = x => {
             const [text, tone, icon] = LB[x.lamp];
             return `<span class="badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis text-nowrap"><i class="bi ${icon} me-1"></i>${text}</span>`
+                + (x.pending_review ? '<div class="small text-warning-emphasis mt-1">Awaiting Super Admin review: ' + esc(x.pending_review) + '</div>' : '')
                 + (x.at ? '<div class="small text-body-secondary mt-1">' + (x.iato_status === 'confirmed' ? 'Confirmed by IATO' : 'Awaiting IATO confirmation') + '</div>' : '');
         };
         const result = x => `<span class="badge rounded-pill bg-${RC[x.result] || 'secondary'}-subtle text-${RC[x.result] || 'secondary'}-emphasis text-nowrap">${esc(x.result)}</span>`;
@@ -51,6 +52,7 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Could not save the LAMP check.');
+                x.pending_review = data.review_number;
                 toast('Submitted to Super Admin review queue: ' + data.review_number);
                 const el = document.getElementById('checkDrawer');
                 if (el) bootstrap.Offcanvas.getOrCreateInstance(el).hide();
@@ -84,7 +86,7 @@
                     : 'LAMP only checks applicants who pass the entrance exam.'}</span></div>`;
             const b = document.getElementById('checkButtons');
             const btn = (cls, icon, text, a) => `<button type="button" class="btn ${cls} fw-semibold" data-a="${a}"><i class="bi ${icon} me-1"></i>${text}</button>`;
-            b.innerHTML = x.lamp === 'wait'
+            b.innerHTML = x.pending_review ? btn('btn-light border', 'bi-x-lg', 'Close', 'close') : x.lamp === 'wait'
                 ? btn('btn-light border', 'bi-dash-circle', 'Not a scholar', 'no') + btn('btn-primary', 'bi-check-lg', 'Confirm scholar', 'yes')
                 : (x.at && x.iato_status !== 'confirmed' ? btn('btn-light border', 'bi-arrow-counterclockwise', 'Undo my change', 'undo') : '') + btn('btn-light border', 'bi-x-lg', 'Close', 'close');
             b.querySelectorAll('[data-a]').forEach(bt => bt.addEventListener('click', () => bt.dataset.a === 'close' ? bootstrap.Offcanvas.getOrCreateInstance(el).hide() : act(x, bt.dataset.a)));

@@ -4,7 +4,7 @@
     LAMP Office "Analytics & Reports" (LampController::reports). Two tabs (#analytics, #reports):
       Analytics  four numbers, insights worked out from them, and four charts, from the real scholarship applicants
       Reports    what IATO sent: open one to read or download it (PDF, Excel or CSV); questions go to Messages
-    Opened reports are remembered in this browser ("iaris.lampReportsRead"); the sidebar's red number follows it.
+    Report snapshots and per-user read status are persisted in MySQL.
     Applicant analytics and LAMP checks are database-backed; sent report history is still a placeholder.
 --}}
 
@@ -104,9 +104,9 @@
         </div>
         <div class="offcanvas-body p-4">
             <div class="row g-3 mb-3">
-                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Prepared by</div><div class="fw-semibold small">IATO · Renegado, Randolph</div></div>
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Prepared by</div><div class="fw-semibold small"><span id="rBy"></span></div></div>
                 <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Date sent</div><div class="fw-semibold small" id="rDate"></div></div>
-                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">AY</div><div class="fw-semibold small">{{ $academicYear }}</div></div>
+                <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">AY</div><div class="fw-semibold small" id="rYear"></div></div>
                 <div class="col-6 col-md-3"><div class="small fw-bold text-uppercase text-body-secondary">Report type</div><div class="fw-semibold small" id="rType"></div></div>
             </div>
             <p class="small text-body-secondary" id="rNote"></p>
@@ -134,7 +134,6 @@
         const REPORTS = @json($reports);
         const TREND = @json($trend);
         const ACADEMIC_YEAR = @json($academicYear);
-        const KEY = 'iaris.lampReportsRead';
         const $ = id => document.getElementById(id);
         const esc = LAMP.esc;
         const fm = n => Number(n).toLocaleString('en-US');
@@ -194,8 +193,6 @@
 
         // ---------- Reports IATO sent ----------
         let read = @json($readReports), filter = 'all', current = null;
-        try { read = JSON.parse(localStorage.getItem(KEY)) || read; } catch (e) {}
-        const saveRead = () => { try { localStorage.setItem(KEY, JSON.stringify(read)); } catch (e) {} };
         const unread = () => REPORTS.filter(r => !read.includes(r.id)).length;
         function sidebarBadge() {
             document.querySelectorAll('[data-lamp-reports-badge]').forEach(e => { e.textContent = unread(); e.classList.toggle('d-none', !unread()); });
@@ -203,7 +200,7 @@
 
         function drawReports() {
             const n = unread();
-            $('reportStats').innerHTML = [['Reports', REPORTS.length, 'Sent by IATO this AY', 'success'], ['New', n, 'Not opened yet', 'danger'], ['Read', REPORTS.length - n, 'Already opened', 'primary']]
+            $('reportStats').innerHTML = [['Reports', REPORTS.length, 'Published by IATO', 'success'], ['New', n, 'Not opened yet', 'danger'], ['Read', REPORTS.length - n, 'Already opened', 'primary']]
                 .map(([label, value, note, tone]) => `<div class="col"><div class="card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}-emphasis">${value}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
             $('pills').innerHTML = '<span class="small fw-bold text-body-secondary me-1">Show:</span>' + [['all', 'All'], ['new', 'New'], ['read', 'Read']].map(([k, label]) =>
@@ -217,7 +214,7 @@
                 return `<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3" data-id="${r.id}">
                     <i class="bi bi-file-earmark-text fs-4 text-success"></i>
                     <div class="flex-grow-1 text-start"><div class="${isNew ? 'fw-bold' : 'fw-semibold'}">${esc(r.title)}</div>
-                        <div class="small text-body-secondary">Sent by <b>Renegado, Randolph</b> (IATO) · ${esc(r.date)} · <span class="badge rounded-pill bg-${r.tone}-subtle text-${r.tone}-emphasis">${esc(r.type)}</span></div></div>
+                        <div class="small text-body-secondary">Sent by <b>${esc(r.by)}</b> (IATO) · ${esc(r.date)} · <span class="badge rounded-pill bg-${r.tone}-subtle text-${r.tone}-emphasis">${esc(r.type)}</span></div></div>
                     ${isNew ? '<span class="badge rounded-pill text-bg-danger">New</span>' : ''}
                     <span class="btn btn-sm btn-light border fw-semibold"><i class="bi bi-eye me-1"></i> Open</span></button>`;
             }).join('') : '<div class="text-center text-body-secondary small py-5">No reports match.</div>';
@@ -226,20 +223,34 @@
         }
 
         const SHOWN = 10;
-        const rows = () => LAMP.people.map(x => [x.name, 'Yes', x.result, LAMP.LB[x.lamp][0]]);
-        function openReport(id) {
+        let snapshotRows = [];
+        const rows = () => snapshotRows.map(x => [x[1], 'Yes', x[3], x[4]]);
+        async function openReport(id) {
             const r = REPORTS.find(x => x.id === id);
             current = r;
-            if (!read.includes(id)) { read.push(id); saveRead(); }
+            try {
+                const response = await fetch(`{{ url('/lamp/reports') }}/${encodeURIComponent(id)}/read`, {
+                    method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Unable to open report.');
+                snapshotRows = result.rows;
+                if (!read.includes(id)) read.push(id);
+            } catch (error) { window.alert(error.message); return; }
             $('drawerTitle').textContent = r.title;
-            $('drawerMeta').textContent = `Sent by Renegado, Randolph (IATO) · ${r.date}`;
+            $('drawerMeta').textContent = `Sent by ${r.by} (IATO) · ${r.date}`;
+            $('rBy').textContent = r.by;
+            $('rYear').textContent = r.school_year;
             $('rDate').textContent = r.date.split(' · ')[0];
             $('rType').textContent = r.type;
             $('rNote').textContent = r.note;
             $('rTable').querySelector('tbody').innerHTML = rows().slice(0, SHOWN).map(c => `<tr>${c.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')
                 || '<tr><td colspan="4" class="text-center text-body-secondary py-3">No scholarship applicants yet.</td></tr>';
-            $('rMore').textContent = LAMP.people.length > SHOWN ? `Showing ${SHOWN} of ${fm(LAMP.people.length)} applicants. Download the report for all of them.` : '';
-            $('rDownload').replaceChildren(downloadMenu(() => ({ title: r.title, sub: `Sent by Renegado, Randolph (IATO) · ${r.date}`, head: ['Applicant', 'Applied for a scholarship', 'Exam result', 'LAMP check'], rows: rows() }), false));
+            $('rMore').textContent = snapshotRows.length > SHOWN ? `Showing ${SHOWN} of ${fm(snapshotRows.length)} applicants. Download the report for all of them.` : '';
+            const download = document.createElement('a');
+            download.className = 'btn btn-primary'; download.textContent = 'Download CSV';
+            download.href = `{{ url('/lamp/reports') }}/${encodeURIComponent(id)}/download`;
+            $('rDownload').replaceChildren(download);
             $('rAsk').href = `{{ url('/lamp/messages') }}?new=1&subject=${encodeURIComponent('About: ' + r.title)}`;
             bootstrap.Offcanvas.getOrCreateInstance($('reportDrawer')).show();
             drawReports();

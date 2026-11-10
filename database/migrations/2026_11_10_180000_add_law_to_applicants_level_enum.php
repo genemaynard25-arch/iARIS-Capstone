@@ -10,11 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE applicants MODIFY COLUMN level ENUM('is','college','graduate_school','eteeap','law') NOT NULL");
+        DB::statement("ALTER TABLE applicants MODIFY COLUMN level ENUM('is','college','graduate_school','eteeap','law','ipace') NOT NULL");
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE applicants MODIFY COLUMN level ENUM('is','college','graduate_school','eteeap') NOT NULL");
+        DB::statement("ALTER TABLE applicants MODIFY COLUMN level ENUM('is','college','graduate_school','eteeap','ipace') NOT NULL");
     }
 };

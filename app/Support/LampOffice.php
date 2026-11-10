@@ -4,19 +4,21 @@ namespace App\Support;
 
 use App\Http\Controllers\ScholarController;
 use App\Models\Applicant;
+use App\Models\LampScholarRecord;
+use App\Models\ReviewQueueItem;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * What the LAMP Office sees. IATO only shares two things about an applicant: whether they answered
  * Yes to the scholarship question, and their entrance exam result. The scholarship type and documents
  * stay with LAMP. LAMP checks each applicant who passed:
  *   wait    passed (Pass or Reconsidered), LAMP hasn't checked yet
- *   yes     LAMP confirmed a scholar          (set by LAMP, in the browser for now)
- *   no      LAMP says not a scholar           (set by LAMP, in the browser for now)
+ *   yes     approved scholarship decision
+ *   no      approved non-scholar decision
  *   notyet  exam not taken yet, or waitlisted: not eligible yet
  *   fail    did not pass
- * The applicants are real (the applicants table). The checks, the reports IATO sent and the
- * conversations are placeholders, front end only.
- * TODO (backend): save LAMP's checks in lamp_scholar_records, and the reports and messages in tables.
+ * Applicants, approved decisions, published reports and conversations use persisted records.
  */
 class LampOffice
 {
@@ -39,9 +41,11 @@ class LampOffice
     public static function applicants(): array
     {
         $applicants = self::query()->latest()->get();
-        $checks = \App\Models\LampScholarRecord::whereIn('applicant_id', $applicants->pluck('id'))->get()->keyBy('applicant_id');
+        $checks = LampScholarRecord::whereIn('applicant_id', $applicants->pluck('id'))->get()->keyBy('applicant_id');
 
-        return $applicants->map(function (Applicant $a) use ($checks) {
+        $pending = ReviewQueueItem::whereIn('applicant_id', $applicants->pluck('id'))->where('type', 'lamp')->where('status', 'waiting')->pluck('rq_number', 'applicant_id');
+
+        return $applicants->map(function (Applicant $a) use ($checks, $pending) {
             $check = $checks->get($a->id);
             $result = self::RESULTS[$a->admission_test_status] ?? 'Not yet taken';
             $program = $a->program_or_track ?: '—';
@@ -49,6 +53,7 @@ class LampOffice
             return [
                 'id' => $a->reference_number,
                 'applicant_id' => $a->id,
+                'pending_review' => $pending->get($a->id),
                 'iato_status' => $check?->decision ? $check->iato_status : null,
                 'at' => $check?->checked_at?->format('M j, Y · g:i A') ?? '',
                 'name' => "{$a->last_name}, {$a->first_name}",
@@ -56,8 +61,8 @@ class LampOffice
                 'pwd' => (bool) $a->pwd,
                 'unit' => self::UNITS[$a->level] ?? ucfirst((string) $a->level),
                 'program' => match ($a->level) {
-                    'college' => ($a->college ?: ApplicantRecords::collegeFor($program)) . ' · ' . $program,
-                    'is' => (ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? 'Integrated School') . ($a->year_level ? ' · ' . $a->year_level : ''),
+                    'college' => ($a->college ?: ApplicantRecords::collegeFor($program)).' · '.$program,
+                    'is' => (ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? 'Integrated School').($a->year_level ? ' · '.$a->year_level : ''),
                     default => $program,
                 },
                 'result' => $result,
@@ -79,9 +84,9 @@ class LampOffice
         return array_map(function ($i) use ($start) {
             $from = $start - $i;
             $count = Applicant::where('applying_for_scholarship', true)->whereNull('archived_at')
-                ->where('school_year', $from . '-' . ($from + 1))->count();
+                ->where('school_year', $from.'-'.($from + 1))->count();
 
-            return [$from . '–' . substr((string) ($from + 1), 2), $count];
+            return [$from.'–'.substr((string) ($from + 1), 2), $count];
         }, [3, 2, 1, 0]);
     }
 
@@ -90,7 +95,7 @@ class LampOffice
     {
         $latest = self::query()->max('updated_at');
 
-        return $latest ? \Illuminate\Support\Carbon::parse($latest)->format('M j, Y · g:i A') : null;
+        return $latest ? Carbon::parse($latest)->format('M j, Y · g:i A') : null;
     }
 
     private static function query()
@@ -103,31 +108,26 @@ class LampOffice
 
     /**
      * Reports IATO sent to the LAMP Office, newest first. 'tone' is the Bootstrap colour of its type.
-     * Placeholder data: nothing stores sent reports yet.
      */
     public static function reports(): array
     {
-        return [
-            ['id' => 'r1', 'title' => 'Scholarship Applicants and Exam Results — June 2026', 'date' => 'Jun 12, 2026 · 8:00 AM', 'type' => 'Exam Results', 'tone' => 'primary',
-                'note' => 'Scholarship applicants whose entrance exam results came in this month. The ones who passed are waiting for your check in Scholars.'],
-            ['id' => 'r2', 'title' => 'LAMP Checks Summary — May 2026', 'date' => 'Jun 1, 2026 · 3:00 PM', 'type' => 'LAMP Checks', 'tone' => 'warning',
-                'note' => 'Every scholarship applicant you checked in May, and whether IATO has confirmed each change.'],
-            ['id' => 'r3', 'title' => 'Scholarship Applicants and Exam Results — May 2026', 'date' => 'May 30, 2026 · 10:00 AM', 'type' => 'Exam Results', 'tone' => 'primary',
-                'note' => 'Scholarship applicants whose entrance exam results came in during May.'],
-            ['id' => 'r4', 'title' => 'Scholarship Applicants — AY 2025–2026', 'date' => 'May 15, 2026 · 9:00 AM', 'type' => 'Applicant List', 'tone' => 'info',
-                'note' => 'All scholarship applicants for AY 2025–2026, with exam result and LAMP check.'],
-            ['id' => 'r5', 'title' => 'LAMP Checks Summary — April 2026', 'date' => 'Apr 30, 2026 · 2:00 PM', 'type' => 'LAMP Checks', 'tone' => 'warning',
-                'note' => 'Every scholarship applicant you checked in April, and whether IATO confirmed each change.'],
-        ];
+        return DB::table('lamp_reports')->whereNotNull('published_at')->orderByDesc('published_at')->get()->map(fn ($r) => [
+            'id' => (string) $r->id, 'title' => $r->title,
+            'date' => Carbon::parse($r->published_at)->format('M j, Y · g:i A'),
+            'type' => 'Applicant List', 'tone' => 'info', 'note' => 'Scholarship applicant snapshot for AY '.$r->school_year,
+            'by' => $r->generated_by_name, 'school_year' => $r->school_year,
+        ])->all();
     }
 
-    /** Reports already opened (the page keeps the real list in the browser). */
-    public const READ_REPORTS = ['r3', 'r4', 'r5'];
+    public static function readReports(): array
+    {
+        return DB::table('lamp_report_reads')->where('user_id', auth()->id())->pluck('lamp_report_id')->map(fn ($id) => (string) $id)->all();
+    }
 
-    /** New reports: the red number on the sidebar (the pages update it as reports are opened). */
     public static function unreadReports(): int
     {
-        return collect(self::reports())->reject(fn ($r) => in_array($r['id'], self::READ_REPORTS))->count();
+        return DB::table('lamp_reports')->whereNotNull('published_at')
+            ->whereNotIn('id', self::readReports())->count();
     }
 
     /** What the Scholars page lets LAMP say the right type is (Messages → "Correct the IATO record"). */
@@ -144,17 +144,13 @@ class LampOffice
      */
     public static function threads(): array
     {
-        $threads = [
-            ['id' => 'MSG-0113', 'topic' => 'Request a report', 'subject' => 'Scholar list with the new CCJE applicants', 'status' => 'waiting', 'messages' => [
-                ['from' => 'me', 'at' => 'Jun 12, 2026 · 10:40 AM', 'text' => 'Can IATO send an updated list of scholarship applicants that includes CCJE? We need it for the LAMP committee on Monday.'],
-            ]],
-        ];
+        $threads = [];
 
         foreach (LampRequests::sample() as $r) {
             $threads[] = [
                 'id' => $r['id'],
                 'topic' => $r['reason'],
-                'subject' => 'Scholar check: ' . $r['name'],
+                'subject' => 'Scholar check: '.$r['name'],
                 'status' => ['waiting' => 'answered', 'replied' => 'waiting'][$r['status']] ?? 'resolved',
                 'check' => ['id' => $r['id'], 'name' => $r['name'], 'unit' => $r['program'], 'iato' => $r['iato'], 'lamp' => $r['lamp'], 'url' => url('/lamp/scholars')],
                 'messages' => array_map(fn ($m) => $m['from'] === 'lamp' ? ['from' => 'me', 'at' => $m['at'], 'text' => $m['text']] : $m, $r['messages']),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApplicantRecords;
 use App\Support\LampOffice;
 
 /**
@@ -29,7 +30,7 @@ class LampController extends Controller
     {
         return view('lamp.reports', $this->shared() + [
             'reports' => LampOffice::reports(),
-            'readReports' => LampOffice::READ_REPORTS,
+            'readReports' => LampOffice::readReports(),
             'trend' => LampOffice::trend(),
         ]);
     }
@@ -38,7 +39,7 @@ class LampController extends Controller
     private function shared(): array
     {
         return [
-            'academicYear' => \App\Support\ApplicantRecords::academicYear(),
+            'academicYear' => ApplicantRecords::academicYear(),
             'applicants' => LampOffice::applicants(),
         ];
     }

@@ -43,16 +43,7 @@
                     <span class="badge rounded-pill nav-count ms-auto {{ $answeredMessages ? '' : 'd-none' }}" id="messagesBadge" title="Needs you">{{ $answeredMessages }}</span>
                 </a>
             </nav>
-            <script>
-                // Reports you opened are remembered in this browser (see the Reports page)
-                (() => {
-                    const ids = @json(collect(\App\Support\LampOffice::reports())->pluck('id'));
-                    let read = @json(\App\Support\LampOffice::READ_REPORTS);
-                    try { read = JSON.parse(localStorage.getItem('iaris.lampReportsRead')) || read; } catch (e) {}
-                    const n = ids.filter(id => !read.includes(id)).length;
-                    document.querySelectorAll('[data-lamp-reports-badge]').forEach(e => { e.textContent = n; e.classList.toggle('d-none', !n); });
-                })();
-            </script>
+
         </div>
 
         {{-- Footer (always visible) --}}

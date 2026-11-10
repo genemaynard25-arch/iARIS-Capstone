@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Applicant;
-use App\Models\ImportBatch;
 use App\Imports\ApplicantsImport;
+use App\Models\Applicant;
+use App\Models\AuditLog;
+use App\Models\ImportBatch;
+use App\Models\ReviewQueueItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ImportController extends Controller
@@ -33,7 +37,7 @@ class ImportController extends Controller
             // Excel - a perfectly valid .csv can get misdetected and rejected. The
             // importer itself (Maatwebsite Excel) still fails loudly on genuinely
             // unreadable content, so this isn't loosening what's actually accepted.
-            'file' => 'required|extensions:xlsx,csv',
+            'file' => 'required|file|extensions:xlsx,csv',
             'school_year' => 'required|regex:/^\d{4}-\d{4}$/',
         ]);
 
@@ -43,35 +47,43 @@ class ImportController extends Controller
             'status' => 'processing',
         ]);
 
-        $needsReview = $request->user()->role === 'iato_staff' && ! $request->user()->isAdmin();
+        try {
+            return DB::transaction(function () use ($request, $validated, $batch) {
+                $needsReview = $request->user()->role === 'iato_staff' && ! $request->user()->isAdmin();
 
-        $import = new ApplicantsImport($batch, $validated['school_year']);
-        $import->preview = $needsReview;
-        Excel::import($import, $request->file('file'));
+                $import = new ApplicantsImport($batch, $validated['school_year']);
+                $import->preview = $needsReview;
+                Excel::import($import, $request->file('file'));
 
-        if ($needsReview) {
-            return $this->stageImportForReview($request, $batch, $import, $validated['school_year']);
+                if ($needsReview) {
+                    return $this->stageImportForReview($request, $batch, $import, $validated['school_year']);
+                }
+
+                $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
+                $errorCount = count($import->errors);
+
+                $batch->update([
+                    'status' => 'completed',
+                    'row_count' => $rowCount,
+                    'error_count' => $errorCount,
+                    'errors' => $import->errors ?: null,
+                ]);
+
+                AuditLog::record(
+                    'import',
+                    'Import Data',
+                    'Data Import',
+                    "Imported **{$batch->original_filename}** — **{$rowCount} records** added"
+                        .($errorCount ? ", **{$errorCount} row".($errorCount === 1 ? '' : 's').' skipped**' : ''),
+                );
+
+                return redirect("/import/{$batch->id}");
+            });
+        } catch (\Throwable $exception) {
+            report($exception);
+            $batch->update(['status' => 'failed']);
+            throw ValidationException::withMessages(['file' => 'The import failed. No applicant or payment changes were saved. Check the file format and column lengths.']);
         }
-
-        $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
-        $errorCount = count($import->errors);
-
-        $batch->update([
-            'status' => 'completed',
-            'row_count' => $rowCount,
-            'error_count' => $errorCount,
-            'errors' => $import->errors ?: null,
-        ]);
-
-        \App\Models\AuditLog::record(
-            'import',
-            'Import Data',
-            'Data Import',
-            "Imported **{$batch->original_filename}** — **{$rowCount} records** added"
-                . ($errorCount ? ", **{$errorCount} row" . ($errorCount === 1 ? '' : 's') . " skipped**" : ''),
-        );
-
-        return redirect("/import/{$batch->id}");
     }
 
     /**
@@ -84,8 +96,8 @@ class ImportController extends Controller
         $new = count(array_filter($import->previewRows, fn ($r) => $r['is_new']));
         $total = count($import->previewRows);
 
-        $item = \App\Models\ReviewQueueItem::create([
-            'rq_number' => \App\Models\ReviewQueueItem::nextRqNumber(),
+        $item = ReviewQueueItem::create([
+            'rq_number' => ReviewQueueItem::nextRqNumber(),
             'type' => 'import',
             'title' => 'Batch Import Requested',
             'subject' => $batch->original_filename,
@@ -102,11 +114,11 @@ class ImportController extends Controller
             'pending_action' => ['action' => 'commit_import', 'payload' => ['batch_id' => $batch->id, 'school_year' => $schoolYear, 'rows' => $import->previewRows]],
         ]);
 
-        \App\Models\AuditLog::record(
+        AuditLog::record(
             'import',
             'Import Data',
             'Batch Import Requested',
-            "{$request->user()->name} submitted **{$batch->original_filename}** ({$total} record" . ($total === 1 ? '' : 's') . ") — sent to Review Queue as **{$item->rq_number}**",
+            "{$request->user()->name} submitted **{$batch->original_filename}** ({$total} record".($total === 1 ? '' : 's').") — sent to Review Queue as **{$item->rq_number}**",
         );
 
         return redirect('/import')->with('reviewSubmitted', ['rq_number' => $item->rq_number, 'count' => $total]);

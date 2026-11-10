@@ -3,10 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// Not wired up to any controller yet - every scholar shows "Pending Check" in
-// ScholarController::sample()/LampController because there's no real second dataset
-// to compare against. This is that dataset, ahead of the feature being built.
 class LampScholarRecord extends Model
 {
     protected $fillable = [
@@ -28,12 +26,12 @@ class LampScholarRecord extends Model
         ];
     }
 
-    public function applicant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function applicant(): BelongsTo
     {
         return $this->belongsTo(Applicant::class);
     }
 
-    public function confirmedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function confirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
     }

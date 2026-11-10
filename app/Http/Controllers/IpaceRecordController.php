@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApplicantRecords;
+use App\Support\RegistrarData;
+
 class IpaceRecordController extends Controller
 {
     const PROGRAMS = [
@@ -25,13 +28,13 @@ class IpaceRecordController extends Controller
      */
     public function index()
     {
-        $applicants = \\App\\Support\\ApplicantRecords::forLevel('ipace');
+        $applicants = ApplicantRecords::forLevel('ipace');
 
         return view('applicants.index', [
             'scope' => 'ipace',
-            'academicYear' => \\App\\Support\\ApplicantRecords::academicYear(),
+            'academicYear' => ApplicantRecords::academicYear(),
             'periodLabel' => 'Imported applicant records',
-            'applicants' => \\App\\Support\\RegistrarData::forRecords($applicants, 'ipace'),
+            'applicants' => RegistrarData::forRecords($applicants, 'ipace'),
             'groupOrder' => collect($applicants)->pluck('group')->filter()->unique()->values()->all(),
         ]);
     }

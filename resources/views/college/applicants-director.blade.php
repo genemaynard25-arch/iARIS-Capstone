@@ -75,7 +75,7 @@
             <span class="small fw-semibold text-body-secondary">{{ $isEteeap ? 'Program' : 'Delivery Mode' }}:</span>
             <button class="btn btn-sm btn-primary" type="button" data-category="" aria-pressed="true">All</button>
             @foreach ($isEteeap ? array_keys($unitPrograms) : ['Online', 'Blended'] as $category)
-                <button class="btn btn-sm btn-light border" type="button" data-category="{{ $category }}" aria-pressed="false">{{ $isEteeap ? (explode('-', $category, 2)[1] ?? $category) : $category }}</button>
+                <button class="btn btn-sm btn-light border" type="button" data-category="{{ $category }}" aria-pressed="false">{{ $isEteeap ? $unitPrograms[$category]['name'] : $category }}</button>
             @endforeach
         </div>
 
@@ -102,7 +102,7 @@
                 <tbody id="rows"></tbody>
             </table>
         </div>
-        <div class="card-footer bg-white border-top rounded-bottom-4 small text-body-secondary px-4 py-3" id="footer"></div>
+        <div class="card-footer bg-white border-top rounded-bottom-4 small text-body-secondary px-4 py-3" id="footer"></div><ul class="pagination pagination-sm px-4 pb-3 mb-0" id="directorPagination" aria-label="Applicant pages"></ul>
     </div>
     <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Records are managed by IATO. If something looks wrong, tell IATO in <a href="{{ $base }}/messages" class="fw-semibold text-decoration-none">Messages</a>.</p>
 
@@ -119,6 +119,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
         const UNIT = @json($unit), ETEEAP = UNIT === 'ETEEAP';
         const PROGRAMS = @json($unitPrograms);
@@ -132,8 +133,10 @@
         const longDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const pill = (label, tone) => `<span class="badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis">${esc(label)}</span>`;
         // Short program tag: "BS Information Technology" -> BSIT
-        const tag = code => code.split('-')[1];
-        let status = 'All';
+        const tag = code => esc(PROGRAMS[code]?.name || code);
+        let status = 'All', page = 1;
+        const pageSize = 25;
+        const resetPage = () => { page = 1; draw(); };
         ROWS.sort((a, b) => b.applied.localeCompare(a.applied));
 
         const RESULTS = {
@@ -164,8 +167,11 @@
                 const active = button.dataset.category === $(ETEEAP ? 'programFilter' : 'extraFilter').value;
                 button.classList.toggle('btn-primary', active); button.classList.toggle('btn-light', !active); button.setAttribute('aria-pressed', active);
             });
-            $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; draw(); }));
-            const rows = shown();
+            $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; resetPage(); }));
+            const allRows = shown();
+            const pages = Math.max(1, Math.ceil(allRows.length / pageSize));
+            page = Math.min(page, pages);
+            const rows = allRows.slice((page - 1) * pageSize, page * pageSize);
             $('rows').innerHTML = rows.length ? rows.map(r => `
                 <tr role="button" tabindex="0" data-id="${r.id}">
                     <td class="ps-4"><div class="fw-semibold">${esc(r.name)}</div><div class="small text-body-secondary">${r.id}</div></td>
@@ -183,7 +189,22 @@
                 tr.addEventListener('click', () => openApplicant(tr.dataset.id));
                 tr.addEventListener('keydown', e => { if (e.key === 'Enter') openApplicant(tr.dataset.id); });
             });
-            $('footer').textContent = `Showing ${rows.length} of ${ROWS.length} applicant${ROWS.length === 1 ? '' : 's'}${ETEEAP ? '' : ' · Preview records'}`;
+            $('footer').textContent = `Showing ${rows.length} of ${allRows.length} matching applicants · ${fm(ROWS.length)} total`;
+            const pagination = $('directorPagination');
+            pagination.replaceChildren();
+            const addPage = (label, target, disabled = false) => {
+                const li = document.createElement('li'); li.className = 'page-item';
+                if (target === page && typeof label === 'number') li.classList.add('active');
+                const button = document.createElement('button'); button.type = 'button';
+                button.className = 'page-link'; button.textContent = label; button.disabled = disabled;
+                button.setAttribute('aria-label', typeof label === 'number' ? `Page ${label}` : label);
+                if (target === page && typeof label === 'number') button.setAttribute('aria-current', 'page');
+                button.addEventListener('click', () => { page = target; draw(); });
+                li.appendChild(button); pagination.appendChild(li);
+            };
+            addPage('Previous page', page - 1, page === 1);
+            IARIS_PAGINATION.pages(page, pages).forEach(p => addPage(p === null ? '…' : p, p, p === null));
+            addPage('Next page', page + 1, page === pages);
         }
 
         // ---- One applicant ----
@@ -213,12 +234,12 @@
 
         $('categoryPills').addEventListener('click', event => {
             const button = event.target.closest('[data-category]'); if (!button) return;
-            $(ETEEAP ? 'programFilter' : 'extraFilter').value = button.dataset.category; draw();
+            $(ETEEAP ? 'programFilter' : 'extraFilter').value = button.dataset.category; resetPage();
         });
 
-        $('search').addEventListener('input', draw);
-        $('programFilter').addEventListener('change', draw);
-        $('extraFilter').addEventListener('change', draw);
+        $('search').addEventListener('input', resetPage);
+        $('programFilter').addEventListener('change', resetPage);
+        $('extraFilter').addEventListener('change', resetPage);
         draw();
     </script>
 @endsection

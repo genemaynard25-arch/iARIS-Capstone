@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Support\LampRequests;
 use App\Support\RegistrarQuestions;
 
 /**
@@ -124,9 +123,6 @@ class IatoMessagesController extends Controller
                 $them('Jun 12, 2026 · 8:05 AM', 'When will the June 6 exam results be in iARIS? Some applicants are asking us about enrollment.'),
                 $iato('Cruz, Jasmine', 'IATO Staff', 'Jun 12, 2026 · 9:30 AM', 'They will be posted on Jun 15, Ms. Santos. Passers will show as For Exam → Paid once they pay.'),
             ]],
-            ['lamp@gmail.com', 'MSG-0113', 'Request a report', 'Scholar list with the new CCJE applicants', 'waiting', [
-                $them('Jun 12, 2026 · 10:40 AM', 'Can IATO send an updated list of scholarship applicants that includes CCJE? We need it for the LAMP committee on Monday.'),
-            ]],
             ['dean@gmail.com', 'MSG-0112', 'Question about the data', 'BS Architecture applicants look low', 'waiting', [
                 $them('Jun 12, 2026 · 9:14 AM', 'BS Architecture shows 72 applicants, but our department head counted more walk-in applications last week. Are the walk-ins already encoded?'),
             ]],
@@ -175,17 +171,6 @@ class IatoMessagesController extends Controller
                 $messages = array_map(fn ($m) => $m['from'] === 'reg' ? ['from' => 'them', 'at' => $m['at'], 'text' => $m['text']] : $m, $q['messages']);
                 $list[] = self::conversation('reg', $q['id'], $p, "Record question: {$q['name']}", $q['topic'], ['waiting' => 'iato', 'answered' => 'other'][$q['status']] ?? 'done', $messages,
                     ['id' => $q['id'], 'name' => $q['name'], 'unit' => "{$q['unit']} · {$q['program']}", 'url' => $q['url']]);
-            }
-        }
-
-        // ---- Scholars IATO asked LAMP to check (the same ones LAMP sees under Requests from IATO) ----
-        $lamp = collect($people)->firstWhere('group', 'lamp');
-        if ($lamp) {
-            foreach (LampRequests::sample() as $r) {
-                $messages = array_map(fn ($m) => $m['from'] === 'lamp' ? ['from' => 'them', 'at' => $m['at'], 'text' => $m['text']] : $m, $r['messages']);
-                // LAMP replied = IATO's turn; waiting = waiting for LAMP
-                $list[] = self::conversation('lamp', $r['id'], $lamp, "Scholar check: {$r['name']}", $r['reason'], ['replied' => 'iato', 'waiting' => 'other'][$r['status']] ?? 'done', $messages,
-                    ['id' => $r['id'], 'name' => $r['name'], 'unit' => $r['program'], 'url' => url('/records/scholars') . '?open=' . urlencode($r['id']), 'iato' => $r['iato'], 'lamp' => $r['lamp']]);
             }
         }
 

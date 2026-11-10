@@ -106,11 +106,13 @@
 ]
 PREVIEW_JSON, true);
     }
+    $conversations = array_values(array_filter($conversations, fn ($c) => ($c['group'] ?? '') !== 'lamp'));
 @endphp
 
 @include('partials.admin-workspace', ['workspacePage' => 'messages-page', 'workspaceGroup' => 'Main', 'workspaceLabel' => 'Messages'])
 
 @section('content')
+    <a class="btn btn-outline-primary mb-3" href="{{ route('lamp-requests.index') }}">LAMP requests and reports <span class="badge text-bg-primary">{{ \App\Models\LampRequest::where('status', 'replied')->count() }} replies</span></a>
     <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview conversations · Messages and replies stay on this page until reload; delivery is not connected yet.</p>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="stats"></div>
 

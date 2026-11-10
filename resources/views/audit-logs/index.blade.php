@@ -186,6 +186,11 @@
     <script>
         const LOGS = @json($logs);
         const PEOPLE = @json($people);
+        const historicalActor = log => ({
+            ...(PEOPLE[log.user] || { tone: 'secondary' }),
+            name: log.actorName || PEOPLE[log.user]?.name || 'Deleted User',
+            role: log.actorRole || PEOPLE[log.user]?.role || '',
+        });
         const ACTIONS = @json($actions);
         const PAGE_SIZE = 10;
 
@@ -249,7 +254,7 @@
         function buildRow(log) {
             const row = document.getElementById('logRowTemplate').content.firstElementChild.cloneNode(true);
             const cell = name => row.querySelector(`[data-cell="${name}"]`);
-            const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '', tone: 'secondary' };
+            const person = historicalActor(log);
 
             cell('id').textContent = log.id;
             cell('initials').textContent = initials(person.name);
@@ -270,7 +275,7 @@
 
         function filtered() {
             return LOGS.filter(log => {
-                const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '' };
+                const person = historicalActor(log);
                 const text = `${person.name} ${person.role} ${ACTIONS[log.action].label} ${log.module} ${plain(log.details)} ${log.ip} ${log.id}`;
                 return (!state.user || log.user === state.user) &&
                     (!state.module || log.module === state.module) &&
@@ -325,7 +330,7 @@
 
         // ---- Drawer ----
         function openLog(log) {
-            const person = PEOPLE[log.user];
+            const person = historicalActor(log);
             const field = name => document.querySelector(`#logDrawer [data-field="${name}"]`);
             document.getElementById('drawerTitle').textContent = log.title;
             document.getElementById('drawerSub').textContent = `${person.name} · ${person.role} · ${formatTime(log.at)}`;
@@ -359,7 +364,7 @@
             const quote = value => `"${String(value).replace(/"/g, '""')}"`;
             const lines = [['Log ID', 'User', 'Role', 'Action', 'Module', 'Details', 'IP Address', 'Timestamp']].concat(
                 filtered().map(log => {
-                    const person = PEOPLE[log.user] ?? { name: 'Deleted User', role: '' };
+                    const person = historicalActor(log);
                     return [logId(log.id), person.name, person.role, ACTIONS[log.action].label,
                         log.module, plain(log.details), log.ip, formatTime(log.at)];
                 }));

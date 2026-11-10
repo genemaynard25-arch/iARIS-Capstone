@@ -22,6 +22,8 @@ class AuditLogController extends Controller
         $logs = $entries->map(fn (AuditLog $log) => [
             'id' => $log->id,
             'user' => (string) $log->user_id,
+            'actorName' => $log->actor_name,
+            'actorRole' => $log->actor_role,
             'action' => $log->action,
             'module' => $log->module,
             'at' => $log->created_at->toIso8601String(),

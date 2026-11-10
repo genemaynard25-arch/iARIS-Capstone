@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReviewQueueItem extends Model
 {
@@ -58,23 +59,20 @@ class ReviewQueueItem extends Model
 
     public static function nextRqNumber(): string
     {
-        $last = self::orderByDesc('id')->value('rq_number');
-        $n = $last ? ((int) substr($last, 3)) + 1 : 1;
-
-        return 'RQ-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT);
+        return 'RQ-'.strtoupper(bin2hex(random_bytes(8)));
     }
 
-    public function applicant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function applicant(): BelongsTo
     {
         return $this->belongsTo(Applicant::class);
     }
 
-    public function submitter(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function submitter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
     }
 
-    public function reviewer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
     }

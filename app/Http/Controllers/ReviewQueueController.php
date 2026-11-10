@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Imports\ApplicantsImport;
+use App\Models\Applicant;
 use App\Models\AuditLog;
 use App\Models\ImportBatch;
 use App\Models\LampScholarRecord;
@@ -47,7 +48,7 @@ class ReviewQueueController extends Controller
         $reviewed = null;
         if ($item->reviewed_at) {
             $who = $item->reviewer?->name ?? 'the Super Admin';
-            $reviewed = ($item->status === 'approved' ? 'Approved' : 'Sent back') . " by {$who} · " . $item->reviewed_at->format('M j, Y · g:i A');
+            $reviewed = ($item->status === 'approved' ? 'Approved' : 'Sent back')." by {$who} · ".$item->reviewed_at->format('M j, Y · g:i A');
         }
 
         return [
@@ -75,26 +76,30 @@ class ReviewQueueController extends Controller
     public function approve(Request $request, ReviewQueueItem $item)
     {
         abort_unless($request->user()->isAdmin(), 403);
-        abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
+        DB::transaction(function () use ($item, $request) {
+            if ($item->type === 'lamp' && $item->applicant_id) {
+                Applicant::whereKey($item->applicant_id)->lockForUpdate()->first();
+            }
+            $item = ReviewQueueItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
 
-        $action = $item->pending_action['action'] ?? null;
-        $payload = $item->pending_action['payload'] ?? [];
+            $action = $item->pending_action['action'] ?? null;
+            $payload = $item->pending_action['payload'] ?? [];
 
-        DB::transaction(function () use ($action, $payload, $item, $request) {
-        match ($action) {
-            'create' => ApplicantEditFlow::applyCreate($payload['validated'], $payload['level']),
-            'update' => $item->applicant && ApplicantEditFlow::applyUpdate($item->applicant, $payload['validated']),
-            'destroy' => $item->applicant && ApplicantEditFlow::applyDestroy($item->applicant),
-            'restore' => $item->applicant && ApplicantEditFlow::applyRestore($item->applicant),
-            'exam_status' => $item->applicant && ApplicantEditFlow::applyExamStatus($item->applicant, $payload['validated']['admission_test_status']),
-            'commit_import' => $this->commitImport($payload),
-            'lamp_check' => $this->applyLampCheck($item, $payload, $request),
-            default => null,
-        };
+            match ($action) {
+                'create' => ApplicantEditFlow::applyCreate($payload['validated'], $payload['level']),
+                'update' => $item->applicant && ApplicantEditFlow::applyUpdate($item->applicant, $payload['validated']),
+                'destroy' => $item->applicant && ApplicantEditFlow::applyDestroy($item->applicant),
+                'restore' => $item->applicant && ApplicantEditFlow::applyRestore($item->applicant),
+                'exam_status' => $item->applicant && ApplicantEditFlow::applyExamStatus($item->applicant, $payload['validated']['admission_test_status']),
+                'commit_import' => $this->commitImport($payload),
+                'lamp_check' => $this->applyLampCheck($item, $payload, $request),
+                default => abort(422, 'Unsupported review action.'),
+            };
 
-        $item->update(['status' => 'approved', 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
+            $item->update(['status' => 'approved', 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
 
-        AuditLog::record('edit', $item->unit, 'Review Queue Item Approved', "Approved **{$item->rq_number}**: {$item->title} — {$item->subject}");
+            AuditLog::record('edit', $item->type === 'lamp' ? 'LAMP' : $item->unit, 'Review Queue Item Approved', "Approved **{$item->rq_number}**: {$item->title} — {$item->subject} ({$item->ref})", $request->user()->roleInfo()[0], $item->changes);
         });
 
         return response()->json(['ok' => true]);
@@ -103,18 +108,18 @@ class ReviewQueueController extends Controller
     public function sendBack(Request $request, ReviewQueueItem $item)
     {
         abort_unless($request->user()->isAdmin(), 403);
-        abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
-
         $validated = $request->validate(['reason' => 'required|string|max:1000']);
-
-        $item->update([
-            'status' => 'sent',
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'review_reason' => $validated['reason'],
-        ]);
-
-        AuditLog::record('edit', $item->unit, 'Review Queue Item Sent Back', "Sent back **{$item->rq_number}**: {$item->title} — {$item->subject}. Reason: {$validated['reason']}");
+        DB::transaction(function () use ($item, $request, $validated) {
+            $item = ReviewQueueItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
+            $item->update([
+                'status' => 'sent', 'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(), 'review_reason' => $validated['reason'],
+            ]);
+            AuditLog::record('edit', $item->type === 'lamp' ? 'LAMP' : $item->unit, 'Review Queue Item Sent Back',
+                "Sent back **{$item->rq_number}**: {$item->title} — {$item->subject} ({$item->ref}). Reason: {$validated['reason']}",
+                $request->user()->roleInfo()[0], $item->changes);
+        });
 
         return response()->json(['ok' => true]);
     }
@@ -140,7 +145,8 @@ class ReviewQueueController extends Controller
 
         if ($decision === 'undo') {
             abort_unless($record->exists && $record->decision, 422, 'There is no check to undo.');
-            $record->update(['decision' => null, 'checked_by' => null, 'checked_at' => null]);
+            $record->update(['decision' => null, 'checked_by' => null, 'checked_at' => null, 'iato_status' => 'pending', 'confirmed_by' => null, 'confirmed_at' => null]);
+
             return;
         }
 
