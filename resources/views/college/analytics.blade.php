@@ -42,7 +42,9 @@
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabYears" type="button" role="tab" data-hash="years"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights</button></li>
         </ul>
+        @unless (auth()->user()->isDirector())
         <span class="ar-scope-chip badge rounded-pill text-wrap text-start"><i class="bi bi-funnel me-1"></i> Showing: <span class="text-body">{{ $label }} · AY {{ \App\Support\ApplicantRecords::academicYear() }} · View only</span></span>
+        @endunless
         </div>
 
         {{-- Four tiles, above every tab --}}
