@@ -38,6 +38,12 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
 {
     protected ?string $currentSection = null;
 
+    /** Set once per model() call to the row number WithStartRow's position implies. */
+    protected int $rowNumber = 0;
+
+    /** [row, name, reason] for every row skipped instead of saved - the import's error report. */
+    public array $errors = [];
+
     public function __construct(protected ImportBatch $batch, protected string $schoolYear)
     {
     }
@@ -65,6 +71,8 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
 
     public function model(array $row): ?Applicant
     {
+        $this->rowNumber++;
+
         // The real header row itself, wherever it lands (row 1 normally, row 2 if the
         // file has a leading sheet-title row above it) - not data, not a section.
         if (trim((string) ($row[0] ?? '')) === '#') {
@@ -88,6 +96,24 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         [$lastName, $firstName] = $this->splitName($fullName);
         $yearLevel = trim((string) ($row[13] ?? ''));
         $classified = AdmissionLevelClassifier::classify($this->currentSection, $yearLevel);
+        $externalAppNo = trim((string) ($row[1] ?? '')) ?: null;
+        $gender = $this->parseGender($row[10] ?? null);
+
+        // Row-level validation (TC-05): a bad row is skipped and reported, not saved with
+        // wrong or defaulted data standing in for what the file didn't actually say.
+        $problem = match (true) {
+            $externalAppNo === null => 'Missing APP. NO. - can\'t tell this applicant apart on a re-import',
+            $gender === null => 'SEX is blank or not recognized (expected Male/Female)',
+            $classified['level'] === 'college' && $classified['college'] === null
+                => 'No section header to classify this row under (file structure problem)',
+            default => null,
+        };
+
+        if ($problem !== null) {
+            $this->errors[] = ['row' => $this->rowNumber, 'name' => $fullName, 'reason' => $problem];
+
+            return null;
+        }
 
         $programOrTrack = trim((string) ($row[12] ?? '')) !== ''
             ? trim((string) $row[12])
@@ -97,8 +123,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         // doc comment) - the same applicant reappears, unchanged or updated (a new exam
         // result, a payment that's now in), on every re-export. Upsert on the portal's
         // own APP. NO. so re-importing refreshes that person instead of duplicating them.
-        $externalAppNo = trim((string) ($row[1] ?? '')) ?: null;
-        $applicant = $externalAppNo ? Applicant::where('external_app_no', $externalAppNo)->first() : null;
+        $applicant = Applicant::where('external_app_no', $externalAppNo)->first();
         $isNew = $applicant === null;
         $applicant ??= new Applicant;
 
@@ -116,7 +141,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
             'college' => $classified['college'],
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'gender' => $this->parseGender($row[10] ?? null),
+            'gender' => $gender,
             'feeder_school' => trim((string) ($row[22] ?? '')) ?: null,
             'school_address' => trim((string) ($row[23] ?? '')) ?: null,
             'school_classification' => trim((string) ($row[24] ?? '')) ?: null,
@@ -165,11 +190,16 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         return [$last, implode(' ', $parts) ?: $last];
     }
 
-    protected function parseGender(mixed $value): string
+    /** Null when SEX isn't a recognizable Male/Female value - model() reports that as a bad row. */
+    protected function parseGender(mixed $value): ?string
     {
         $v = strtoupper(trim((string) $value));
 
-        return str_starts_with($v, 'F') ? 'female' : 'male';
+        return match (true) {
+            str_starts_with($v, 'M') => 'male',
+            str_starts_with($v, 'F') => 'female',
+            default => null,
+        };
     }
 
     /** "Yes", "Yes-", "No", blank, case-insensitive -> bool. Blank is treated as No. */

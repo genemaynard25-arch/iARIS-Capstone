@@ -156,6 +156,9 @@
                             <span class="d-block small fw-bold text-truncate">{{ $batch->original_filename }}</span>
                             <span class="d-block small text-body-secondary">By {{ $batch->uploader ?? 'Unknown user' }} · {{ \Illuminate\Support\Carbon::parse($batch->created_at)->format('M j, Y · g:i A') }}</span>
                             <span class="badge rounded-pill bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis mt-1">{{ $label }}</span>
+                            @if ($batch->error_count)
+                                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis mt-1">{{ $batch->error_count }} skipped</span>
+                            @endif
                         </span>
                     </a>
                 @empty

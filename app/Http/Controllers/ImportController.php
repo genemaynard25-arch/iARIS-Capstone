@@ -43,16 +43,25 @@ class ImportController extends Controller
             'status' => 'processing',
         ]);
 
-        Excel::import(new ApplicantsImport($batch, $validated['school_year']), $request->file('file'));
+        $import = new ApplicantsImport($batch, $validated['school_year']);
+        Excel::import($import, $request->file('file'));
 
-        $batch->update(['status' => 'completed']);
+        $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
+        $errorCount = count($import->errors);
 
-         $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
-            \App\Models\AuditLog::record(
-                'import',
-                'Import Data',
-                'Data Import',
-                "Imported **{$batch->original_filename}** — **{$rowCount} records** added",
+        $batch->update([
+            'status' => 'completed',
+            'row_count' => $rowCount,
+            'error_count' => $errorCount,
+            'errors' => $import->errors ?: null,
+        ]);
+
+        \App\Models\AuditLog::record(
+            'import',
+            'Import Data',
+            'Data Import',
+            "Imported **{$batch->original_filename}** — **{$rowCount} records** added"
+                . ($errorCount ? ", **{$errorCount} row" . ($errorCount === 1 ? '' : 's') . " skipped**" : ''),
         );
 
         return redirect("/import/{$batch->id}");

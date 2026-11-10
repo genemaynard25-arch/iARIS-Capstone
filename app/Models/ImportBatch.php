@@ -12,8 +12,17 @@ class ImportBatch extends Model
         'uploaded_by',
         'original_filename',
         'row_count',
+        'error_count',
+        'errors',
         'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'errors' => 'array',
+        ];
+    }
 
     // The applicants this upload saved
     public function applicants(): \Illuminate\Database\Eloquent\Relations\HasMany

@@ -16,6 +16,9 @@
                 <div class="fw-bold">Import complete</div>
                 <div class="small text-body-secondary">
                     {{ $applicants->count() }} {{ Str::plural('applicant', $applicants->count()) }} imported from "{{ $batch->original_filename }}".
+                    @if ($batch->error_count)
+                        <span class="text-warning-emphasis fw-semibold">{{ $batch->error_count }} {{ Str::plural('row', $batch->error_count) }} skipped</span> - see below.
+                    @endif
                 </div>
             </div>
             <div class="d-flex gap-2">
@@ -24,6 +27,35 @@
             </div>
         </div>
     </div>
+
+    @if ($batch->error_count)
+        <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-4 border-warning">
+            <div class="card-body p-4">
+                <h2 class="fs-6 fw-bold mb-1"><i class="bi bi-exclamation-triangle text-warning me-1"></i> Rows that weren't imported ({{ $batch->error_count }})</h2>
+                <p class="small text-body-secondary mb-3">These rows had a problem the file itself needs fixed - nothing was guessed or defaulted on your behalf. Fix them in the source file and re-import.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 small">
+                        <thead>
+                            <tr class="text-uppercase text-nowrap">
+                                <th class="text-body-secondary fw-bold">Row</th>
+                                <th class="text-body-secondary fw-bold">Name</th>
+                                <th class="text-body-secondary fw-bold">Problem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($batch->errors as $error)
+                                <tr>
+                                    <td>{{ $error['row'] }}</td>
+                                    <td>{{ $error['name'] ?: '—' }}</td>
+                                    <td>{{ $error['reason'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-4">
