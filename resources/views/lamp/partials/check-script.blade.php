@@ -51,13 +51,11 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Could not save the LAMP check.');
-                x.lamp = data.lamp;
-                x.at = data.at;
-                x.iato_status = data.iato_status;
-                toast(a === 'undo' ? 'LAMP check undone and saved.' : 'LAMP check saved. Awaiting IATO confirmation.');
+                toast('Submitted to Super Admin review queue: ' + data.review_number);
                 const el = document.getElementById('checkDrawer');
                 if (el) bootstrap.Offcanvas.getOrCreateInstance(el).hide();
                 listeners.forEach(fn => fn());
+
             } catch (error) {
                 toast(error.message || 'Could not save the check. Please try again.');
             } finally {
