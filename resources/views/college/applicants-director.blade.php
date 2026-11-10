@@ -5,7 +5,6 @@
     a switch between iPACE and ETEEAP (?unit=eteeap), the unit's tiles, filters and table, and a drawer per applicant.
       iPACE:  delivery mode, year level, working student and employer
       ETEEAP: age, highest education, work experience, portfolio and competency assessment ("For Assessment" instead of "For Exam")
-    "Download list" saves the rows you see as a CSV file.
 --}}
 
 @php
@@ -21,15 +20,16 @@
 @section('page-title', 'Applicants')
 @section('page-subtitle', $unit . ' applicants for AY ' . \App\Support\ApplicantRecords::academicYear() . ($isEteeap ? ', with education, work experience, and portfolio assessment' : ', with delivery mode and working-student details') . ' · View only')
 
+@include('partials.director-workspace', ['directorPage' => 'applicants', 'directorLabel' => 'Applicants'])
+
 @section('content')
-    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
-        <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
-        <button type="button" class="btn btn-sm btn-primary fw-semibold" id="downloadButton"><i class="bi bi-download me-1"></i> Download list</button>
-    </div>
+    @unless ($isEteeap)
+        <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>iPACE preview records · Applicant imports are not connected for this unit yet.</p>
+    @endunless
 
     {{-- iPACE or ETEEAP --}}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body d-flex flex-wrap align-items-center gap-2 px-4 py-3">
+        <div class="director-unit-tabs card-body d-flex flex-wrap align-items-center gap-2 px-4 py-3">
             <span class="small fw-bold text-body-secondary me-1">Program type:</span>
             @foreach ($switch as $name => [$href, $note])
                 <a href="{{ $href }}" class="btn {{ $unit === $name ? 'btn-primary' : 'btn-outline-secondary' }} text-start px-3 py-2" @if ($unit === $name) aria-current="page" @endif>
@@ -40,7 +40,7 @@
         </div>
     </div>
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4" id="tiles"></div>
+    <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="tiles"></div>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-bottom rounded-top-4 d-flex flex-wrap align-items-center gap-2 p-3">
@@ -68,7 +68,15 @@
                     <option>Blended</option>
                 </select>
             @endif
-            <div class="d-flex flex-wrap gap-1 ms-lg-auto" id="statusPills" role="group" aria-label="Status"></div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 border-bottom" id="statusPills" role="group" aria-label="Exam result"></div>
+        <div class="director-category-pills d-flex flex-wrap align-items-center gap-2 border-bottom" id="categoryPills" role="group" aria-label="{{ $isEteeap ? 'Program' : 'Delivery mode' }}">
+            <span class="small fw-semibold text-body-secondary">{{ $isEteeap ? 'Program' : 'Delivery Mode' }}:</span>
+            <button class="btn btn-sm btn-primary" type="button" data-category="" aria-pressed="true">All</button>
+            @foreach ($isEteeap ? array_keys($unitPrograms) : ['Online', 'Blended'] as $category)
+                <button class="btn btn-sm btn-light border" type="button" data-category="{{ $category }}" aria-pressed="false">{{ $isEteeap ? (explode('-', $category, 2)[1] ?? $category) : $category }}</button>
+            @endforeach
         </div>
 
         <div class="table-responsive">
@@ -87,8 +95,8 @@
                             <th class="text-body-secondary fw-bold">Year level</th>
                             <th class="text-body-secondary fw-bold">Working student</th>
                         @endif
-                        <th class="text-body-secondary fw-bold">Status</th>
-                        <th class="pe-4 text-body-secondary fw-bold">Updated</th>
+                        <th scope="col">Exam Fee</th><th scope="col">Exam Result</th><th scope="col">Reservation</th>
+                        <th class="pe-4 text-body-secondary fw-bold">{{ $isEteeap ? 'Updated' : 'Date Applied' }}</th>
                     </tr>
                 </thead>
                 <tbody id="rows"></tbody>
@@ -116,7 +124,7 @@
         const PROGRAMS = @json($unitPrograms);
         const ROWS = @json($rows);
         const STATUSES = ['Pending', @json($middle), 'Paid'];
-        const TONES = { Pending: 'danger', 'For Exam': 'warning', 'For Assessment': 'warning', Paid: 'primary' };
+        const TONES = { Pending: 'danger', 'For Exam': 'warning', 'For Assessment': 'warning', Passed: 'primary', 'Not Qualified': 'secondary', Paid: 'primary' };
         const ASSESS = { pending: ['Portfolio pending', 'warning'], submitted: ['Submitted', 'info'], cleared: ['Cleared', 'success'] };
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
@@ -128,29 +136,34 @@
         let status = 'All';
         ROWS.sort((a, b) => b.applied.localeCompare(a.applied));
 
-        // Every applicant in the unit (or one program), by status
-        const totals = code => {
-            const codes = code ? [code] : Object.keys(PROGRAMS);
-            const t = [0, 1, 2].map(i => codes.reduce((s, c) => s + PROGRAMS[c].status[i], 0));
-            return { All: t[0] + t[1] + t[2], [STATUSES[0]]: t[0], [STATUSES[1]]: t[1], [STATUSES[2]]: t[2] };
+        const RESULTS = {
+            not_taken: ['Not yet taken', 'secondary'], passed: ['Pass', 'primary'], failed: ['Fail', 'danger'],
+            waitlisted: ['Waitlisted', 'warning'], reconsidered: ['Reconsidered', 'info'],
+            took_test: ['Awaiting result', 'warning'], qualified_other_degree: ['Qualified (other program)', 'info'], unknown: ['Not recorded', 'secondary'],
         };
-
-        (() => {
-            const t = totals('');
-            $('tiles').innerHTML = [['Total applicants', t.All, 'All programs combined', 'success'], ['Pending', t.Pending, 'Awaiting action', 'danger'],
-                [STATUSES[1], t[STATUSES[1]], ETEEAP ? 'Competency evaluation scheduled' : 'Scheduled', 'warning'], ['Paid', t.Paid, 'Reservation confirmed', 'primary']]
-                .map(([label, n, note, tone]) => `<div class="col"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body">
-                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}">${fm(n)}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
-        })();
+        const examResult = r => r.exam_status || 'unknown';
+        const reserved = r => !!(r.paid || r.amount || r.status === 'Paid');
+        const workYears = r => r.workYears == null ? '—' : r.workYears + ' years';
+        $('tiles').innerHTML = [
+            ['Total applicants', ROWS.length, 'All programs combined', 'primary'],
+            ['Exam fee paid', ROWS.filter(r => r.exam_paid === true).length, 'Updates after online payment', 'primary'],
+            ['Passed', ROWS.filter(r => ['passed', 'reconsidered', 'qualified_other_degree'].includes(examResult(r))).length, 'Pass or Reconsidered', 'purple'],
+            ['Reservation paid', ROWS.filter(reserved).length, 'Ready for enrollment', 'info'],
+        ].map(([label, n, note, tone]) => `<div class="col"><div class="admin-stat-card card border-0 border-top border-3 border-${tone} shadow-sm rounded-4 h-100"><div class="card-body">
+            <div class="small fw-bold text-uppercase tracking-wide text-body-secondary mb-2">${label}</div><div class="fs-3 fw-bold text-${tone}-emphasis">${fm(n)}</div><div class="small text-body-secondary">${note}</div></div></div></div>`).join('');
 
         function shown() {
             const q = $('search').value.trim().toLowerCase(), p = $('programFilter').value, extra = $('extraFilter').value;
-            return ROWS.filter(r => (status === 'All' || r.status === status) && (!p || r.program === p)
+            return ROWS.filter(r => (status === 'All' || examResult(r) === status) && (!p || r.program === p)
                 && (!extra || (ETEEAP ? r.assess === extra : r.mode === extra))
                 && (!q || r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)));
         }
         function draw() {
-            $('statusPills').innerHTML = ['All', ...STATUSES].map(s => `<button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${s}</button>`).join('');
+            $('statusPills').innerHTML = ['All', ...Object.keys(RESULTS).filter(key => !['took_test', 'qualified_other_degree', 'unknown'].includes(key) || ROWS.some(r => examResult(r) === key))].map(s => `<button type="button" class="btn btn-sm fw-semibold ${s === status ? 'btn-primary' : 'btn-outline-secondary'}" data-status="${s}" aria-pressed="${s === status}">${s === 'All' ? 'All' : RESULTS[s][0]}</button>`).join('');
+            $('categoryPills').querySelectorAll('[data-category]').forEach(button => {
+                const active = button.dataset.category === $(ETEEAP ? 'programFilter' : 'extraFilter').value;
+                button.classList.toggle('btn-primary', active); button.classList.toggle('btn-light', !active); button.setAttribute('aria-pressed', active);
+            });
             $('statusPills').querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { status = b.dataset.status; draw(); }));
             const rows = shown();
             $('rows').innerHTML = rows.length ? rows.map(r => `
@@ -158,17 +171,19 @@
                     <td class="ps-4"><div class="fw-semibold">${esc(r.name)}</div><div class="small text-body-secondary">${r.id}</div></td>
                     <td><span class="badge rounded-pill bg-body-tertiary text-body border" title="${esc(PROGRAMS[r.program].name)}">${tag(r.program)}</span></td>
                     ${ETEEAP
-                        ? `<td class="small">${r.age}</td><td class="small">${esc(r.education.split(/ \(| —/)[0])}</td><td class="small text-nowrap">${r.workYears} years</td><td>${pill(...ASSESS[r.assess])}</td>`
+                        ? `<td class="small">${esc(r.age ?? '—')}</td><td class="small">${esc(r.education ?? '—')}</td><td class="small text-nowrap">${workYears(r)}</td><td>${pill(...ASSESS[r.assess])}</td>`
                         : `<td>${pill(r.mode, r.mode === 'Online' ? 'info' : 'secondary')}</td><td class="small">${esc(r.year)}</td><td class="small">${esc(r.working)}</td>`}
-                    <td>${pill(r.status, TONES[r.status])}</td>
-                    <td class="pe-4 small text-body-secondary text-nowrap">${esc(r.updated)}</td>
+                    <td>${pill(r.exam_paid == null ? 'Not recorded' : r.exam_paid ? 'Exam fee paid' : 'Exam fee not paid', r.exam_paid == null ? 'secondary' : r.exam_paid ? 'primary' : 'danger')}</td>
+                    <td>${pill(...(RESULTS[examResult(r)] || RESULTS.unknown))}</td>
+                    <td>${pill(reserved(r) ? 'Reservation paid' : 'Not yet paid', reserved(r) ? 'info' : 'secondary')}</td>
+                    <td class="pe-4 small text-body-secondary text-nowrap">${esc(ETEEAP ? r.updated : longDate(r.applied))}</td>
                 </tr>`).join('')
-                : `<tr><td colspan="${ETEEAP ? 8 : 7}" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>`;
+                : `<tr><td colspan="${ETEEAP ? 10 : 9}" class="text-center text-body-secondary py-5">No applicants match these filters.</td></tr>`;
             $('rows').querySelectorAll('tr[data-id]').forEach(tr => {
                 tr.addEventListener('click', () => openApplicant(tr.dataset.id));
                 tr.addEventListener('keydown', e => { if (e.key === 'Enter') openApplicant(tr.dataset.id); });
             });
-            $('footer').textContent = `Showing ${rows.length} sample record${rows.length === 1 ? '' : 's'} of ${fm(totals($('programFilter').value)[status])} applicants`;
+            $('footer').textContent = `Showing ${rows.length} of ${ROWS.length} applicant${ROWS.length === 1 ? '' : 's'}${ETEEAP ? '' : ' · Preview records'}`;
         }
 
         // ---- One applicant ----
@@ -185,7 +200,7 @@
             if (ETEEAP) {
                 html += section('Educational background') + table([['Highest educational attainment', r.education]])
                     + section('Employment history') + `<div class="vstack gap-2">${r.work.map(([title, company, period, years]) => `<div class="rounded-3 bg-body-tertiary p-2 small"><div class="fw-semibold">${esc(title)} · ${esc(company)}</div><div class="text-body-secondary">${esc(period)} · ${esc(years)}</div></div>`).join('')}</div>`
-                    + `<div class="small mt-2">Total work experience: <b>${r.workYears} years</b> · Current: ${esc(r.employer)}</div>`
+                    + `<div class="small mt-2">Total work experience: <b>${workYears(r)}</b> · Current: ${esc(r.employer || '—')}</div>`
                     + section('Portfolio and competency assessment') + table([['Portfolio', r.portfolio], ['Assessment', ASSESS[r.assess][0]]]);
             } else {
                 html += section('Employment') + table([['Working student', r.working], ['Employer / position', r.employer]])
@@ -196,17 +211,9 @@
             drawer.show();
         }
 
-        // ---- Download the rows you see ----
-        $('downloadButton').addEventListener('click', () => {
-            const head = ['Applicant No.', 'Name', 'Unit', 'Program', ...(ETEEAP ? ['Age', 'Highest education', 'Work experience', 'Portfolio / assessment'] : ['Delivery mode', 'Year level', 'Working student']), 'Status', 'Date applied', 'Paid on'];
-            const csv = [head, ...shown().map(r => [r.id, r.name, UNIT, PROGRAMS[r.program].name,
-                ...(ETEEAP ? [r.age, r.education, r.workYears + ' years', ASSESS[r.assess][0]] : [r.mode, r.year, r.working]), r.status, longDate(r.applied), r.paid || '—'])]
-                .map(cols => cols.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-            link.download = `${UNIT.toLowerCase()}-applicants.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+        $('categoryPills').addEventListener('click', event => {
+            const button = event.target.closest('[data-category]'); if (!button) return;
+            $(ETEEAP ? 'programFilter' : 'extraFilter').value = button.dataset.category; draw();
         });
 
         $('search').addEventListener('input', draw);

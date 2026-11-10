@@ -13,15 +13,24 @@
 @section('title', 'iARIS — Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', "{$label} admissions and enrollment, with AI-generated insights")
+@unless (auth()->user()->isDirector())
 @section('body-class', 'analytics-page')
+@endunless
 @push('styles')
     <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
 @endpush
 
 {{-- Like the admin page's "Generate from this view": the one action, top right --}}
 @section('page-actions')
+    @if (auth()->user()->isDirector())
+        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
+    @endif
     <button type="button" class="ar-generate-view btn btn-primary fw-semibold no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i> Export PDF</button>
 @endsection
+
+@if (auth()->user()->isDirector())
+    @include('partials.director-workspace', ['directorPage' => 'analytics', 'directorLabel' => 'Analytics'])
+@endif
 
 @section('content')
     {{-- Same id as the Executive Analytics, so "Export PDF" prints every tab (iaris.css section 9) --}}
@@ -96,10 +105,33 @@
                 <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Generated automatically from iARIS data for {{ $label }}. They describe past patterns and are not guarantees.</p>
             </div>
         </div>
+            @if (auth()->user()->isDirector())
+            <section class="card border-0 shadow-sm rounded-4 mt-4" aria-labelledby="directorComparisonTitle">
+                <div class="card-body p-4">
+                    <h2 class="fs-6 fw-bold" id="directorComparisonTitle">Current vs previous school year</h2>
+                    <p class="small text-body-secondary">Imported applicant counts for iPACE and ETEEAP. Missing prior-year data is shown as unavailable.</p>
+                    <div class="director-comparison-chart"><canvas id="directorYearComparison" role="img" aria-label="Current versus previous school year applicant counts"></canvas></div>
+                </div>
+            </section>
+        @endif
     </div>
 @endsection
 
 @section('scripts')
+    @if (auth()->user()->isDirector())
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            const yearComparison = @json($schoolYearComparison);
+            new Chart(document.getElementById('directorYearComparison'), {
+                type: 'bar',
+                data: { labels: ['iPACE', 'ETEEAP'], datasets: [
+                    { label: yearComparison.currentLabel, data: yearComparison.current, backgroundColor: '#00674f', borderRadius: 5 },
+                    { label: yearComparison.previousLabel, data: yearComparison.previous, backgroundColor: '#a8d5c5', borderRadius: 5 },
+                ] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            });
+        </script>
+    @endif
     <script>
         const PROGRAMS = @json($programs);
         const YEARS = @json($years);
@@ -107,7 +139,7 @@
         const WORD = @json($word);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
-        const pc = (a, b) => (b - a) / a * 100;
+        const pc = (a, b) => a > 0 ? (b - a) / Math.max(1, a) * 100 : 0;
         const signed = (v, digits = 1, suffix = '%') => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}${suffix}`;
         const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -117,7 +149,7 @@
         const stage = i => CODES.reduce((s, c) => s + PROGRAMS[c].funnel[i], 0);
         const took = stage(1), passed = stage(2), paidNow = stage(3);
         const paidPrev = CODES.reduce((s, c) => s + PROGRAMS[c].paidLastYear, 0);
-        const conv = app.map((a, i) => enr[i] / a * 100);
+        const conv = app.map((a, i) => enr[i] / Math.max(1, a) * 100);
         const dConv = +conv[3].toFixed(1) - +conv[2].toFixed(1);
 
         // ---- Four tiles ----
@@ -155,15 +187,15 @@
             $('funnel').innerHTML = stages.map(([name, n], i) => `
                 <div class="d-flex align-items-center gap-2 small">
                     <span class="fw-semibold" style="width: 76px;">${name}</span>
-                    <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 18px;"><div class="rounded" style="height: 18px; width: ${n / app[3] * 100}%; background: ${shades[i]};"></div></div>
-                    <span class="fw-bold text-end text-nowrap" style="width: 96px;">${fm(n)} · ${(n / app[3] * 100).toFixed(1)}%</span>
+                    <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 18px;"><div class="rounded" style="height: 18px; width: ${n / Math.max(1, app[3]) * 100}%; background: ${shades[i]};"></div></div>
+                    <span class="fw-bold text-end text-nowrap" style="width: 96px;">${fm(n)} · ${(n / Math.max(1, app[3]) * 100).toFixed(1)}%</span>
                 </div>`).join('');
         })();
 
         // ---- Programs: sortable table ----
         // Settings → Display → "Program shown first on Analytics" keeps that program at the top
         const first = window.IARIS_SETTINGS?.display?.unit || '';
-        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, unit: p.unit || '', P, E, D, T, R: D / T * 100, S: T / app[3] * 100 }; });
+        const PR = CODES.map(c => { const p = PROGRAMS[c], [P, E, D] = p.status, T = P + E + D; return { name: p.name, unit: p.unit || '', P, E, D, T, R: D / T * 100, S: T / Math.max(1, app[3]) * 100 }; });
         // The iPACE Director's programs have a unit (iPACE or ETEEAP): add a Unit column
         const hasUnits = PR.some(r => r.unit);
         const columns = [['name', WORD[0].toUpperCase() + WORD.slice(1)], ...(hasUnits ? [['unit', 'Unit']] : []), ['P', 'Pending'], ['E', 'For Exam'], ['D', 'Paid'], ['T', 'Total'], ['R', 'Paid rate'], ['S', 'Share']];

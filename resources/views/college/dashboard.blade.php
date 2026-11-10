@@ -24,11 +24,26 @@
 @section('page-title', "{$greeting}, {$greetName}")
 @section('page-subtitle', ($isChair ? "{$label} · " : '') . $college['subtitle'] . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
 
+@if (auth()->user()->isDirector())
+    @include('partials.director-workspace', ['directorPage' => 'dashboard', 'directorLabel' => 'Briefing'])
+@endif
+
+@if (auth()->user()->isDirector())
+@section('page-actions')
+    <div class="d-flex flex-wrap justify-content-end gap-2 no-print">
+        <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
+        <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>
+    </div>
+@endsection
+@endif
+
 @section('content')
+    @unless (auth()->user()->isDirector())
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
         <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
         <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>
     </div>
+    @endunless
 
     {{-- This week's summary --}}
     <section class="card border-0 shadow-sm rounded-4 bg-iaris text-white mb-4" aria-label="Summary">
@@ -173,7 +188,7 @@
         const CODES = Object.keys(PROGRAMS);
         const $ = id => document.getElementById(id);
         const fm = n => Math.round(n).toLocaleString('en-US');
-        const pc = (a, b) => (b - a) / a * 100;
+        const pc = (a, b) => a > 0 ? (b - a) / Math.max(1, a) * 100 : 0;
         const signed = (v, digits = 1, suffix = '%') => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}${suffix}`;
         const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -186,11 +201,11 @@
         const paidPrev = CODES.reduce((s, c) => s + PROGRAMS[c].paidLastYear, 0);
         // Paid reservations for the two years before last are not in the data yet: estimated for the sparkline only
         const paid = [Math.round(paidPrev * 0.86), Math.round(paidPrev * 0.93), paidPrev, paidNow];
-        const conv = app.map((a, i) => enr[i] / a * 100);
+        const conv = app.map((a, i) => enr[i] / Math.max(1, a) * 100);
         const dApp = pc(app[2], app[3]), dPaid = pc(paidPrev, paidNow), dEnr = pc(enr[2], enr[3]);
         const dConv = +conv[3].toFixed(1) - +conv[2].toFixed(1);
         // Programs, largest first; t = applicants this AY
-        const rows = CODES.map(c => { const p = PROGRAMS[c], t = p.applicants[3]; return { c, name: nameOf(c), s: p.status, t, pending: p.status[0] / t * 100, paidRate: p.status[2] / t * 100 }; })
+        const rows = CODES.map(c => { const p = PROGRAMS[c], t = p.applicants[3]; return { c, name: nameOf(c), s: p.status, t, pending: p.status[0] / Math.max(1, t) * 100, paidRate: p.status[2] / Math.max(1, t) * 100 }; })
             .sort((a, b) => b.t - a.t);
 
         // ---- Summary ----
@@ -240,7 +255,7 @@
         // Pending / For Exam / Paid as one stacked bar
         const statusBar = s => {
             const t = s[0] + s[1] + s[2];
-            return `<div class="progress-stacked" style="height: 8px;">${[[s[0], '#E8A0A0', 'Pending'], [s[1], '#F0C27B', 'For Exam'], [s[2], '#2558D9', 'Paid']].map(([n, c, l]) => `<div class="progress" style="width: ${n / t * 100}%; height: 8px;" title="${l}: ${fm(n)}"><div class="progress-bar" style="background: ${c};"></div></div>`).join('')}</div>`;
+            return `<div class="progress-stacked" style="height: 8px;">${[[s[0], '#E8A0A0', 'Pending'], [s[1], '#F0C27B', 'For Exam'], [s[2], '#2558D9', 'Paid']].map(([n, c, l]) => `<div class="progress" style="width: ${n / Math.max(1, t) * 100}%; height: 8px;" title="${l}: ${fm(n)}"><div class="progress-bar" style="background: ${c};"></div></div>`).join('')}</div>`;
         };
         // A 4-year line, labelled
         function line(values, color, label) {
@@ -262,7 +277,7 @@
 
         // ---- Needs your attention ----
         const stages = [['Applied', app[3]], ['Took exam', took], ['Passed', passed], ['Paid', paidNow], ['Enrolled', enr[3]]];
-        const lost = stages.slice(1).map((st, k) => [`${stages[k][0]} → ${st[0]}`, stages[k][1] - st[1], (stages[k][1] - st[1]) / stages[k][1] * 100]);
+        const lost = stages.slice(1).map((st, k) => [`${stages[k][0]} → ${st[0]}`, stages[k][1] - st[1], (stages[k][1] - st[1]) / Math.max(1, stages[k][1]) * 100]);
         const biggest = lost.reduce((a, b) => b[2] > a[2] ? b : a);
         const byPending = rows.slice().sort((a, b) => b.pending - a.pending);
         const ATTENTION = [
@@ -282,7 +297,7 @@
                         // With units: conversion per unit, last AY and this AY
                         + (UNITS.length > 1 ? section('By unit') + table(['Unit', YEARS[2], YEARS[3]], UNITS.map(u => {
                             const codes = CODES.filter(c => PROGRAMS[c].unit === u), sum = (k, i) => codes.reduce((x, c) => x + PROGRAMS[c][k][i], 0);
-                            return [u, (sum('enrolled', 2) / sum('applicants', 2) * 100).toFixed(1) + '%', (sum('enrolled', 3) / sum('applicants', 3) * 100).toFixed(1) + '%'];
+                            return [u, (sum('enrolled', 2) / Math.max(1, sum('applicants', 2)) * 100).toFixed(1) + '%', (sum('enrolled', 3) / Math.max(1, sum('applicants', 3)) * 100).toFixed(1) + '%'];
                         })) : ''));
                 },
             },
@@ -292,8 +307,8 @@
                 text: `${biggest[0]} is your biggest drop: ${fm(biggest[1])} applicants (${biggest[2].toFixed(1)}%).`,
                 open() {
                     const rates = rows.map(r => [r.name, r.paidRate]).sort((a, b) => a[1] - b[1]);
-                    openDrawer(this.title, `${YEARS[3]} · ${((passed - paidNow) / passed * 100).toFixed(1)}% of ${fm(passed)} who passed`,
-                        stats([['Passed', fm(passed)], ['Paid', fm(paidNow)], ['Not yet paid', fm(passed - paidNow), 'danger'], ['Pass → paid', (paidNow / passed * 100).toFixed(1) + '%']])
+                    openDrawer(this.title, `${YEARS[3]} · ${((passed - paidNow) / Math.max(1, passed) * 100).toFixed(1)}% of ${fm(passed)} who passed`,
+                        stats([['Passed', fm(passed)], ['Paid', fm(paidNow)], ['Not yet paid', fm(passed - paidNow), 'danger'], ['Pass → paid', (paidNow / Math.max(1, passed) * 100).toFixed(1) + '%']])
                         + section('What happened') + facts([
                             `<b>${biggest[0]}</b> is where you lose the most applicants: ${fm(biggest[1])} (${biggest[2].toFixed(1)}%).`,
                             ...(rates.length > 1 ? [`<b>${esc(rates[0][0])}</b> has the lowest paid rate (${rates[0][1].toFixed(1)}% of its applicants). <b>${esc(rates.at(-1)[0])}</b> has the highest (${rates.at(-1)[1].toFixed(1)}%).`] : []),
@@ -312,7 +327,7 @@
                         stats([['Pending', fm(top.s[0]), 'danger'], ['For Exam', fm(top.s[1])], ['Paid', fm(top.s[2])], ['Total', fm(top.t)]])
                         + section('What happened') + facts([
                             `<b>${esc(top.name)}</b> has ${top.pending.toFixed(1)}% of its applicants still Pending${CODES.length > 1 ? `, the highest among your ${WORD}s` : ''}.`,
-                            ...(CODES.length > 1 ? [`Across all your ${WORD}s, ${fm(allPending)} applicants are still Pending (${(allPending / app[3] * 100).toFixed(1)}%).`] : []),
+                            ...(CODES.length > 1 ? [`Across all your ${WORD}s, ${fm(allPending)} applicants are still Pending (${(allPending / Math.max(1, app[3]) * 100).toFixed(1)}%).`] : []),
                             'Pending means the application is in but no exam is scheduled yet. IATO schedules exams; ask them if a ' + WORD + ' needs more slots.'])
                         + section(`Pending share by ${WORD}`) + bars(byPending.map(r => [r.name, r.pending]), v => v.toFixed(1) + '%', '#E8A0A0')
                         + section(`All ${WORD}s`) + table([WORD[0].toUpperCase() + WORD.slice(1), 'Pending', 'For Exam', 'Paid'], rows.map(r => [esc(r.name), fm(r.s[0]), fm(r.s[1]), fm(r.s[2])])),
@@ -343,7 +358,7 @@
             <div class="col">
                 <button type="button" class="card border-0 shadow-sm rounded-4 h-100 w-100 text-start" data-program="${c}" aria-label="Open ${esc(p.name)}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between gap-2"><div><div class="fw-bold">${esc(p.name)}</div><div class="small text-body-secondary">${(t / app[3] * 100).toFixed(1)}% of your applicants</div></div><span class="small fw-semibold text-primary text-nowrap">Details →</span></div>
+                        <div class="d-flex justify-content-between gap-2"><div><div class="fw-bold">${esc(p.name)}</div><div class="small text-body-secondary">${(t / Math.max(1, app[3]) * 100).toFixed(1)}% of your applicants</div></div><span class="small fw-semibold text-primary text-nowrap">Details →</span></div>
                         <div class="fs-4 fw-bold my-1">${fm(t)}</div>
                         <div class="mb-2">${statusBar(s)}</div>
                         <div class="d-flex justify-content-between small text-body-secondary"><span>Pending <b class="text-body">${fm(s[0])}</b></span><span>For Exam <b class="text-body">${fm(s[1])}</b></span><span>Paid <b class="text-body">${fm(s[2])}</b></span></div>
@@ -354,13 +369,13 @@
         document.querySelectorAll('[data-program]').forEach(b => b.addEventListener('click', () => {
             const c = b.dataset.program, p = PROGRAMS[c], s = p.status, t = p.applicants[3];
             const rank = rows.findIndex(r => r.c === c) + 1;
-            openDrawer(p.name, `${p.unit || LABEL} · ${(t / app[3] * 100).toFixed(1)}% of your applicants · ${YEARS[3]}`,
+            openDrawer(p.name, `${p.unit || LABEL} · ${(t / Math.max(1, app[3]) * 100).toFixed(1)}% of your applicants · ${YEARS[3]}`,
                 stats([['Applicants', fm(t)], ['Pending', fm(s[0])], ['For Exam', fm(s[1])], ['Paid', fm(s[2])]])
                 + section('Status') + statusBar(s)
-                + `<div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2"><span><i class="bi bi-square-fill me-1" style="color:#E8A0A0"></i>Pending ${(s[0] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#F0C27B"></i>For Exam ${(s[1] / t * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#2558D9"></i>Paid ${(s[2] / t * 100).toFixed(1)}%</span></div>`
+                + `<div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2"><span><i class="bi bi-square-fill me-1" style="color:#E8A0A0"></i>Pending ${(s[0] / Math.max(1, t) * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#F0C27B"></i>For Exam ${(s[1] / Math.max(1, t) * 100).toFixed(1)}%</span><span><i class="bi bi-square-fill me-1" style="color:#2558D9"></i>Paid ${(s[2] / Math.max(1, t) * 100).toFixed(1)}%</span></div>`
                 + (CODES.length > 1 ? section(`Compared with your other ${WORD}s`) + facts([
                     `Rank <b>#${rank}</b> of ${CODES.length} by applicants.`,
-                    `Paid rate <b>${(s[2] / t * 100).toFixed(1)}%</b> vs ${(paidNow / app[3] * 100).toFixed(1)}% for ${WHOLE.startsWith('your ') ? 'your whole ' + WHOLE.slice(5) : 'all of ' + WHOLE}.`]) : '')
+                    `Paid rate <b>${(s[2] / Math.max(1, t) * 100).toFixed(1)}%</b> vs ${(paidNow / Math.max(1, app[3]) * 100).toFixed(1)}% for ${WHOLE.startsWith('your ') ? 'your whole ' + WHOLE.slice(5) : 'all of ' + WHOLE}.`]) : '')
                 + section('Applicants over four years') + line(p.applicants, '#00674F', fm),
                 // The iPACE Director's Applicants page shows one unit at a time
                 ['See applicants', `${APPLICANTS}?${p.unit === 'ETEEAP' ? 'unit=eteeap&' : ''}program=${encodeURIComponent(c)}`]);

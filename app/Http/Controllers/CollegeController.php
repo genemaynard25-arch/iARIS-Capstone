@@ -237,11 +237,12 @@ class CollegeController extends Controller
     private static function realPrograms(string $collegeCode, array $programs): array
     {
         $level = self::levelFor($collegeCode);
-        $applicants = \App\Models\Applicant::where('level', $level)->get();
+        $applicants = \App\Models\Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])->get();
 
         $result = [];
         foreach ($programs as $code => $p) {
             $matched = $applicants->filter(fn ($a) => self::inGroup($a, $p));
+            if ($collegeCode === 'IPACE') $matched = $matched->where('level', $p['unit'] === 'ETEEAP' ? 'eteeap' : 'ipace');
             $submitted = $matched->count();
             $tookExam = $matched->where('admission_test_status', '!=', 'not_taken')->count();
             $passed = $matched->where('admission_test_status', 'passed')->count();
@@ -417,14 +418,18 @@ class CollegeController extends Controller
         if (auth()->user()->isDirector()) {
             $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';
             $programs = array_filter($common['programs'], fn ($p) => $p['unit'] === $unit);
+            $datasets = self::directorApplicants();
+            foreach ($datasets[$unit] as $row) {
+                $programs[$row['program']] ??= ['name' => $row['program_name'] ?? $row['program'], 'unit' => $unit];
+            }
 
             return view('college.applicants-director', $common + [
                 'unit' => $unit,
                 'unitPrograms' => $programs,
                 // Applicants in each unit (for the switch at the top)
-                'unitTotals' => array_map(fn ($u) => array_sum(array_map(fn ($p) => array_sum($p['status']), array_filter($common['programs'], fn ($p) => $p['unit'] === $u))), ['iPACE' => 'iPACE', 'ETEEAP' => 'ETEEAP']),
+                'unitTotals' => array_map('count', $datasets),
                 'selected' => isset($programs[$request->query('program')]) ? $request->query('program') : '',
-                'rows' => self::directorApplicants()[$unit],
+                'rows' => $datasets[$unit],
             ]);
         }
 
@@ -437,9 +442,18 @@ class CollegeController extends Controller
     // Analytics: Overview (trend and funnel), Programs, Compare years, AI insights. Worked out by the page from $programs.
     public function analytics()
     {
-        $common = $this->common();
-
-        return view('college.analytics', $common + ['fieldCounts' => self::fieldCounts($common)]);
+        $data = $this->common();
+        if (auth()->user()->isDirector()) {
+            $current = \App\Support\AdmissionStats::currentSchoolYear();
+            $previous = \App\Support\AdmissionStats::previousSchoolYear();
+            $counts = fn ($year) => $year ? array_map(fn ($level) => \App\Models\Applicant::where('school_year', $year)->where('level', $level)->whereNull('archived_at')->count(), ['ipace', 'eteeap']) : [null, null];
+            $data['schoolYearComparison'] = [
+                'currentLabel' => $current ? 'Current SY ' . $current : 'Current SY (no import)',
+                'previousLabel' => $previous ? 'Previous SY ' . $previous : 'Previous SY (unavailable)',
+                'current' => $counts($current), 'previous' => $counts($previous),
+            ];
+        }
+        return view('college.analytics', $data + ['fieldCounts' => self::fieldCounts($data)]);
     }
 
     /**
@@ -474,7 +488,7 @@ class CollegeController extends Controller
             'received' => self::received($common['isChair']),
             // For the "Paid reservations" report: applicants in scope who paid. Real rows never have
             // a 'paid' value (payments aren't tracked yet), so this is honestly empty outside Director.
-            'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'], $a['paid']],
+            'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'] ?? $a['program_name'] ?? $a['program'], $a['paid']],
                 array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::realApplicantsIn($common['programs'], $common['college']['code']), fn ($a) => $a['paid']))),
             // Reports you generated before (kept for 90 days)
             'history' => [['template' => 'programs', 'period' => 'AY 2025–26', 'at' => 'Jun 5, 2026 · 10:12 AM']],
@@ -530,10 +544,31 @@ class CollegeController extends Controller
     }
 
     /**
-     * The iPACE Director's sample applicants (as in the mockups), per unit. 'program' is a code in COLLEGES['IPACE'].
+     * Director applicants: iPACE preview records and imported ETEEAP records.
      * iPACE: delivery mode, year level, working student, employer. ETEEAP: age, education, work history, portfolio.
      */
     private static function directorApplicants(): array
+    {
+        $preview = self::directorPreviewApplicants();
+        $preview['iPACE'] = array_map(fn ($row) => $row + ['preview' => true, 'exam_status' => $row['status'] === 'Paid' ? 'passed' : 'not_taken', 'exam_paid' => null], $preview['iPACE']);
+        $preview['ETEEAP'] = array_map(function ($a) {
+            $assessment = match ($a['program']) { 'Cleared' => 'cleared', 'Submitted' => 'submitted', default => 'pending' };
+            return [
+                'id' => $a['id'], 'name' => trim($a['last'] . ', ' . $a['first']),
+                'program' => 'E-' . $a['group'], 'program_name' => $a['program_label'],
+                'age' => $a['age'], 'education' => $a['education'], 'workYears' => null, 'work' => [],
+                'employer' => null, 'assess' => $assessment, 'portfolio' => $a['program'],
+                'status' => $a['status'] === 'For Exam' ? 'For Assessment' : $a['status'],
+                'applied' => $a['applied'], 'updated' => $a['updated'], 'dob' => $a['dob'],
+                'gender' => $a['gender'], 'email' => $a['email'], 'phone' => $a['contact'], 'address' => $a['address'],
+                'paid' => $a['paid'], 'amount' => $a['amount'] === null ? null : '₱' . number_format($a['amount'], 2),
+                'exam_status' => $a['exam_status'], 'exam_paid' => $a['exam_paid'], 'preview' => false,
+            ];
+        }, \App\Support\ApplicantRecords::forLevel('eteeap'));
+        return $preview;
+    }
+
+    private static function directorPreviewApplicants(): array
     {
         $paid = fn ($on, $amount) => ['paid' => $on, 'amount' => $amount];
 
@@ -555,34 +590,7 @@ class CollegeController extends Controller
                     'dob' => 'February 14, 2000', 'gender' => 'Male', 'email' => 'aj.ramos@dlsl.edu.ph', 'phone' => '0919 700 3333', 'address' => 'Tanauan City, Batangas',
                     'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'May 28, 10:00 AM', 'exam' => 'Jun 8, 2026 · 8:00 AM'] + $paid('May 28, 2026', '₱2,000.00'),
             ],
-            // assess: pending (portfolio not yet submitted), submitted (being assessed) or cleared. work: [title, company, period, years]
-            'ETEEAP' => [
-                ['id' => 'APP-2026-E005', 'name' => 'Villanueva, Dario Cortez M.', 'program' => 'E-BSHRM', 'age' => 39, 'dob' => 'June 17, 1987', 'gender' => 'Male',
-                    'email' => 'dc.villanueva@dlsl.edu.ph', 'phone' => '0921 555 6666', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS HRM — DLSL, 2006, incomplete)',
-                    'workYears' => 16, 'employer' => 'Dusit Thani Manila · Food & Beverage Supervisor', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 4, 2026',
-                    'work' => [['F&B Supervisor', 'Dusit Thani Manila', '2015 – Present', '9 years'], ['Head Waiter', 'Crimson Hotel Filinvest City', '2009 – 2015', '6 years']],
-                    'status' => 'For Assessment', 'applied' => '2026-05-10', 'updated' => 'Jun 4, 11:00 AM'] + $paid(null, null),
-                ['id' => 'APP-2026-E004', 'name' => 'Santos, Loreta Manalo A.', 'program' => 'E-BSN', 'age' => 35, 'dob' => 'September 4, 1991', 'gender' => 'Female',
-                    'email' => 'lm.santos@dlsl.edu.ph', 'phone' => '0920 444 5555', 'address' => 'Tanauan City, Batangas', 'education' => 'High School Graduate — Tanauan City National High School, 2008',
-                    'workYears' => 10, 'employer' => 'Adventist Medical Center · Senior Nursing Aide', 'assess' => 'pending', 'portfolio' => 'Not yet submitted',
-                    'work' => [['Senior Nursing Aide', 'Adventist Medical Center', '2016 – Present', '8 years'], ['Caregiver', 'Mabini Medical Center', '2014 – 2016', '2 years']],
-                    'status' => 'Pending', 'applied' => '2026-05-14', 'updated' => 'May 14, 3:30 PM'] + $paid(null, null),
-                ['id' => 'APP-2026-E002', 'name' => 'Dela Cruz, Maricel Santos B.', 'program' => 'E-BEED', 'age' => 42, 'dob' => 'July 8, 1984', 'gender' => 'Female',
-                    'email' => 'ms.delacruz@dlsl.edu.ph', 'phone' => '0918 222 3333', 'address' => 'Batangas City, Batangas', 'education' => 'High School Graduate — Batangas National High School, 2001',
-                    'workYears' => 18, 'employer' => 'DepEd Batangas · Paraprofessional Teacher', 'assess' => 'submitted', 'portfolio' => 'Submitted — Jun 3, 2026',
-                    'work' => [['Paraprofessional Teacher', 'DepEd Batangas', '2006 – Present', '18 years'], ['Daycare Teacher', "City Gov't of Batangas", '2003 – 2006', '3 years']],
-                    'status' => 'For Assessment', 'applied' => '2026-05-07', 'updated' => 'Jun 3, 2:00 PM'] + $paid(null, null),
-                ['id' => 'APP-2026-E003', 'name' => 'Reyes, Ernesto Datu C.', 'program' => 'E-BSBA', 'age' => 45, 'dob' => 'January 20, 1981', 'gender' => 'Male',
-                    'email' => 'ed.reyes@dlsl.edu.ph', 'phone' => '0919 333 4444', 'address' => 'San Jose, Batangas', 'education' => '3 Years College (BS Commerce — Lyceum of the Philippines, 1999, incomplete)',
-                    'workYears' => 22, 'employer' => 'Jollibee Foods Corporation · Area Manager', 'assess' => 'cleared', 'portfolio' => 'Submitted — May 30, 2026',
-                    'work' => [['Area Manager', 'Jollibee Foods Corporation', '2010 – Present', '14 years'], ['Store Manager', "McDonald's Philippines", '2003 – 2010', '7 years']],
-                    'status' => 'Paid', 'applied' => '2026-05-05', 'updated' => 'Jun 1, 10:00 AM'] + $paid('Jun 1, 2026', '₱2,500.00'),
-                ['id' => 'APP-2026-E001', 'name' => 'Pascual, Roberto Miguel A.', 'program' => 'E-BSIT', 'age' => 38, 'dob' => 'March 12, 1988', 'gender' => 'Male',
-                    'email' => 'rm.pascual@dlsl.edu.ph', 'phone' => '0917 111 2222', 'address' => 'Lipa City, Batangas', 'education' => '2 Years College (BS Computer Engineering — DLSL, 2007, incomplete)',
-                    'workYears' => 14, 'employer' => 'Philippine Long Distance Telephone Co. · IT Specialist', 'assess' => 'cleared', 'portfolio' => 'Submitted — Jun 1, 2026',
-                    'work' => [['IT Specialist', 'PLDT', '2012 – Present', '12 years'], ['IT Support Technician', 'Globe Telecom', '2009 – 2012', '3 years']],
-                    'status' => 'Paid', 'applied' => '2026-05-03', 'updated' => 'Jun 2, 9:00 AM'] + $paid('Jun 2, 2026', '₱2,500.00'),
-            ],
+
         ];
     }
 

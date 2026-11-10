@@ -26,16 +26,22 @@
 @section('title', 'iARIS — Reports')
 @section('page-title', 'Reports')
 @section('page-subtitle', "Reports IATO sends you, and reports you generate for {$label}")
+@unless (auth()->user()->isDirector())
 @section('body-class', 'analytics-page')
+@endunless
 @push('styles')
     <link href="{{ asset('css/analytics.css') }}" rel="stylesheet">
 @endpush
 
+@if (auth()->user()->isDirector())
+    @include('partials.director-workspace', ['directorPage' => 'reports', 'directorLabel' => 'Reports'])
+@endif
+
 @section('content')
     {{-- From IATO --}}
-    <div class="ar-report-section mb-3">
-        <h2 class="fs-6 fw-bold mb-0">From IATO</h2>
-        <p class="text-body-secondary mb-0">Open a report to read or download it. Questions go to Messages.</p>
+    <div class="{{ auth()->user()->isDirector() ? 'd-flex flex-wrap align-items-baseline gap-2 mb-2 director-report-heading' : 'ar-report-section mb-3' }}">
+        <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-inbox text-primary me-1"></i> From IATO</h2>
+        <span class="small text-body-secondary">Open a report to read or download it. Questions go to Messages.</span>
     </div>
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="list-group list-group-flush rounded-4" id="received"></div>
