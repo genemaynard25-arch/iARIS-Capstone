@@ -25,6 +25,7 @@ use App\Http\Controllers\LawRecordController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\ReviewQueueController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\SettingsController;
@@ -208,3 +209,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/lamp/reports/{report}/read', [LampReportController::class, 'show'])->name('lamp-reports.read');
     Route::get('/lamp/reports/{report}/download', [LampReportController::class, 'download'])->name('lamp-reports.download');
 });
+
+Route::post('/analytics/reports/generate', [ReportExportController::class, 'generate'])->middleware(['auth', 'module:reports'])->name('reports.generate');
+Route::get('/analytics/reports/generated/{report}', [ReportExportController::class, 'download'])->middleware(['auth', 'module:reports'])->name('reports.generated.download');
+
+Route::get('/analytics/reports/{key}/preview', [ReportExportController::class, 'preview'])->middleware(['auth', 'module:reports'])->name('reports.preview');

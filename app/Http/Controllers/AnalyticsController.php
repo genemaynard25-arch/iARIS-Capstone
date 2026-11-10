@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Applicant;
 use App\Models\CachedInsight;
 use App\Services\AiAssistant;
+use App\Support\AddressClassifier;
 use App\Support\AdmissionStats;
+use App\Support\AnalyticsFilterData;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
@@ -34,14 +37,14 @@ class AnalyticsController extends Controller
             ],
             [
                 'label' => 'Exam pass rate',
-                'value' => number_format($summary['passRateCurrent'], 1) . '%',
+                'value' => number_format($summary['passRateCurrent'], 1).'%',
                 'change' => $this->ptsChange($summary['passRateCurrent'], $summary['passRatePrevious']),
                 'good' => $summary['passRateCurrent'] >= $summary['passRatePrevious'],
                 'tone' => 'info',
             ],
             [
                 'label' => 'Conversion rate',
-                'value' => number_format($summary['conversionRateCurrent'], 1) . '%',
+                'value' => number_format($summary['conversionRateCurrent'], 1).'%',
                 'change' => $this->ptsChange($summary['conversionRateCurrent'], $summary['conversionRatePrevious']),
                 'good' => $summary['conversionRateCurrent'] >= $summary['conversionRatePrevious'],
                 'tone' => 'warning',
@@ -98,7 +101,7 @@ class AnalyticsController extends Controller
                     'dept' => $row['level_program'],
                     'current' => $current,
                     'projected' => $projected,
-                    'change' => ($change >= 0 ? '+' : '') . number_format($change, 1) . '%',
+                    'change' => ($change >= 0 ? '+' : '').number_format($change, 1).'%',
                     'up' => $change >= 0,
                 ];
             })->values()->all(),
@@ -120,14 +123,13 @@ class AnalyticsController extends Controller
             'aggregateOnlyPage' => $tab !== 'reports',
             'tabs' => $tabs,
             'tab' => $tab,
-            'reportData' => (new ReportController)->data(),
-            'previousReportData' => $user->canAccess('reports') ? (new ReportController)->data('Previous School Year') : null,
+            'reportData' => (new ReportController)->data('Current School Year', $request->query('year')),
             'filters' => [
                 'ranges' => ['This Week', 'This Month', 'This Semester', 'This AY'],
                 'departments' => $rows->pluck('level_program')->unique()->values()->all(),
                 'years' => ['Current SY', 'Previous SY'],
             ],
-            'filterData' => $user->canAccess('analytics') ? \App\Support\AnalyticsFilterData::make() : null,
+            'filterData' => $user->canAccess('analytics') ? AnalyticsFilterData::make() : null,
             'stats' => $stats,
             'charts' => $charts,
             'comparison' => $comparison,
@@ -145,33 +147,33 @@ class AnalyticsController extends Controller
         $rows = AdmissionStats::byLevel()->filter(fn (array $r) => $r['pct_change'] !== null);
 
         $growers = $rows->sortByDesc('pct_change')->take(3)
-            ->map(fn (array $r) => "{$r['level_program']}: " . number_format($r['pct_change'], 1) . '%')
+            ->map(fn (array $r) => "{$r['level_program']}: ".number_format($r['pct_change'], 1).'%')
             ->implode('; ') ?: 'No prior-year data to compare';
         $decliners = $rows->sortBy('pct_change')->take(3)
-            ->map(fn (array $r) => "{$r['level_program']}: " . number_format($r['pct_change'], 1) . '%')
+            ->map(fn (array $r) => "{$r['level_program']}: ".number_format($r['pct_change'], 1).'%')
             ->implode('; ') ?: 'No prior-year data to compare';
 
         $prompt = 'You are analyzing real school admissions data for the IATO office at De La Salle Lipa. '
-            . "Here are the real current numbers:\n"
-            . "- Total applicants: {$summary['overallCurrent']} (previous SY: {$summary['overallPrevious']})\n"
-            . '- Exam pass rate: ' . number_format($summary['passRateCurrent'], 1) . '% (previous SY: ' . number_format($summary['passRatePrevious'], 1) . "%)\n"
-            . '- Conversion rate (applied to reserved): ' . number_format($summary['conversionRateCurrent'], 1) . "%\n"
-            . "- Total enrolled: {$summary['enrolledCurrent']}\n"
-            . "- Biggest growers in applications vs previous SY (level/program: % change): {$growers}\n"
-            . "- Biggest decliners in applications vs previous SY (level/program: % change): {$decliners}\n"
-            . '- Funnel stages (' . implode(' -> ', $summary['funnelLabels']) . '): ' . implode(' -> ', $summary['funnelValues']) . "\n\n"
-            . 'Write 3 short insight cards about this data for a school admissions dashboard. '
-            . 'Respond with ONLY a JSON array, no other text, no markdown, no code fences. '
-            . 'Each array item must be an object with exactly these keys: '
-            . '"type" (a short 1-3 word label), "icon" (a Bootstrap Icons class name like "bi-graph-up-arrow"), '
-            . '"tone" (one of: primary, danger, warning, info), "title" (a short headline), '
-            . '"body" (1-2 sentences), "stat" (a short number/percent string), "statLabel" (what the stat measures), '
-            . '"trend" (1-2 words), "tags" (an array of 1-3 short strings). '
-            . 'Use only the real numbers given above — never invent numbers.';
+            ."Here are the real current numbers:\n"
+            ."- Total applicants: {$summary['overallCurrent']} (previous SY: {$summary['overallPrevious']})\n"
+            .'- Exam pass rate: '.number_format($summary['passRateCurrent'], 1).'% (previous SY: '.number_format($summary['passRatePrevious'], 1)."%)\n"
+            .'- Conversion rate (applied to reserved): '.number_format($summary['conversionRateCurrent'], 1)."%\n"
+            ."- Total enrolled: {$summary['enrolledCurrent']}\n"
+            ."- Biggest growers in applications vs previous SY (level/program: % change): {$growers}\n"
+            ."- Biggest decliners in applications vs previous SY (level/program: % change): {$decliners}\n"
+            .'- Funnel stages ('.implode(' -> ', $summary['funnelLabels']).'): '.implode(' -> ', $summary['funnelValues'])."\n\n"
+            .'Write 3 short insight cards about this data for a school admissions dashboard. '
+            .'Respond with ONLY a JSON array, no other text, no markdown, no code fences. '
+            .'Each array item must be an object with exactly these keys: '
+            .'"type" (a short 1-3 word label), "icon" (a Bootstrap Icons class name like "bi-graph-up-arrow"), '
+            .'"tone" (one of: primary, danger, warning, info), "title" (a short headline), '
+            .'"body" (1-2 sentences), "stat" (a short number/percent string), "statLabel" (what the stat measures), '
+            .'"trend" (1-2 words), "tags" (an array of 1-3 short strings). '
+            .'Use only the real numbers given above — never invent numbers.';
 
-            $raw = trim($ai->askQuestion($prompt));
-            preg_match('/\[[\s\S]*\]/', $raw, $matches);
-            $parsed = isset($matches[0]) ? json_decode($matches[0], true) : null;
+        $raw = trim($ai->askQuestion($prompt));
+        preg_match('/\[[\s\S]*\]/', $raw, $matches);
+        $parsed = isset($matches[0]) ? json_decode($matches[0], true) : null;
 
         $valid = is_array($parsed) && count($parsed) > 0 && collect($parsed)->every(
             fn ($item) => is_array($item) && isset($item['title'], $item['body'])
@@ -197,14 +199,14 @@ class AnalyticsController extends Controller
 
         $change = (($current - $previous) / $previous) * 100;
 
-        return ($change >= 0 ? '+' : '') . number_format($change, 1) . '%';
+        return ($change >= 0 ? '+' : '').number_format($change, 1).'%';
     }
 
     protected function ptsChange(float $current, float $previous): string
     {
         $change = $current - $previous;
 
-        return ($change >= 0 ? '+' : '') . number_format($change, 1) . ' pts';
+        return ($change >= 0 ? '+' : '').number_format($change, 1).' pts';
     }
 
     /** Current school year's applicants, bucketed by address (App\Support\AddressClassifier). */
@@ -212,15 +214,15 @@ class AnalyticsController extends Controller
     {
         $schoolYear = AdmissionStats::currentSchoolYear();
         $counts = $schoolYear
-            ? \App\Models\Applicant::where('school_year', $schoolYear)->whereNull('archived_at')
-                ->get(['address'])->countBy(fn ($a) => \App\Support\AddressClassifier::classify($a->address))
+            ? Applicant::where('school_year', $schoolYear)->whereNull('archived_at')
+                ->get(['address'])->countBy(fn ($a) => AddressClassifier::classify($a->address))
             : collect();
 
         if ($counts->isEmpty()) {
             return ['labels' => ['No location data available'], 'values' => [1]];
         }
 
-        $groups = collect(\App\Support\AddressClassifier::GROUPS)->filter(fn ($g) => $counts->get($g, 0) > 0);
+        $groups = collect(AddressClassifier::GROUPS)->filter(fn ($g) => $counts->get($g, 0) > 0);
 
         return ['labels' => $groups->values()->all(), 'values' => $groups->map(fn ($g) => $counts->get($g, 0))->values()->all()];
     }

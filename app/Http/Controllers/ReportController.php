@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
+use App\Models\LampScholarRecord;
 use App\Support\AdmissionStats;
 use App\Support\AnalyticsFilterData;
+use App\Support\ApplicantRecords;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
@@ -16,9 +19,7 @@ class ReportController extends Controller
         return redirect('/analytics?tab=reports');
     }
 
-    // Real PDF, built from the same data() below - one of the Admissions/Institutional Reports
-    // templates, not the Analytics tab's free-form report builder (still front end only; see
-    // resources/views/analytics/partials/reports-script.blade.php).
+    // Legacy PDF endpoint; saved exports use ReportExportController.
     public function pdf(string $key)
     {
         $validated = request()->validate(['period' => 'nullable|in:Current School Year,Previous School Year']);
@@ -34,34 +35,32 @@ class ReportController extends Controller
             'generatedBy' => auth()->user()->name,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download(Str::slug($report['title']) . '.pdf');
+        return $pdf->download(Str::slug($report['title']).'.pdf');
     }
 
     // The report templates, history and periods. AnalyticsController passes these to the Reports tab.
     // NOTE: the "Admissions Reports" section below has real applicant names/scores — the Reports
     // tab is NOT safe for the AI widget to read (see AnalyticsController::index()'s aggregateOnlyPage).
-    public function data(string $period = 'Current School Year'): array
+    public function data(string $period = 'Current School Year', ?string $selectedYear = null): array
     {
-        $schoolYear = $period === 'Previous School Year' ? AdmissionStats::previousSchoolYear() : AdmissionStats::currentSchoolYear();
-        $byLevel = AdmissionStats::byLevel();
-        if ($period === 'Previous School Year') {
-            $feed = AnalyticsFilterData::make();
-            $yearIndex = array_search($schoolYear, $feed['years'], true);
-            $previousYear = $yearIndex === false ? null : ($feed['years'][$yearIndex + 1] ?? null);
-            $byLevel = collect(AdmissionStats::LEVEL_LABELS)->map(function ($label, $level) use ($feed, $schoolYear, $previousYear) {
-                $current = collect($feed['rows'])->where('year', $schoolYear)->where('department', $label);
-                $previous = $previousYear ? collect($feed['rows'])->where('year', $previousYear)->where('department', $label)->sum('applicants') : 0;
-                $count = $current->sum('applicants');
-                return ['level_program' => $label, 'level' => $level, 'current' => $count, 'previous' => $previous,
-                    'pct_change' => $previous ? ($count - $previous) / $previous * 100 : null,
-                    'enrolled' => $current->sum('enrolled'), 'reserved' => $current->sum('reserved')];
-            })->values();
-        }
-        $passed = ['Passed', 'primary'];
+        $anchor = $selectedYear ?? AdmissionStats::currentSchoolYear();
+        $previous = fn ($year) => $year ? ((int) substr($year, 0, 4) - 1).'-'.((int) substr($year, 5, 4) - 1) : null;
+        $schoolYear = $period === 'Previous School Year' ? $previous($anchor) : $anchor;
+        $priorYear = $previous($schoolYear);
+        $feed = AnalyticsFilterData::make();
+        $byLevel = collect(AdmissionStats::LEVEL_LABELS)->map(function ($label, $level) use ($feed, $schoolYear, $priorYear) {
+            $current = collect($feed['rows'])->where('year', $schoolYear)->where('department', $label);
+            $prior = collect($feed['rows'])->where('year', $priorYear)->where('department', $label)->sum('applicants');
+            $count = $current->sum('applicants');
+
+            return ['level_program' => $label, 'level' => $level, 'current' => $count, 'previous' => $prior,
+                'pct_change' => $prior ? ($count - $prior) / $prior * 100 : null,
+                'enrolled' => $current->sum('enrolled'), 'reserved' => $current->sum('reserved')];
+        })->values();
 
         // Exam passers for one level, in the report's [#, Name, App No., ...extra columns..., Result] shape.
         // $extra maps each applicant to the columns between App No. and Result.
-        $passersFor = function (string $level) use ($schoolYear): \Illuminate\Support\Collection {
+        $passersFor = function (string $level) use ($schoolYear): Collection {
             if (! $schoolYear) {
                 return collect();
             }
@@ -77,15 +76,18 @@ class ReportController extends Controller
         $collegePassers = $passersFor('college');
         $gradPassers = $passersFor('graduate_school');
         $eteeapPassers = $passersFor('eteeap');
+        $lawPassers = $passersFor('law');
+        $ipacePassers = $passersFor('ipace');
+        $lampChecks = LampScholarRecord::whereNotNull('decision')->get()->keyBy('applicant_id');
 
-        $resultLabel = fn (Applicant $a) => [\App\Support\ApplicantRecords::testLabel($a->admission_test_status), 'primary'];
+        $resultLabel = fn (Applicant $a) => [ApplicantRecords::testLabel($a->admission_test_status), 'primary'];
         $name = fn (Applicant $a) => "{$a->last_name}, {$a->first_name}";
 
         $sections = [
             [
                 'title' => 'Admissions Reports',
                 'description' => 'Entrance exam results per academic unit, for the selected school year'
-                    . ($schoolYear ? " ({$schoolYear})" : '') . ', computed from your imported applicants',
+                    .($schoolYear ? " ({$schoolYear})" : '').', computed from your imported applicants',
                 'reports' => [
                     [
                         'key' => 'is-exam', 'title' => 'Integrated School — Exam Passers', 'icon' => 'bi-building', 'tone' => 'primary',
@@ -94,7 +96,7 @@ class ReportController extends Controller
                         'columns' => ['#', 'Name', 'App No.', 'Grade/Sub-Level', 'Strand / Track', 'Result'],
                         'rows' => $isPassers->values()->map(fn (Applicant $a, $i) => [
                             $i + 1, $name($a), $a->reference_number,
-                            \App\Support\ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? '—',
+                            ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? '—',
                             $a->program_or_track ?: '—', $resultLabel($a),
                         ])->all(),
                         'note' => $isPassers->isEmpty() ? 'No IS exam passers in the current school year yet.' : null,
@@ -134,20 +136,22 @@ class ReportController extends Controller
                         'description' => 'Applicants who passed the Law Aptitude Examination.',
                         'recipient' => 'College of Law Head',
                         'columns' => ['#', 'Name', 'App No.', 'Score', 'Rank', 'Result'],
-                        'rows' => [
-                            [1, 'Ramos, Bea L.', 'APP-LAW-2026-001', '95.0', '1st', $passed],
-                        ],
-                        'note' => 'Sample data — College of Law applicants aren\'t imported yet (still placeholder records, see Records → College of Law).',
+                        'rows' => $lawPassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number, 'Not recorded', 'Not recorded', $resultLabel($a),
+                        ])->all(),
+                        'note' => 'Imported Law passers. Scores and ranks are not collected by the import.',
+
                     ],
                     [
                         'key' => 'ipace-exam', 'title' => 'iPACE — Exam Passers', 'icon' => 'bi-laptop', 'tone' => 'info',
                         'description' => 'Applicants accepted into the iPACE (online / asynchronous) program.',
                         'recipient' => 'iPACE Head',
                         'columns' => ['#', 'Name', 'App No.', 'Course', 'Schedule Track', 'Result'],
-                        'rows' => [
-                            [1, 'Aquino, Leo T.', 'APP-IPACE-2026-001', 'BS Information Technology', 'Asynchronous', $passed],
-                        ],
-                        'note' => 'Sample data — iPACE applicants aren\'t imported yet (still placeholder records, see Records → iPACE).',
+                        'rows' => $ipacePassers->values()->map(fn (Applicant $a, $i) => [
+                            $i + 1, $name($a), $a->reference_number, $a->program_or_track ?? 'Not recorded', $a->learning_modalities ?? 'Not recorded', $resultLabel($a),
+                        ])->all(),
+                        'note' => 'Imported iPACE passers for the selected school year.',
+
                     ],
                     [
                         'key' => 'scholars', 'title' => 'Scholars — IATO vs LAMP Cross-Check', 'icon' => 'bi-award', 'tone' => 'danger',
@@ -156,7 +160,9 @@ class ReportController extends Controller
                         'columns' => ['#', 'Name', 'Exam Result', 'LAMP Status'],
                         'rows' => ($schoolYear ? Applicant::where('school_year', $schoolYear)->whereNull('archived_at')->where('applying_for_scholarship', true)->get() : collect())
                             ->values()->map(fn (Applicant $a, $i) => [
-                                $i + 1, $name($a), [\App\Support\ApplicantRecords::testLabel($a->admission_test_status), 'primary'], 'Pending Check',
+                                $i + 1, $name($a), [ApplicantRecords::testLabel($a->admission_test_status), 'primary'], match ($lampChecks->get($a->id)?->decision) {
+                                    'yes' => 'Confirmed scholar', 'no' => 'Not a scholar', default => 'Pending Check'
+                                },
                             ])->all(),
                         'note' => 'The specific scholarship type is LAMP\'s own call (see Scholar Records) — this report only tracks Yes/No + exam result, same as the Scholars page.',
                     ],
@@ -173,14 +179,14 @@ class ReportController extends Controller
                         'columns' => ['Level', 'Previous SY', 'Current SY', 'Change', '% Change'],
                         'rows' => $byLevel->map(function (array $row) {
                             $change = $row['current'] - $row['previous'];
-                            $pctLabel = $row['pct_change'] === null ? 'N/A' : ($row['pct_change'] >= 0 ? '+' : '') . number_format($row['pct_change'], 1) . '%';
+                            $pctLabel = $row['pct_change'] === null ? 'N/A' : ($row['pct_change'] >= 0 ? '+' : '').number_format($row['pct_change'], 1).'%';
                             $tone = $row['pct_change'] === null ? 'secondary' : ($row['pct_change'] >= 0 ? 'primary' : 'danger');
 
                             return [
                                 $row['level_program'],
                                 number_format($row['previous']),
                                 number_format($row['current']),
-                                ($change >= 0 ? '+' : '') . number_format($change),
+                                ($change >= 0 ? '+' : '').number_format($change),
                                 [$pctLabel, $tone],
                             ];
                         })->values()->all(),
@@ -192,7 +198,7 @@ class ReportController extends Controller
                         'recipient' => 'Dean / Program Chair',
                         'columns' => ['Level', 'Enrolled', 'Paid Reservation', '% Converted'],
                         'rows' => $byLevel->map(function (array $row) {
-                            $pct = $row['reserved'] > 0 ? number_format(($row['enrolled'] / $row['reserved']) * 100, 1) . '%' : 'N/A';
+                            $pct = $row['reserved'] > 0 ? number_format(($row['enrolled'] / $row['reserved']) * 100, 1).'%' : 'N/A';
 
                             return [$row['level_program'], number_format($row['enrolled']), number_format($row['reserved']), $pct];
                         })->values()->all(),
@@ -202,21 +208,7 @@ class ReportController extends Controller
             ],
         ];
 
-        if ($period === 'Previous School Year') {
-            foreach ($sections[0]['reports'] as &$report) {
-                if (in_array($report['key'], ['law-exam', 'ipace-exam'])) {
-                    $report['rows'] = [];
-                    $report['note'] = 'Historical data for this preview report is unavailable.';
-                } elseif (empty($report['rows'])) {
-                    $report['note'] = $schoolYear ? 'No matching records in the selected school year.' : 'No previous school year has been imported.';
-                }
-            }
-            unset($report);
-        }
-
-        $history = [
-            ['report' => 'trends', 'name' => 'Enrollment Trends Report', 'meta' => 'All levels/programs', 'recipient' => 'Executive Office', 'period' => 'Current SY', 'format' => 'PDF', 'by' => '—', 'at' => 'Not yet generated'],
-        ];
+        $history = ReportExportController::history();
 
         return [
             'schoolYear' => $schoolYear,

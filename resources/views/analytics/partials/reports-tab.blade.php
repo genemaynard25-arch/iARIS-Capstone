@@ -85,7 +85,7 @@
     </div>
 </div>
 
-{{-- A template row, copied by the script when a new (sample) report is "generated" --}}
+{{-- A template row, copied by the script when a new saved report is generated --}}
 <template id="historyRowTemplate">
     @include('reports.partials.history-row', ['entry' => ['report' => '', 'name' => '', 'meta' => '', 'recipient' => '', 'period' => '', 'format' => '', 'by' => '', 'at' => '']])
 </template>
@@ -103,7 +103,7 @@
             </div>
 
             <div class="modal-body p-4">
-                {{-- Sample previews: one per report, only the chosen one is shown --}}
+                {{-- Imported-data previews: one per report, only the chosen one is shown --}}
                 <div id="previewArea">
                     @foreach ($reports as $key => $report)
                         <div class="rounded-3 border bg-body-tertiary p-3 mb-4 d-none" data-preview="{{ $key }}">
@@ -177,7 +177,7 @@
     </div>
 </div>
 
-{{-- Toast shown after "generating" a sample report --}}
+{{-- Toast shown after saving a report --}}
 {{-- Top right, so it doesn't cover the AI button or the report tray at the bottom --}}
 <div class="toast-container position-fixed top-0 end-0 p-3">
     <div class="toast align-items-center border-0 text-bg-dark" id="reportToast" role="status" aria-live="polite">

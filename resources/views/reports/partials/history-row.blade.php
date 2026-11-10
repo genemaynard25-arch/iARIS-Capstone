@@ -9,8 +9,11 @@
     <td class="text-nowrap" data-cell="by">{{ $entry['by'] }}</td>
     <td class="small text-body-secondary text-nowrap" data-cell="at">{{ $entry['at'] }}</td>
     <td class="text-end text-nowrap">
-        {{-- TODO: download the saved file once reports are generated for real --}}
-        <button type="button" class="btn btn-sm btn-light border" disabled title="Download (coming soon)" aria-label="Download"><i class="bi bi-download"></i></button>
-        <button type="button" class="btn btn-sm btn-light border" data-view-report="{{ $entry['report'] }}" title="View sample" aria-label="View sample"><i class="bi bi-eye"></i></button>
+        <a class="btn btn-sm btn-light border {{ empty($entry['download']) ? 'd-none' : '' }}" href="{{ $entry['download'] ?? '#' }}" data-download-report aria-label="Download saved report"><i class="bi bi-download"></i></a>
+        @if(!empty($entry['download']))
+            <a class="btn btn-sm btn-light border" href="{{ $entry['download'] }}?preview=1" aria-label="View saved report"><i class="bi bi-eye"></i></a>
+        @else
+        <button type="button" class="btn btn-sm btn-light border" data-view-report="{{ $entry['report'] }}" title="View report" aria-label="View report"><i class="bi bi-eye"></i></button>
+        @endif
     </td>
 </tr>

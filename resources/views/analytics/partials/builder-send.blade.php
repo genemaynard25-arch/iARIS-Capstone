@@ -1,6 +1,6 @@
 {{-- "Send to" and "Export format", the same in both report builders. $prefix: 'view' or 'tray' --}}
 <div class="mb-3">
-    <label for="{{ $prefix }}To" class="form-label small fw-bold text-uppercase text-body-secondary">Send to</label>
+    <label for="{{ $prefix }}To" class="form-label small fw-bold text-uppercase text-body-secondary">Intended recipient (download only)</label>
     <select class="form-select" id="{{ $prefix }}To">
         <option>Keep for myself</option>
         @foreach ($recipients as $recipient)

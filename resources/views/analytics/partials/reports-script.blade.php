@@ -1,34 +1,42 @@
 {{--
     Script for the Reports tab (templates, Preview / Generate, history) and, when the user also has
     Analytics, the two report builders: "Generate from this view" and the "Add to report" tray.
-    Front end only: nothing is saved yet, rows added to the history disappear on reload.
+    Downloads and snapshot history are persisted through authenticated report endpoints.
 --}}
 <script>
     const REPORTS = @json(collect($reportData['sections'])->pluck('reports')->flatten(1)->keyBy('key'));
-    const PREVIOUS_REPORTS = @json(collect($previousReportData['sections'] ?? [])->pluck('reports')->flatten(1)->keyBy('key'));
-    const CURRENT_USER = @json(auth()->user()->name);
 
     const reportModalEl = document.getElementById('reportModal');
     const reportModal = bootstrap.Modal.getOrCreateInstance(reportModalEl);
     let currentKey = null;
 
-    // Open the modal. "preview" shows the sample table; "generate" skips straight to the settings.
+    // Open the modal. "preview" shows the imported table; "generate" skips straight to the settings.
     function openReport(key, mode) {
         const report = REPORTS[key];
         currentKey = key;
         document.getElementById('reportTitle').textContent = (mode === 'generate' ? 'Generate: ' : '') + report.title;
         document.getElementById('reportSubtitle').textContent = `Recipient: ${report.recipient} · ` +
-            (mode === 'preview' ? 'Sample data — configure settings below' : 'Configure before generating');
+            (mode === 'preview' ? 'Imported data — configure settings below' : 'Configure before generating');
         document.getElementById('reportRecipient').value = report.recipient;
         document.querySelectorAll('[data-preview]').forEach(p => p.classList.toggle('d-none', mode !== 'preview' || p.dataset.preview !== key));
         updateReportPeriod();
         reportModal.show();
     }
 
-    function updateReportPeriod() {
+    let previewVersion = 0;
+    async function updateReportPeriod() {
         if (!currentKey) return;
         const period = document.getElementById('reportPeriod').value;
-        const report = (period === 'Previous School Year' ? PREVIOUS_REPORTS : REPORTS)[currentKey];
+        const version = ++previewVersion;
+        const year = typeof currentView === 'function' ? currentView().year : new URLSearchParams(location.search).get('year');
+        let report;
+        try {
+            const response = await fetch(`{{ url('/analytics/reports') }}/${encodeURIComponent(currentKey)}/preview?${new URLSearchParams({period, ...(year ? {year} : {})})}`, {headers:{Accept:'application/json'}});
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Unable to preview report.');
+            if (version !== previewVersion) return;
+            report = result.report;
+        } catch(error) { showToast(error.message); return; }
         if (!report) return;
         document.getElementById('reportSubtitle').textContent = `${period} · Recipient: ${report.recipient}`;
         const preview = [...document.querySelectorAll('[data-preview]')].find(node => node.dataset.preview === currentKey);
@@ -62,14 +70,8 @@
         if (view && view.dataset.viewReport) openReport(view.dataset.viewReport, 'preview');
     });
 
-    function nowStamp() {
-        const now = new Date();
-        return now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' +
-            now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
     // Add a row to the top of "Report Generation History". key = the template it came from ('' for a custom report).
-    function addHistory({ key = '', name, meta, recipient, period, format }) {
+    function addHistory({ report: key = '', name, meta, recipient, period, format, by, at, download }) {
         const row = document.getElementById('historyRowTemplate').content.firstElementChild.cloneNode(true);
         row.dataset.recipient = recipient;
         row.querySelector('[data-cell="name"]').textContent = name;
@@ -77,11 +79,14 @@
         row.querySelector('[data-cell="recipient"]').textContent = recipient;
         row.querySelector('[data-cell="period"]').textContent = period.replace('Academic Year', 'AY');
         row.querySelector('[data-cell="format"]').textContent = format === 'Print' ? 'PRINT' : format;
-        row.querySelector('[data-cell="by"]').textContent = CURRENT_USER;
-        row.querySelector('[data-cell="at"]').textContent = nowStamp();
+        row.querySelector('[data-cell="by"]').textContent = by;
+        row.querySelector('[data-cell="at"]').textContent = at;
         const eye = row.querySelector('[data-view-report]');
-        eye.dataset.viewReport = key;
-        if (!key) { eye.disabled = true; eye.title = 'No sample preview for custom reports yet'; }
+        const link = document.createElement('a'); link.className = eye.className;
+        link.href = download + '?preview=1'; link.innerHTML = '<i class="bi bi-eye"></i>'; link.title = 'View saved snapshot';
+        eye.replaceWith(link);
+        const savedDownload = row.querySelector('[data-download-report]');
+        savedDownload.href = download; savedDownload.classList.remove('d-none');
         document.getElementById('historyRows').prepend(row);
         applyRecipientFilter();
     }
@@ -91,28 +96,29 @@
         bootstrap.Toast.getOrCreateInstance(document.getElementById('reportToast')).show();
     }
 
-    function generatedMessage(name, format, recipient) {
-        const sent = recipient && recipient !== 'Keep for myself' ? ` · "sent" to ${recipient}` : '';
-        return `"${name}" added to the history${sent}. Real ${format === 'Print' ? 'printing' : format + ' files'} will come once the backend is connected.`;
+    async function generateSaved(payload, button) {
+        if (button.disabled) return false;
+        button.disabled = true;
+        try {
+            const response = await fetch(@json(route('reports.generate')), {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Report generation failed.');
+            addHistory(result.history);
+            showToast('Report saved. Your ' + payload.format + ' download is starting.');
+            window.location = result.url;
+            return true;
+        } catch (error) { showToast(error.message); return false; }
+        finally { button.disabled = false; }
     }
 
-    // PDF downloads a real file (ReportController::pdf). XLSX/Print aren't built yet - still a
-    // history row + toast saying so, same as before.
-    document.getElementById('generateButton').addEventListener('click', () => {
-        const report = REPORTS[currentKey];
+    document.getElementById('generateButton').addEventListener('click', async event => {
         const format = document.querySelector('input[name="reportFormat"]:checked').value;
         const period = document.getElementById('reportPeriod').value;
-
-        addHistory({ key: currentKey, name: report.title, meta: format === 'PDF' ? 'Downloaded just now' : 'Sample only — not saved',
-            recipient: report.recipient, period, format });
-        reportModal.hide();
-
-        if (format === 'PDF') {
-            window.location = `{{ url('/analytics/reports') }}/${currentKey}/pdf?${new URLSearchParams({ period })}`;
-            showToast(`"${report.title}" downloading as a PDF now.`);
-        } else {
-            showToast(generatedMessage(report.title, format));
-        }
+        const year = typeof currentView === 'function' ? currentView().year : new URLSearchParams(location.search).get('year');
+        if (await generateSaved({ key: currentKey, format, period, ...(year ? {year} : {}) }, event.currentTarget)) reportModal.hide();
     });
 
     // Recipient filter for the history table
@@ -140,10 +146,39 @@
         const checkedFormat = name => document.querySelector(`input[name="${name}"]:checked`).value;
         const recipientLabel = to => to === 'Keep for myself' ? 'IATO (self)' : to;
 
-        // After building a report: show the Reports tab so the new history row is visible
-        function finish(name, format, to) {
-            bootstrap.Tab.getOrCreateInstance($('tab-reports')).show();
-            showToast(generatedMessage(name, format, to));
+        function customSnapshot(names) {
+            const scope = currentView(), engine = window.IARIS_ANALYTICS_FILTERS;
+            const selected = engine.select(FILTER_DATA, scope), totals = engine.totals(selected);
+            const metrics = ['applicants', 'took', 'passed', 'reserved', 'enrolled'];
+            const grouped = (dimension, fields = metrics) => {
+                const groups = {};
+                selected.forEach(row => { const key = row[dimension] || 'Not recorded'; groups[key] ||= Object.fromEntries(fields.map(f=>[f,0])); fields.forEach(f=>groups[key][f]+=Number(row[f]||0)); });
+                return Object.entries(groups).sort(([a],[b])=>a.localeCompare(b)).map(([label, counts])=>[label,...fields.map(f=>String(counts[f]))]);
+            };
+            return names.map(title => {
+                const lower = title.toLowerCase(); let columns, rows;
+                if (lower.includes('project')) {
+                    columns=['Department','Selected AY enrolled','Previous AY enrolled','Projected next AY (estimate)'];
+                    rows=grouped('department').map(([department])=>{const current=selected.filter(r=>r.department===department).reduce((n,r)=>n+r.enrolled,0);const before=engine.previousYearTotals(FILTER_DATA,{...scope,department})?.enrolled || 0;return [department,String(current),String(before),before>0?String(Math.round(current*current/before)):'Prior-year enrollment unavailable'];});
+                } else if (lower.includes('insight')) {
+                    columns=['Insight','Content']; rows=[['Scope','Cached institution-wide insights; not filtered to the selected department.'], ...[...document.querySelectorAll('.ar-insight-card')].map(card=>[card.querySelector('h3')?.textContent.trim() || 'Insight', card.querySelector('p')?.textContent.trim() || ''])];
+                } else if (lower.includes('field count')) {
+                    columns=['Field','Count']; rows=['male','female','scholars','paidExam','reserved','noaIssued','pwd','ssen'].map(f=>[f,String(totals[f])]);
+                } else if (lower.includes('funnel') || lower.includes('key figure')) {
+                    columns=['Metric','Count']; rows=metrics.map(f=>[f,String(totals[f])]);
+                } else {
+                    const dimension=lower.includes('location')?'location':lower.includes('trend')?'date':'department';
+                    columns=[dimension,'Applicants','Took exam','Passed','Reserved','Completed applications']; rows=grouped(dimension);
+                }
+                return {title, columns, rows};
+            });
+        }
+
+        async function finish(name, format, to, names, button) {
+            const v=currentView();
+            const saved=await generateSaved({title:name,format,recipient:recipientLabel(to),period:`${v.range} · ${v.department}`,year:v.year,tables:customSnapshot(names)},button);
+            if(saved) bootstrap.Tab.getOrCreateInstance($('tab-reports')).show();
+            return saved;
         }
 
         // Fill the "Date range · Department · Academic year" summary at the top of a builder
@@ -163,15 +198,12 @@
             $('viewMessage').classList.add('d-none');
         });
 
-        $('viewGenerate').addEventListener('click', () => {
+        $('viewGenerate').addEventListener('click', async event => {
             const sections = [...document.querySelectorAll('[name="viewSection"]:checked')];
             if (!sections.length) { $('viewMessage').classList.remove('d-none'); return; }
             const v = currentView(), format = checkedFormat('viewFormat'), to = $('viewTo').value;
             const name = $('viewTitle').value.trim() || 'Analytics Report';
-            addHistory({ name, meta: `${sections.length} section${sections.length > 1 ? 's' : ''} · ${v.department} · ${v.range}`,
-                recipient: recipientLabel(to), period: v.year, format });
-            bootstrap.Modal.getOrCreateInstance($('viewReportModal')).hide();
-            finish(name, format, to);
+            if (await finish(name,format,to,sections.map(s=>s.value),event.currentTarget)) bootstrap.Modal.getOrCreateInstance($('viewReportModal')).hide();
         });
 
         // ---- "Add to report" tray: the charts you picked, in order ----
@@ -230,16 +262,13 @@
             drawTrayList();
         });
 
-        $('trayGenerate').addEventListener('click', () => {
+        $('trayGenerate').addEventListener('click', async event => {
             if (!tray.length) return;
             const v = currentView(), format = checkedFormat('trayFormat'), to = $('trayTo').value;
             const name = $('trayTitle').value.trim() || 'Custom Admissions Report';
-            addHistory({ name, meta: `${tray.length} chart${tray.length > 1 ? 's' : ''} · ${v.department}`,
-                recipient: recipientLabel(to), period: v.year, format });
-            bootstrap.Modal.getOrCreateInstance($('trayReportModal')).hide();
-            tray = [];
-            renderTray();
-            finish(name, format, to);
+            if (await finish(name,format,to,[...tray],event.currentTarget)) {
+                bootstrap.Modal.getOrCreateInstance($('trayReportModal')).hide(); tray=[]; renderTray();
+            }
         });
     }
 </script>
