@@ -53,10 +53,29 @@ class HomeController extends Controller
             'periodLabel' => 'Week of ' . now()->startOfWeek()->format('M j') . '–' . now()->endOfWeek()->format('M j, Y'),
             'stats' => $this->stats(),
             'weekChart' => $this->applicationsThisWeek(),
+            'locationChart' => $this->applicantsByLocation(),
             'recentApplicants' => $this->recentApplicants(),
             'notifications' => $this->notifications(),
             'staffStrip' => $this->staffStrip(),
         ]);
+    }
+
+    /** Current school year's applicants, bucketed by address (App\Support\AddressClassifier). */
+    private function applicantsByLocation(): array
+    {
+        $schoolYear = AdmissionStats::currentSchoolYear();
+        if (! $schoolYear) {
+            return array_fill_keys(\App\Support\AddressClassifier::GROUPS, 0);
+        }
+
+        $counts = Applicant::where('school_year', $schoolYear)
+            ->whereNull('archived_at')
+            ->get(['address'])
+            ->countBy(fn (Applicant $a) => \App\Support\AddressClassifier::classify($a->address));
+
+        return collect(\App\Support\AddressClassifier::GROUPS)
+            ->mapWithKeys(fn ($group) => [$group => $counts->get($group, 0)])
+            ->all();
     }
 
     /**
@@ -95,7 +114,12 @@ class HomeController extends Controller
         $enrolled = $summary['enrolledCurrent'];
         $change = $total - $previous;
         $pending = Applicant::whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
-        $addedThisWeek = Applicant::where('created_at', '>=', now()->startOfWeek())->count();
+        // Not applicants.created_at: the importer overwrites that with the portal's own APP.
+        // DATE, which can be weeks old by the time the file is actually imported. "This week"
+        // means imported this week - import_batches.created_at is never touched after insert.
+        $addedThisWeek = Applicant::join('import_batches', 'import_batches.id', '=', 'applicants.imported_batch_id')
+            ->where('import_batches.created_at', '>=', now()->startOfWeek())
+            ->count();
         $none = $total === 0;
 
         return [
@@ -134,14 +158,19 @@ class HomeController extends Controller
         ];
     }
 
-    /** Applicants added per day this week (Mon–Sun), College vs Integrated School, from the applicants table. */
+    /**
+     * Applicants imported per day this week (Mon–Sun), College vs Integrated School. Grouped by
+     * import_batches.created_at (when the file was imported), not applicants.created_at (the
+     * importer overwrites that with the portal's own APP. DATE - see stats()).
+     */
     private function applicationsThisWeek(): array
     {
         $start = now()->startOfWeek();
-        $counts = Applicant::where('created_at', '>=', $start)
+        $counts = Applicant::join('import_batches', 'import_batches.id', '=', 'applicants.imported_batch_id')
+            ->where('import_batches.created_at', '>=', $start)
             ->whereIn('level', ['college', 'is'])
-            ->get(['level', 'created_at'])
-            ->groupBy(fn ($a) => $a->level . '|' . $a->created_at->format('Y-m-d'))
+            ->get(['level', 'import_batches.created_at as imported_at'])
+            ->groupBy(fn ($a) => $a->level . '|' . Carbon::parse($a->imported_at)->format('Y-m-d'))
             ->map->count();
         $days = collect(range(0, 6))->map(fn ($i) => $start->copy()->addDays($i));
 

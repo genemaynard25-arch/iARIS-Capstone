@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    {{-- The applicants table has no address / location yet --}}
+    {{-- Current school year's applicants, bucketed by address (App\Support\AddressClassifier) --}}
     <div class="col-12 col-xl-6">
         <div class="card border-0 shadow-sm rounded-4 h-100">
             <div class="card-body p-4 d-flex flex-column">
@@ -32,18 +32,26 @@
                     <h2 class="fs-6 fw-bold mb-0">Applicants by Location</h2>
                     <a href="{{ url('/analytics') }}" class="small fw-semibold text-decoration-none">Full report</a>
                 </div>
-                <div class="dashboard-location-preview flex-grow-1">
-                    <div id="dashboardLocationBox">
-                        <canvas id="dashboardLocationChart" role="img" aria-label="Preview applicant locations: Lipa City 1,377, Batangas 895, CALABARZON 723, Others 447"></canvas>
-                        <div class="dashboard-location-center"><strong>3,442</strong><small>PREVIEW APPLICANTS</small></div>
+                @php($locationTotal = array_sum($locationChart))
+                @if ($locationTotal === 0)
+                    <div class="rounded-3 bg-body-tertiary text-body-secondary text-center py-5 flex-grow-1 d-flex flex-column justify-content-center">
+                        <i class="bi bi-geo-alt fs-2 d-block mb-2"></i>
+                        <span class="small">No admission data imported yet.</span>
                     </div>
-                    <ul class="dashboard-location-legend list-unstyled mb-0">
-                        @foreach ([['Lipa City', '1,377', '#00674F'], ['Batangas', '895', '#339879'], ['CALABARZON', '723', '#7FC4AB'], ['Others', '447', '#C9E8DC']] as [$location, $count, $color])
-                            <li><i style="background: {{ $color }}" aria-hidden="true"></i><span>{{ $location }}</span><strong class="ms-auto">{{ $count }}</strong></li>
-                        @endforeach
-                    </ul>
-                </div>
-                <p class="admin-preview-note mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview data · Imported applicants do not include location data yet.</p>
+                @else
+                    @php($locationColors = ['Lipa City' => '#00674F', 'Batangas' => '#339879', 'CALABARZON' => '#7FC4AB', 'Others' => '#C9E8DC'])
+                    <div class="dashboard-location-preview flex-grow-1">
+                        <div id="dashboardLocationBox">
+                            <canvas id="dashboardLocationChart" role="img" aria-label="Applicant locations: {{ implode(', ', array_map(fn ($g) => "$g {$locationChart[$g]}", array_keys($locationChart))) }}"></canvas>
+                            <div class="dashboard-location-center"><strong>{{ number_format($locationTotal) }}</strong><small>APPLICANTS</small></div>
+                        </div>
+                        <ul class="dashboard-location-legend list-unstyled mb-0">
+                            @foreach ($locationChart as $location => $count)
+                                <li><i style="background: {{ $locationColors[$location] }}" aria-hidden="true"></i><span>{{ $location }}</span><strong class="ms-auto">{{ number_format($count) }}</strong></li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
