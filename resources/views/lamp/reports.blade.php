@@ -5,7 +5,7 @@
       Analytics  four numbers, insights worked out from them, and four charts, from the real scholarship applicants
       Reports    what IATO sent: open one to read or download it (PDF, Excel or CSV); questions go to Messages
     Opened reports are remembered in this browser ("iaris.lampReportsRead"); the sidebar's red number follows it.
-    The applicants are real; the list of reports IATO sent is a placeholder (nothing stores them yet).
+    Applicant analytics and LAMP checks are database-backed; sent report history is still a placeholder.
 --}}
 
 @section('title', 'iARIS — Analytics & Reports')
