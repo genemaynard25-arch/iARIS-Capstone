@@ -74,6 +74,7 @@ class ReviewQueueController extends Controller
 
     public function approve(Request $request, ReviewQueueItem $item)
     {
+        abort_unless($request->user()->isAdmin(), 403);
         abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
 
         $action = $item->pending_action['action'] ?? null;
@@ -101,6 +102,7 @@ class ReviewQueueController extends Controller
 
     public function sendBack(Request $request, ReviewQueueItem $item)
     {
+        abort_unless($request->user()->isAdmin(), 403);
         abort_unless($item->status === 'waiting', 409, 'This item was already decided.');
 
         $validated = $request->validate(['reason' => 'required|string|max:1000']);
