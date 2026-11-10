@@ -1,19 +1,20 @@
-/* Keep the sidebar footer inside the viewport as the institutional banner scrolls away. */
+/* Measure banner height for menu spacing; scrolling is handled by native CSS stickiness. */
 (() => {
     const root = document.documentElement;
     let frame;
     function update() {
         frame = null;
         const banner = document.querySelector('.ac-institution-bar');
-        const offset = Math.max(0, Math.min(window.innerHeight, banner?.getBoundingClientRect().bottom ?? 0));
-        root.style.setProperty('--sidebar-header-offset', `${offset}px`);
+        const height = `${banner?.getBoundingClientRect().height ?? 0}px`;
+        if (root.style.getPropertyValue('--sidebar-header-height') !== height) {
+            root.style.setProperty('--sidebar-header-height', height);
+        }
     }
     function schedule() {
         if (frame == null) frame = requestAnimationFrame(update);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', update, { once: true });
     else update();
-    window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     window.addEventListener('pageshow', schedule);
     window.visualViewport?.addEventListener('resize', schedule);

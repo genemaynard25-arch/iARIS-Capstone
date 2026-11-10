@@ -46,9 +46,19 @@
 .iaris-workspace .app-shell > .sidebar .offcanvas-body > .flex-grow-1 { min-height: 0; }
 @media (min-width: 992px) {
     .iaris-workspace .app-shell > .sidebar {
-        height: calc(100vh - var(--sidebar-header-offset, 34px)) !important;
-        height: calc(100dvh - var(--sidebar-header-offset, 34px)) !important;
+        height: 100vh !important;
+        height: 100dvh !important;
         align-self: flex-start;
+    }
+    .iaris-workspace .app-shell > .sidebar .offcanvas-body { overflow: visible; }
+    .iaris-workspace .app-shell > .sidebar .offcanvas-body > .nav {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+        background: #003d2e;
+    }
+    .iaris-workspace .app-shell > .sidebar .offcanvas-body > .flex-grow-1 {
+        padding-bottom: calc(16px + var(--sidebar-header-height, 34px)) !important;
     }
 }
 @media (max-width: 991.98px) {
