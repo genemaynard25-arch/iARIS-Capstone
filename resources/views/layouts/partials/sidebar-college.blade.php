@@ -58,14 +58,12 @@
                     @endforeach
                 </nav>
             @endforeach
-            <nav class="nav nav-pills flex-column" aria-label="Settings">
-                <a href="{{ url('/settings') }}" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}"><i class="bi bi-gear"></i> Settings</a>
-            </nav>
         </div>
 
         {{-- Footer (always visible) --}}
         <div class="nav nav-pills flex-column px-3 py-3 border-top border-white border-opacity-25">
             @include('partials.report-problem-link')
+            <a href="{{ url('/settings') }}" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}"><i class="bi bi-gear"></i> Settings</a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="nav-link"><i class="bi bi-box-arrow-right"></i> Log Out</button>
