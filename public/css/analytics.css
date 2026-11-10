@@ -128,3 +128,4 @@
 @media (prefers-reduced-motion: reduce) { .analytics-page *, .analytics-page *::before, .analytics-page *::after { transition: none !important; animation: none !important; } }
 
 .ar-stat-card[data-analytics-stat="1"] [data-stat-value] { color: #2558d9; }
+.ar-stat-card[data-analytics-stat="2"] [data-stat-value] { color: #b96000; }
