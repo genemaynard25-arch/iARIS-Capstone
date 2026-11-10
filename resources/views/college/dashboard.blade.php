@@ -271,7 +271,7 @@
             $('detailGo').href = go[1];
             $('detailTitle').textContent = title;
             $('detailSub').textContent = sub;
-            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Placeholder data until the numbers come from iARIS. You see ${CODES.length > 1 ? WHOLE : 'your program'} only.</p>`;
+            $('detailBody').innerHTML = html + `<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-info-circle me-1"></i>Counts reflect imported applicant records where available. You see ${CODES.length > 1 ? WHOLE : 'your program'} only.</p>`;
             drawer.show();
         }
 
