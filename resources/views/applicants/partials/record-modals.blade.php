@@ -121,7 +121,8 @@
                         <label for="recExamResult" class="form-label small fw-bold">Exam result <span class="text-danger">*</span></label>
                         <select id="recExamResult" class="form-select" required>
                             @foreach (\App\Support\ApplicantRecords::EXAM_STATUSES as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
+                                @continue($value === 'qualified_other_degree')
+                                <option value="{{ $value }}">{{ $value === 'took_test' ? 'Awaiting Result' : $label }}</option>
                             @endforeach
                         </select>
                         <div class="form-text">Passing results issue the Notice of Admission.</div>
