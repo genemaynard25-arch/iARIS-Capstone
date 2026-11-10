@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Support\AdmissionStats;
+use App\Support\AnalyticsFilterData;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 
@@ -20,14 +21,16 @@ class ReportController extends Controller
     // resources/views/analytics/partials/reports-script.blade.php).
     public function pdf(string $key)
     {
-        $report = collect($this->data()['sections'])
+        $validated = request()->validate(['period' => 'nullable|in:Current School Year,Previous School Year']);
+        $data = $this->data($validated['period'] ?? 'Current School Year');
+        $report = collect($data['sections'])
             ->pluck('reports')->flatten(1)->firstWhere('key', $key);
 
         abort_unless($report, 404);
 
         $pdf = Pdf::loadView('reports.pdf', [
             'report' => $report,
-            'schoolYear' => AdmissionStats::currentSchoolYear(),
+            'schoolYear' => $data['schoolYear'],
             'generatedBy' => auth()->user()->name,
         ])->setPaper('a4', 'landscape');
 
@@ -37,10 +40,23 @@ class ReportController extends Controller
     // The report templates, history and periods. AnalyticsController passes these to the Reports tab.
     // NOTE: the "Admissions Reports" section below has real applicant names/scores — the Reports
     // tab is NOT safe for the AI widget to read (see AnalyticsController::index()'s aggregateOnlyPage).
-    public function data(): array
+    public function data(string $period = 'Current School Year'): array
     {
-        $schoolYear = AdmissionStats::currentSchoolYear();
+        $schoolYear = $period === 'Previous School Year' ? AdmissionStats::previousSchoolYear() : AdmissionStats::currentSchoolYear();
         $byLevel = AdmissionStats::byLevel();
+        if ($period === 'Previous School Year') {
+            $feed = AnalyticsFilterData::make();
+            $yearIndex = array_search($schoolYear, $feed['years'], true);
+            $previousYear = $yearIndex === false ? null : ($feed['years'][$yearIndex + 1] ?? null);
+            $byLevel = collect(AdmissionStats::LEVEL_LABELS)->map(function ($label, $level) use ($feed, $schoolYear, $previousYear) {
+                $current = collect($feed['rows'])->where('year', $schoolYear)->where('department', $label);
+                $previous = $previousYear ? collect($feed['rows'])->where('year', $previousYear)->where('department', $label)->sum('applicants') : 0;
+                $count = $current->sum('applicants');
+                return ['level_program' => $label, 'level' => $level, 'current' => $count, 'previous' => $previous,
+                    'pct_change' => $previous ? ($count - $previous) / $previous * 100 : null,
+                    'enrolled' => $current->sum('enrolled'), 'reserved' => $current->sum('reserved')];
+            })->values();
+        }
         $passed = ['Passed', 'primary'];
 
         // Exam passers for one level, in the report's [#, Name, App No., ...extra columns..., Result] shape.
@@ -68,7 +84,7 @@ class ReportController extends Controller
         $sections = [
             [
                 'title' => 'Admissions Reports',
-                'description' => 'Entrance exam results per academic unit, for the current school year'
+                'description' => 'Entrance exam results per academic unit, for the selected school year'
                     . ($schoolYear ? " ({$schoolYear})" : '') . ', computed from your imported applicants',
                 'reports' => [
                     [
@@ -138,9 +154,10 @@ class ReportController extends Controller
                         'description' => 'Applicants who checked Yes for a scholarship, compared against LAMP Office data.',
                         'recipient' => 'LAMP Office',
                         'columns' => ['#', 'Name', 'Exam Result', 'LAMP Status'],
-                        'rows' => \App\Http\Controllers\ScholarController::sample()->values()->map(fn ($s, $i) => [
-                            $i + 1, $s['name'], [$s['exam_label'], $s['exam_tone']], $s['lamp'],
-                        ])->all(),
+                        'rows' => ($schoolYear ? Applicant::where('school_year', $schoolYear)->whereNull('archived_at')->where('applying_for_scholarship', true)->get() : collect())
+                            ->values()->map(fn (Applicant $a, $i) => [
+                                $i + 1, $name($a), [\App\Support\ApplicantRecords::testLabel($a->admission_test_status), 'primary'], 'Pending Check',
+                            ])->all(),
                         'note' => 'The specific scholarship type is LAMP\'s own call (see Scholar Records) — this report only tracks Yes/No + exam result, same as the Scholars page.',
                     ],
                 ],
@@ -185,11 +202,24 @@ class ReportController extends Controller
             ],
         ];
 
+        if ($period === 'Previous School Year') {
+            foreach ($sections[0]['reports'] as &$report) {
+                if (in_array($report['key'], ['law-exam', 'ipace-exam'])) {
+                    $report['rows'] = [];
+                    $report['note'] = 'Historical data for this preview report is unavailable.';
+                } elseif (empty($report['rows'])) {
+                    $report['note'] = $schoolYear ? 'No matching records in the selected school year.' : 'No previous school year has been imported.';
+                }
+            }
+            unset($report);
+        }
+
         $history = [
             ['report' => 'trends', 'name' => 'Enrollment Trends Report', 'meta' => 'All levels/programs', 'recipient' => 'Executive Office', 'period' => 'Current SY', 'format' => 'PDF', 'by' => '—', 'at' => 'Not yet generated'],
         ];
 
         return [
+            'schoolYear' => $schoolYear,
             'sections' => $sections,
             'history' => $history,
             'periods' => ['Current School Year', 'Previous School Year'],

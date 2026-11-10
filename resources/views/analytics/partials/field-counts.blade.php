@@ -14,7 +14,7 @@
 <section class="ar-field-card card border-0 shadow-sm rounded-4 mb-4" aria-labelledby="fieldCountTitle">
     <div class="card-body p-4">
         <div class="ar-card-header d-flex flex-wrap justify-content-between align-items-start gap-3">
-            <div><h2 id="fieldCountTitle">Applicant field counts</h2><p>Read automatically from the current imported applicant list · <a href="{{ url('/import') }}">Import Data</a></p></div>
+            <div><h2 id="fieldCountTitle">Applicant field counts</h2><p>Read automatically from the selected applicant scope · <a href="{{ url('/import') }}">Import Data</a></p></div>
             <div class="ar-card-controls d-flex flex-wrap gap-2">
                 @if ($hasReports)
                     <button type="button" class="btn btn-sm btn-light border" data-add-report="Applicant field counts" aria-pressed="false"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add to report</button>

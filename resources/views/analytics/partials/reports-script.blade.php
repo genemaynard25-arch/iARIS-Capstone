@@ -5,6 +5,7 @@
 --}}
 <script>
     const REPORTS = @json(collect($reportData['sections'])->pluck('reports')->flatten(1)->keyBy('key'));
+    const PREVIOUS_REPORTS = @json(collect($previousReportData['sections'] ?? [])->pluck('reports')->flatten(1)->keyBy('key'));
     const CURRENT_USER = @json(auth()->user()->name);
 
     const reportModalEl = document.getElementById('reportModal');
@@ -20,8 +21,37 @@
             (mode === 'preview' ? 'Sample data — configure settings below' : 'Configure before generating');
         document.getElementById('reportRecipient').value = report.recipient;
         document.querySelectorAll('[data-preview]').forEach(p => p.classList.toggle('d-none', mode !== 'preview' || p.dataset.preview !== key));
+        updateReportPeriod();
         reportModal.show();
     }
+
+    function updateReportPeriod() {
+        if (!currentKey) return;
+        const period = document.getElementById('reportPeriod').value;
+        const report = (period === 'Previous School Year' ? PREVIOUS_REPORTS : REPORTS)[currentKey];
+        if (!report) return;
+        document.getElementById('reportSubtitle').textContent = `${period} · Recipient: ${report.recipient}`;
+        const preview = [...document.querySelectorAll('[data-preview]')].find(node => node.dataset.preview === currentKey);
+        const note = preview?.querySelector('[data-report-note]');
+        if (note) note.textContent = report.note || '';
+        const tbody = preview?.querySelector('tbody');
+        if (!tbody) return;
+        tbody.replaceChildren(...report.rows.map(row => {
+            const tr = document.createElement('tr');
+            row.forEach(cell => {
+                const td = document.createElement('td'); td.className = 'text-nowrap';
+                if (Array.isArray(cell)) { const badge = document.createElement('span'); badge.className = `badge rounded-pill bg-${cell[1]}-subtle text-${cell[1]}-emphasis`; badge.textContent = cell[0]; td.append(badge); }
+                else td.textContent = cell;
+                tr.append(td);
+            });
+            return tr;
+        }));
+        if (!report.rows.length) {
+            const tr = tbody.insertRow(), td = tr.insertCell(); td.colSpan = report.columns.length;
+            td.className = 'text-body-secondary text-center py-3'; td.textContent = report.note || 'No records match this period.';
+        }
+    }
+    document.getElementById('reportPeriod').addEventListener('change', updateReportPeriod);
 
     document.querySelectorAll('[data-open-report]').forEach(btn =>
         btn.addEventListener('click', () => openReport(btn.dataset.openReport, btn.dataset.mode)));
@@ -78,7 +108,7 @@
         reportModal.hide();
 
         if (format === 'PDF') {
-            window.location = `{{ url('/analytics/reports') }}/${currentKey}/pdf`;
+            window.location = `{{ url('/analytics/reports') }}/${currentKey}/pdf?${new URLSearchParams({ period })}`;
             showToast(`"${report.title}" downloading as a PDF now.`);
         } else {
             showToast(generatedMessage(report.title, format));
@@ -87,7 +117,12 @@
 
     // Recipient filter for the history table
     function applyRecipientFilter() {
-        const wanted = document.getElementById('recipientFilter').value;
+        const filter = document.getElementById('recipientFilter');
+        const wanted = filter.value;
+        const recipients = [...new Set([...document.querySelectorAll('#historyRows tr[data-recipient]')].map(row => row.dataset.recipient).filter(Boolean))];
+        for (const recipient of recipients) {
+            if (![...filter.options].some(option => option.value === recipient)) filter.add(new Option(recipient, recipient));
+        }
         let shown = 0;
         document.querySelectorAll('#historyRows tr[data-recipient]').forEach(row => {
             const match = !wanted || row.dataset.recipient === wanted;
@@ -97,6 +132,7 @@
         document.getElementById('historyEmpty').classList.toggle('d-none', shown > 0);
     }
     document.getElementById('recipientFilter').addEventListener('change', applyRecipientFilter);
+    applyRecipientFilter();
 
     // ======== Report builders (only on the page when the user has Analytics too) ========
     if (document.getElementById('reportTray')) {
