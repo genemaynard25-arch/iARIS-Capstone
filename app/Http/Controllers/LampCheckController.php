@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Models\LampScholarRecord;
+use App\Models\AuditLog;
+use App\Models\ReviewQueueItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,26 +20,46 @@ class LampCheckController extends Controller
             && is_null($applicant->archived_at)
             && in_array($applicant->admission_test_status, ['passed', 'reconsidered', 'qualified_other_degree'], true), 422, 'Applicant is not eligible for a LAMP check.');
 
-        $record = DB::transaction(function () use ($applicant, $data, $request) {
-            $record = LampScholarRecord::where('applicant_id', $applicant->id)->lockForUpdate()->first();
-            if ($data['action'] === 'undo') {
-                abort_unless($record && $record->decision && $record->iato_status === 'pending', 422, 'Only pending checks can be undone.');
-                $record->update(['decision' => null, 'checked_by' => null, 'checked_at' => null]);
-                return null;
-            }
-            abort_if($record && $record->iato_status === 'confirmed', 422, 'IATO already confirmed this check.');
-            return LampScholarRecord::updateOrCreate(
-                ['applicant_id' => $applicant->id],
-                ['decision' => $data['action'], 'checked_by' => $request->user()->id,
-                    'checked_at' => now(), 'iato_status' => 'pending',
-                    'confirmed_by' => null, 'confirmed_at' => null]
-            );
+        $name = trim($applicant->last_name . ', ' . $applicant->first_name);
+        $existing = LampScholarRecord::where('applicant_id', $applicant->id)->first();
+        abort_if($existing?->decision && $existing->iato_status === 'confirmed', 422, 'IATO already confirmed this check.');
+        if ($data['action'] === 'undo') {
+            abort_unless($existing?->decision, 422, 'There is no saved LAMP check to undo.');
+        }
+
+        $pending = ReviewQueueItem::where('applicant_id', $applicant->id)
+            ->where('type', 'lamp')->where('status', 'waiting')->exists();
+        abort_if($pending, 409, 'A LAMP action for this applicant is already awaiting Super Admin review.');
+
+        $before = $existing?->decision ?? 'wait';
+        $after = $data['action'] === 'undo' ? 'wait' : $data['action'];
+        $item = DB::transaction(function () use ($request, $applicant, $name, $before, $after, $data) {
+            $item = ReviewQueueItem::create([
+                'rq_number' => ReviewQueueItem::nextRqNumber(),
+                'type' => 'lamp',
+                'title' => $data['action'] === 'undo' ? 'LAMP check undo requested' : 'LAMP scholarship check',
+                'applicant_id' => $applicant->id,
+                'subject' => $name,
+                'ref' => $applicant->reference_number,
+                'unit' => 'LAMP Office',
+                'submitted_by' => $request->user()->id,
+                'submitted_by_name' => $request->user()->name,
+                'submitted_by_role' => 'LAMP Office',
+                'submitted_at' => now(),
+                'status' => 'waiting',
+                'changes' => [['field' => 'LAMP decision', 'before' => $before, 'after' => $after]],
+                'pending_action' => ['action' => 'lamp_check', 'payload' => [
+                    'decision' => $data['action'], 'expected_before' => $before,
+                ]],
+            ]);
+            AuditLog::record('edit', 'LAMP', 'LAMP Check Submitted for Review',
+                "Submitted {$item->rq_number} for {$name}: {$before} → {$after}.");
+            return $item;
         });
 
         return response()->json([
-            'lamp' => $record?->decision ?? 'wait',
-            'at' => $record?->checked_at?->format('M j, Y · g:i A') ?? '',
-            'iato_status' => $record?->iato_status,
+            'ok' => true, 'pending_review' => true, 'review_number' => $item->rq_number,
+            'message' => 'Submitted for Super Admin review. The decision is not applied yet.',
         ]);
     }
 
@@ -47,6 +69,7 @@ class LampCheckController extends Controller
         $record = LampScholarRecord::where('applicant_id', $applicant->id)->firstOrFail();
         abort_unless($record->decision && $record->iato_status === 'pending', 422, 'No pending check to confirm.');
         $record->update(['iato_status' => 'confirmed', 'confirmed_by' => $request->user()->id, 'confirmed_at' => now()]);
+        AuditLog::record('edit', 'LAMP', 'IATO Confirmed LAMP Decision', "Confirmed LAMP decision for {$applicant->reference_number}.");
         return response()->json(['iato_status' => 'confirmed']);
     }
 }
