@@ -43,8 +43,15 @@ class ImportController extends Controller
             'status' => 'processing',
         ]);
 
+        $needsReview = $request->user()->role === 'iato_staff' && ! $request->user()->isAdmin();
+
         $import = new ApplicantsImport($batch, $validated['school_year']);
+        $import->preview = $needsReview;
         Excel::import($import, $request->file('file'));
+
+        if ($needsReview) {
+            return $this->stageImportForReview($request, $batch, $import, $validated['school_year']);
+        }
 
         $rowCount = Applicant::where('imported_batch_id', $batch->id)->count();
         $errorCount = count($import->errors);
@@ -65,6 +72,44 @@ class ImportController extends Controller
         );
 
         return redirect("/import/{$batch->id}");
+    }
+
+    /**
+     * IATO Staff (not an admin): nothing is saved yet. The validated, classified rows and the
+     * batch's id travel inside the Review Queue item itself (pending_action), replayed through
+     * ApplicantsImport::commitRow() by ReviewQueueController::approve() once a Super Admin signs off.
+     */
+    protected function stageImportForReview(Request $request, ImportBatch $batch, ApplicantsImport $import, string $schoolYear)
+    {
+        $new = count(array_filter($import->previewRows, fn ($r) => $r['is_new']));
+        $total = count($import->previewRows);
+
+        $item = \App\Models\ReviewQueueItem::create([
+            'rq_number' => \App\Models\ReviewQueueItem::nextRqNumber(),
+            'type' => 'import',
+            'title' => 'Batch Import Requested',
+            'subject' => $batch->original_filename,
+            'ref' => $total ? 'Mixed levels' : '—',
+            'unit' => 'Import Data',
+            'submitted_by' => $request->user()->id,
+            'submitted_by_name' => $request->user()->name,
+            'submitted_by_role' => $request->user()->roleInfo()[0],
+            'submitted_at' => now(),
+            'status' => 'waiting',
+            'import_summary' => ['total' => $total + count($import->errors), 'new' => $new, 'updated' => $total - $new, 'errors' => count($import->errors)],
+            'import_sample' => collect($import->previewRows)->take(4)->map(fn ($r) => [$r['name'], $r['program'], $r['is_new'] ? 'New' : 'Updated'])->all(),
+            'import_errors' => collect($import->errors)->map(fn ($e) => [$e['row'], $e['name'], '—', '—', $e['reason']])->all(),
+            'pending_action' => ['action' => 'commit_import', 'payload' => ['batch_id' => $batch->id, 'school_year' => $schoolYear, 'rows' => $import->previewRows]],
+        ]);
+
+        \App\Models\AuditLog::record(
+            'import',
+            'Import Data',
+            'Batch Import Requested',
+            "{$request->user()->name} submitted **{$batch->original_filename}** ({$total} record" . ($total === 1 ? '' : 's') . ") — sent to Review Queue as **{$item->rq_number}**",
+        );
+
+        return redirect('/import')->with('reviewSubmitted', ['rq_number' => $item->rq_number, 'count' => $total]);
     }
 
     public function results(ImportBatch $batch)

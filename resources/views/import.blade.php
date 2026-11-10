@@ -41,14 +41,14 @@
                 </div>
 
                 {{-- Steps: the script moves the highlight along --}}
-                {{-- IATO Staff: shown after "Submit for review" (the script fills in the numbers) --}}
-                @if ($staffReview)
-                    <div class="alert alert-success d-none d-flex gap-3 rounded-4 mb-4" id="reviewBanner" role="status">
+                {{-- Shown after a staff submission lands back here (session('reviewSubmitted'), set by ImportController::stageImportForReview()) --}}
+                @if (session('reviewSubmitted'))
+                    <div class="alert alert-success d-flex gap-3 rounded-4 mb-4" id="reviewBanner" role="status">
                         <i class="bi bi-check-circle-fill fs-4" aria-hidden="true"></i>
                         <div class="small">
-                            <b id="reviewBannerTitle"></b> Other users see them after the Super Admin approves.
+                            <b>{{ session('reviewSubmitted.count') }} record{{ session('reviewSubmitted.count') === 1 ? '' : 's' }} sent to the Review Queue as {{ session('reviewSubmitted.rq_number') }}.</b>
+                            Other users see them after the Super Admin approves.
                             <a href="{{ url('/submissions') }}" class="fw-bold alert-link">Track it in My Submissions →</a>
-                            <div class="text-body-secondary mt-1">Demo only: nothing was saved. Staff imports need the Review Queue backend first.</div>
                         </div>
                     </div>
                 @endif
@@ -339,27 +339,18 @@
                 `Showing ${Math.min(PREVIEW_ROWS, dataRows.length)} of ${plural(dataRows.length, 'row')} · rows highlighted in blue are section headers, not applicants`;
         }
 
-        // IATO Staff: the file goes to the Review Queue instead of being imported (front end only).
-        // TODO (backend): save the batch as a pending Review Queue item; the Super Admin's Approve imports it.
+        // IATO Staff: the server stages the file as a Review Queue item instead of importing it
+        // directly (see ImportController::stageImportForReview()) and redirects back here with
+        // the real RQ number - the banner above shows it (filled in server-side, not here).
         const STAFF_REVIEW = @json($staffReview);
-        let nextReviewNumber = 413;   // made-up Review Queue numbers
 
-        // Show progress while the server imports (the page reloads when it's done)
-        form.addEventListener('submit', e => {
-            if (STAFF_REVIEW) {
-                e.preventDefault();
-                const rq = 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
-                document.getElementById('reviewBannerTitle').textContent = `${plural(rowCount, 'record')} sent to the Review Queue as ${rq}.`;
-                setStep(3);
-                hide(previewCard);
-                const banner = document.getElementById('reviewBanner');
-                show(banner, 'flex');
-                banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return;
-            }
+        // Show progress while the server imports/validates (the page reloads when it's done)
+        form.addEventListener('submit', () => {
             setStep(3);
             importButton.disabled = true;
-            importButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Importing…';
+            importButton.innerHTML = STAFF_REVIEW
+                ? '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Submitting…'
+                : '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Importing…';
         });
 
         // A minimal sample: the header row, one section header, and one filled example row —

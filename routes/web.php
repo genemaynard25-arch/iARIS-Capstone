@@ -94,6 +94,8 @@ Route::post('/access-requests/{accessRequest}/decline', [AccessRequestController
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['auth', 'module:audit'])->name('audit-logs');
 // Review Queue (front end only for now) and Super User Succession
 Route::get('/review-queue', [ReviewQueueController::class, 'index'])->middleware(['auth', 'admin'])->name('review-queue');
+Route::post('/review-queue/{item}/approve', [ReviewQueueController::class, 'approve'])->middleware(['auth', 'admin']);
+Route::post('/review-queue/{item}/send-back', [ReviewQueueController::class, 'sendBack'])->middleware(['auth', 'admin']);
 // IATO Staff: their own edits and imports in the Review Queue
 Route::get('/submissions', [SubmissionsController::class, 'index'])->middleware('auth')->name('submissions');
 Route::get('/succession', [SuccessionController::class, 'index'])->middleware(['auth', 'admin'])->name('succession');

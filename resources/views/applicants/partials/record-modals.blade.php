@@ -13,6 +13,7 @@
 
 {{-- Add / Edit form --}}
 @php($staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
+@php($realBackend = in_array($scope ?? null, ['college', 'is']))
 <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <form class="modal-content border-0 rounded-4 overflow-hidden" id="recordForm" novalidate>
@@ -99,10 +100,10 @@
                 </div>
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex flex-wrap align-items-center gap-2">
-                @if ($staffReview)
-                    <span class="small text-body-secondary me-auto"><i class="bi bi-clipboard-check me-1"></i> Your changes go to the Review Queue. Other users see them only after the Super Admin approves.</span>
-                @else
+                @if (! $realBackend)
                     <span class="small text-body-secondary me-auto"><i class="bi bi-info-circle me-1"></i> Front end only for now: nothing is saved until the backend is connected.</span>
+                @elseif ($staffReview)
+                    <span class="small text-body-secondary me-auto"><i class="bi bi-clipboard-check me-1"></i> Your changes go to the Review Queue. Other users see them only after the Super Admin approves.</span>
                 @endif
                 <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-check-lg me-1"></i> <span id="recordSave">Add applicant</span></button>
@@ -182,11 +183,10 @@
         const unique = values => [...new Set(values)].filter(v => v && v !== '—').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         let editing = null;
 
-        // IATO Staff: changes wait in the Review Queue. Made-up RQ numbers (RQ-0413, RQ-0414, …).
+        // IATO Staff: the server stages the change in the Review Queue instead of applying it
+        // (see ApplicantController::needsReview()) and says so in its response.
         const STAFF_REVIEW = @json($staffReview);
         const REAL_BACKEND = ['college', 'is'].includes(R.scope);
-        let nextReviewNumber = 413;
-        const nextRq = () => 'RQ-' + String(nextReviewNumber++).padStart(4, '0');
         // Put a "waiting for review" tag under the person's name in their table row
         function tagRow(a, kind, rq) {
             const row = R.rows.find(r => Number(r.dataset.index) === R.items.indexOf(a));
@@ -238,7 +238,7 @@
 
         document.querySelectorAll('[data-record-form]').forEach(btn => btn.addEventListener('click', () => openRecordForm(btn.dataset.recordForm)));
 
-        // Submit the Add / Edit form. Front end only for now: the toast says nothing was saved.
+        // Submit the Add / Edit form.
         $('recordForm').addEventListener('submit', async e => {
             e.preventDefault();
             const form = e.target;
@@ -246,18 +246,12 @@
             if (!form.checkValidity()) return form.querySelector(':invalid')?.focus();
             const name = `${$('recLast').value.trim()}, ${$('recFirst').value.trim()}`;
             recordModal.hide();
-            if (STAFF_REVIEW) {
-                const rq = nextRq();
-                if (editing) tagRow(editing, 'edit', rq);
-                return toast(`Sent to the Review Queue as ${rq}. Others see it after the Super Admin approves. (Demo only — not saved yet.)`);
-            }
 
             if (!REAL_BACKEND) {
                 return toast(editing
                     ? `Changes to ${name} were checked but not saved: saving records comes with the backend.`
                     : `${name} was checked but not added: adding records comes with the backend.`);
             }
-
 
             const payload = {
                 scope: R.scope,
@@ -285,6 +279,11 @@
                     body: JSON.stringify(payload),
                 });
                 if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (data.review) {
+                    if (editing) tagRow(editing, 'edit', data.rq_number);
+                    return toast(`Sent to the Review Queue as ${data.rq_number}. Others see it after the Super Admin approves.`);
+                }
                 toast(`${name} ${editing ? 'updated' : 'added'}. Reloading…`);
                 setTimeout(() => location.reload(), 600);
             } catch (err) {
@@ -336,13 +335,6 @@
             if (!e.target.checkValidity()) return;
             const current = R.current();
 
-            if (STAFF_REVIEW) {
-                const rq = nextRq();
-                tagRow(current, 'remove', rq);
-                removeModal.hide();
-                return toast(`Removal sent to the Review Queue as ${rq}. The record stays until the Super Admin approves. (Demo only — not saved yet.)`);
-            }
-
             if (!REAL_BACKEND) {
                 const index = R.items.indexOf(current);
                 const row = R.rows.find(r => Number(r.dataset.index) === index);
@@ -356,18 +348,25 @@
                 return toast(`${current.name} was removed from this page only (it comes back when you reload, until the backend is connected).`, true);
             }
 
-
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            let data;
             try {
                 const res = await fetch(`/applicants/${current.id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 });
                 if (!res.ok) throw new Error();
+                data = await res.json();
             } catch (err) {
                 removeModal.hide();
                 toast('Something went wrong removing this record. Please try again.');
                 return;
+            }
+
+            removeModal.hide();
+            if (data.review) {
+                tagRow(current, 'remove', data.rq_number);
+                return toast(`Removal sent to the Review Queue as ${data.rq_number}. The record stays until the Super Admin approves.`);
             }
 
             const index = R.items.indexOf(current);
@@ -378,7 +377,6 @@
                 row.remove();
                 R.render();
             }
-            removeModal.hide();
             toast(`${current.name} was removed.`, true);
         });
     });

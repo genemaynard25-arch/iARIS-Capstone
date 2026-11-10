@@ -2,8 +2,8 @@
 
 {{--
     Review Queue (ReviewQueueController): changes wait here until the Super Admin approves them.
-    FRONT END ONLY: the items are placeholders and Approve / Send back change this page until reload.
-    Everything is drawn by the script from $items.
+    Backed by the review_queue table. Everything is drawn by the script from $items; Approve /
+    Send back call the real routes and reload so the page reflects what's actually saved.
 --}}
 
 @section('title', 'iARIS — Review Queue')
@@ -23,7 +23,6 @@
 @include('partials.admin-workspace', ['workspacePage' => 'review-page', 'workspaceGroup' => 'System', 'workspaceLabel' => 'Review Queue'])
 
 @section('content')
-    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview queue · Approvals and corrections stay on this page until reload; publishing is not connected yet.</p>
     {{-- How data moves --}}
     <div class="admin-review-flow card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3 d-flex flex-wrap align-items-center gap-2 small">
@@ -104,7 +103,6 @@
         </div>
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-3 border-top small text-body-secondary">
             <span id="footerText"></span>
-            <span><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Front end only for now: approvals and send-backs aren't saved yet.</span>
         </div>
     </div>
 
@@ -161,9 +159,10 @@
         const ITEMS = @json($items);
         const TYPES = @json($types);
         const STATUS = { waiting: ['Waiting', 'warning', 'bi-hourglass-split'], approved: ['Approved', 'primary', 'bi-check-circle'], sent: ['Sent back', 'danger', 'bi-arrow-counterclockwise'] };
-        const state = { status: 'waiting', selected: new Set(), open: null, approvedToday: 0 };
+        const state = { status: 'waiting', selected: new Set(), open: null };
 
         const $ = id => document.getElementById(id);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         // "2026-06-12 10:14" -> "Jun 12, 2026 · 10:14 AM"
         const when = at => { const d = new Date(at.replace(' ', 'T'));
@@ -171,15 +170,16 @@
         const size = q => q.type === 'import' ? `${q.summary.total} rows` : `${q.changes.length} field${q.changes.length > 1 ? 's' : ''}`;
         const drawer = bootstrap.Offcanvas.getOrCreateInstance($('itemDrawer'));
         const toast = text => { $('queueToastText').textContent = text; bootstrap.Toast.getOrCreateInstance($('queueToast')).show(); };
-        const nowLabel = () => 'Just now';
 
         // ---- Stat cards and status pills ----
         function renderStats() {
             const waiting = ITEMS.filter(q => q.status === 'waiting');
             const oldest = waiting.map(q => q.at).sort()[0];
             const days = oldest ? Math.floor((Date.now() - new Date(oldest.replace(' ', 'T'))) / 864e5) : null;
+            const today = new Date().toISOString().slice(0, 10);
+            const approvedToday = ITEMS.filter(q => q.status === 'approved' && q.reviewedAt && q.reviewedAt.startsWith(today)).length;
             document.querySelector('[data-stat="waiting"]').textContent = waiting.length;
-            document.querySelector('[data-stat="approvedToday"]').textContent = state.approvedToday;
+            document.querySelector('[data-stat="approvedToday"]').textContent = approvedToday;
             document.querySelector('[data-stat="sent"]').textContent = ITEMS.filter(q => q.status === 'sent').length;
             document.querySelector('[data-stat="oldest"]').textContent = days === null ? '—' : days === 0 ? 'Today' : `${days} day${days > 1 ? 's' : ''}`;
             document.querySelector('[data-stat-sub="oldest"]').textContent = oldest ? `Since ${when(oldest)}` : 'Queue is clear';
@@ -227,20 +227,28 @@
         function render() { renderStats(); renderRows(); }
 
         // ---- Approve / send back ----
-        function approve(ids) {
-            let skipped = 0;
-            ids.forEach(id => {
+        async function approve(ids) {
+            let skipped = 0, failed = 0;
+            for (const id of ids) {
                 const q = ITEMS.find(x => x.id === id);
-                if (q.type === 'import') skipped += q.errors.length;   // rows with errors aren't published
-                q.status = 'approved';
-                q.reviewed = `Approved by you · ${nowLabel()}`;
-                state.selected.delete(id);
-            });
-            state.approvedToday += ids.length;
-            render();
-            toast(`${ids.length} item${ids.length > 1 ? 's' : ''} approved on this page`
-                + (skipped ? ` · ${skipped} import row${skipped > 1 ? 's' : ''} with errors would be skipped` : '')
-                + '. Not saved yet: needs the backend.');
+                try {
+                    const res = await fetch(`{{ url('/review-queue') }}/${id}/approve`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) throw new Error();
+                    if (q.type === 'import') skipped += q.errors.length;   // rows with errors aren't published
+                } catch {
+                    failed++;
+                }
+            }
+            if (failed) {
+                toast(`${failed} item${failed > 1 ? 's' : ''} could not be approved. Please try again.`);
+                return;
+            }
+            toast(`${ids.length} item${ids.length > 1 ? 's' : ''} approved and published`
+                + (skipped ? ` · ${skipped} import row${skipped > 1 ? 's' : ''} with errors were skipped` : '') + '.');
+            setTimeout(() => location.reload(), 600);
         }
 
         // ---- Drawer ----
@@ -311,18 +319,25 @@
         $('approveButton').addEventListener('click', () => { drawer.hide(); approve([state.open.id]); });
 
         $('sendBackModal').addEventListener('show.bs.modal', () => { $('sendBackForm').reset(); $('sendBackForm').classList.remove('was-validated'); drawer.hide(); });
-        $('sendBackForm').addEventListener('submit', e => {
+        $('sendBackForm').addEventListener('submit', async e => {
             e.preventDefault();
             e.target.classList.add('was-validated');
             if (!e.target.checkValidity()) return;
             const q = state.open;
-            q.status = 'sent';
-            q.reason = $('sendBackReason').value.trim();
-            q.reviewed = `Sent back by you · ${nowLabel()}`;
-            state.selected.delete(q.id);
-            bootstrap.Modal.getOrCreateInstance($('sendBackModal')).hide();
-            render();
-            toast(`${q.id} sent back to ${q.by} on this page. Not saved yet: needs the backend.`);
+            const reason = $('sendBackReason').value.trim();
+            try {
+                const res = await fetch(`{{ url('/review-queue') }}/${q.id}/send-back`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ reason }),
+                });
+                if (!res.ok) throw new Error();
+                bootstrap.Modal.getOrCreateInstance($('sendBackModal')).hide();
+                toast(`${q.id} sent back to ${q.by}.`);
+                setTimeout(() => location.reload(), 600);
+            } catch {
+                toast('Something went wrong sending this back. Please try again.');
+            }
         });
 
         render();

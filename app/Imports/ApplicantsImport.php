@@ -44,6 +44,17 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
     /** [row, name, reason] for every row skipped instead of saved - the import's error report. */
     public array $errors = [];
 
+    /**
+     * IATO Staff (not an admin): rows are validated and classified exactly as normal, but
+     * collected into previewRows instead of saved - nothing touches the applicants table
+     * until a Super Admin approves the Review Queue item (see ReviewQueueController::approve(),
+     * which replays previewRows through commitRow()).
+     */
+    public bool $preview = false;
+
+    /** Only populated when $preview is true: one entry per row that passed validation. */
+    public array $previewRows = [];
+
     public function __construct(protected ImportBatch $batch, protected string $schoolYear)
     {
     }
@@ -119,17 +130,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
             ? trim((string) $row[12])
             : (trim((string) ($row[11] ?? '')) ?: null);
 
-        // The portal export is a full snapshot, not an incremental one (see the class
-        // doc comment) - the same applicant reappears, unchanged or updated (a new exam
-        // result, a payment that's now in), on every re-export. Upsert on the portal's
-        // own APP. NO. so re-importing refreshes that person instead of duplicating them.
-        $applicant = Applicant::where('external_app_no', $externalAppNo)->first();
-        $isNew = $applicant === null;
-        $applicant ??= new Applicant;
-
-        $applicant->fill([
-            'imported_batch_id' => $this->batch->id,
-            'reference_number' => $isNew ? $this->generateReferenceNumber($this->schoolYear, $classified['level']) : $applicant->reference_number,
+        $fields = [
             'external_app_no' => $externalAppNo,
             'permit_no' => trim((string) ($row[7] ?? '')) ?: null,
             'gwa' => is_numeric($row[8] ?? null) ? (float) $row[8] : null,
@@ -160,19 +161,58 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
             'contact_number' => trim((string) ($row[5] ?? '')) ?: null,
             'address' => trim((string) ($row[6] ?? '')) ?: null,
             'exam_scheduled_at' => $this->parseDate($row[25] ?? null),
-        ]);
+        ];
+        $appliedAt = $this->parseDate($row[2] ?? null);
+        $fees = ['application_fee' => $this->yesNo($row[15] ?? null), 'reservation_fee' => $this->yesNo($row[16] ?? null)];
 
+        if ($this->preview) {
+            $this->previewRows[] = [
+                'fields' => $fields,
+                'is_new' => Applicant::where('external_app_no', $externalAppNo)->doesntExist(),
+                'name' => $fullName,
+                'program' => $programOrTrack ?? self::LEVEL_LABELS[$classified['level']] ?? $classified['level'],
+                'applied_at' => $appliedAt?->toDateTimeString(),
+                'fees' => $fees,
+            ];
+
+            return null;
+        }
+
+        self::commitRow($fields, $appliedAt, $fees, $this->batch->id, $this->schoolYear, $classified['level']);
+
+        return null; // commitRow already saved it (we need its id for the payments rows)
+    }
+
+    public const LEVEL_LABELS = [
+        'is' => 'Integrated School', 'college' => 'College', 'graduate_school' => 'Graduate Programs',
+        'eteeap' => 'ETEEAP', 'ipace' => 'iPACE', 'law' => 'College of Law',
+    ];
+
+    /**
+     * The upsert-by-APP.-NO. write this class always ends up doing, whether live (model(),
+     * $preview false) or replayed later for a staged import a Super Admin just approved
+     * (ReviewQueueController::approve()) - same code either way, just a different caller.
+     */
+    public static function commitRow(array $fields, ?Carbon $appliedAt, array $fees, int $batchId, string $schoolYear, string $level): Applicant
+    {
+        $applicant = Applicant::where('external_app_no', $fields['external_app_no'])->first();
+        $isNew = $applicant === null;
+        $applicant ??= new Applicant;
+
+        $applicant->fill($fields + [
+            'imported_batch_id' => $batchId,
+            'reference_number' => $isNew ? self::generateReferenceNumber($schoolYear, $level) : $applicant->reference_number,
+        ]);
         $applicant->save();
 
-        $appliedAt = $this->parseDate($row[2] ?? null);
         if ($appliedAt) {
             DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $appliedAt]);
         }
 
-        $this->recordPayment($applicant->id, 'application_fee', $this->yesNo($row[15] ?? null));
-        $this->recordPayment($applicant->id, 'reservation_fee', $this->yesNo($row[16] ?? null));
+        self::recordPayment($applicant->id, 'application_fee', $fees['application_fee']);
+        self::recordPayment($applicant->id, 'reservation_fee', $fees['reservation_fee']);
 
-        return null; // already saved above (we need its id for the payments rows)
+        return $applicant;
     }
 
     /** "REYES, JUAN H" -> ['REYES', 'JUAN H']. Falls back to splitting on whitespace if there's no comma. */
@@ -256,7 +296,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         }
     }
 
-    protected function recordPayment(int $applicantId, string $feeType, bool $paid): void
+    protected static function recordPayment(int $applicantId, string $feeType, bool $paid): void
     {
         if (! $paid) {
             return;
@@ -268,7 +308,7 @@ class ApplicantsImport implements ToModel, WithStartRow, WithCustomCsvSettings
         );
     }
 
-    protected function generateReferenceNumber(string $schoolYear, string $level): string
+    protected static function generateReferenceNumber(string $schoolYear, string $level): string
     {
         $year = substr($schoolYear, 0, 4);
         $levelCode = strtoupper(substr($level, 0, 3));

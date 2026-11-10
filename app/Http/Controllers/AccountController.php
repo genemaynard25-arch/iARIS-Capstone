@@ -131,6 +131,8 @@ class AccountController extends Controller
             "assigned_level" => $validated["role"] === "registrar"
                 ? ($validated["department"] === "IS Registrar" ? "is" : "college")
                 : null,
+            // Only IATO Staff edit records at all (everyone else here is a viewer - see canEdit()).
+            "access_type" => $validated["role"] === "iato_staff" ? "editor" : "viewer",
         ]);
 
         \App\Models\AuditLog::record(
@@ -176,6 +178,7 @@ class AccountController extends Controller
             "assigned_level" => $validated["role"] === "registrar"
                 ? ($validated["department"] === "IS Registrar" ? "is" : "college")
                 : $user->assigned_level,
+            "access_type" => $validated["role"] === "iato_staff" ? "editor" : "viewer",
         ]);
 
         $diff = collect($before)

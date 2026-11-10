@@ -1,10 +1,13 @@
 @extends('layouts.app')
 
 {{--
-    My Submissions (SubmissionsController): the staff member's edits, new records, removals and imports,
-    and what the Super Admin did with them. LAMP requests (conversations they started from Scholarships)
-    show here too. Everything below the "How to submit" card is drawn by the script.
-    FRONT END ONLY: Fix and resubmit / Withdraw change this page until reload.
+    My Submissions (SubmissionsController): the signed-in staff member's own review_queue rows -
+    edits, new records, removals and imports - and what the Super Admin did with them. LAMP
+    requests (conversations they started from Scholarships) show here too. Everything below the
+    "How to submit" card is drawn by the script.
+    Fix and resubmit / Withdraw are still front end only: the submission itself (and Approve /
+    Send back) are real; correcting a sent-back item and resubmitting isn't built yet, so use the
+    original Edit/Remove/Import form again instead.
 --}}
 
 @section('title', 'iARIS — My Submissions')
@@ -14,7 +17,6 @@
 @include('partials.admin-workspace', ['workspacePage' => 'submissions-page', 'workspaceGroup' => 'Staff', 'workspaceLabel' => 'My Work · My Submissions'])
 
 @section('content')
-    <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Preview submissions · Fix, resubmit, and withdraw actions stay on this page until reload. The review workflow is not connected yet.</p>
     {{-- Four workflow tiles from the staff submissions mockup. --}}
     <div class="staff-submission-flow">
         @foreach ([

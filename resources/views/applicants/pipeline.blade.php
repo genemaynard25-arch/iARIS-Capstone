@@ -544,6 +544,15 @@
                 if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Save failed');
                 const data = await res.json();
 
+                if (data.review) {
+                    // IATO Staff: nothing changed yet - revert the select and say so.
+                    select.value = drawerApplicant.exam_status;
+                    btn.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i> Sent for review';
+                    setTimeout(() => { btn.innerHTML = original; }, 2000);
+                    alert(`Sent to the Review Queue as ${data.rq_number}. Others see the change after the Super Admin approves.`);
+                    return;
+                }
+
                 // Update this applicant in place (in the data, the open drawer, and the table)
                 Object.assign(drawerApplicant, { exam_status: data.exam_status, status: data.status });
                 $('examResultLabel').textContent = data.exam_label;

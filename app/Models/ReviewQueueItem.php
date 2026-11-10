@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-// Not wired up to any controller yet (see ReviewQueueController/SubmissionsController,
-// which still run entirely on placeholder data) - the table and model exist ahead of
-// the feature so the schema doesn't change again once it's built.
 class ReviewQueueItem extends Model
 {
     protected $table = 'review_queue';
+
+    public function getRouteKeyName(): string
+    {
+        return 'rq_number';
+    }
 
     protected $fillable = [
         'rq_number',
@@ -26,6 +28,7 @@ class ReviewQueueItem extends Model
         'status',
         'note',
         'changes',
+        'pending_action',
         'import_summary',
         'import_sample',
         'import_errors',
@@ -40,10 +43,25 @@ class ReviewQueueItem extends Model
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'changes' => 'array',
+            'pending_action' => 'array',
             'import_summary' => 'array',
             'import_sample' => 'array',
             'import_errors' => 'array',
         ];
+    }
+
+    /** How many are waiting (for the sidebar badge). */
+    public static function waitingCount(): int
+    {
+        return self::where('status', 'waiting')->count();
+    }
+
+    public static function nextRqNumber(): string
+    {
+        $last = self::orderByDesc('id')->value('rq_number');
+        $n = $last ? ((int) substr($last, 3)) + 1 : 1;
+
+        return 'RQ-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT);
     }
 
     public function applicant(): \Illuminate\Database\Eloquent\Relations\BelongsTo

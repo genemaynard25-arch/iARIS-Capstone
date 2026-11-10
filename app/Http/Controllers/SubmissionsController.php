@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ReviewQueueItem;
+
 class SubmissionsController extends Controller
 {
     /**
      * My Submissions (IATO Staff): the edits and imports this staff member sent to the
      * Review Queue, and what happened to each one (waiting, approved, or sent back with a reason).
-     *
-     * Placeholder data: the IATO Staff items from ReviewQueueController::items(), so both pages
-     * tell the same story. Front end only. TODO (backend): read the review_queue table for
-     * the signed-in user, and a route to resend a corrected item.
      */
     public function index()
     {
@@ -29,13 +27,12 @@ class SubmissionsController extends Controller
 
     public static function items(): array
     {
-        return collect(ReviewQueueController::items())
-            ->where('role', 'IATO Staff')
-            // The queue is written from the Super Admin's side ("by you"); here it's the other way round
-            ->map(fn ($item) => array_merge($item, [
+        return ReviewQueueItem::where('submitted_by', auth()->id())
+            ->orderByDesc('submitted_at')
+            ->get()
+            ->map(fn (ReviewQueueItem $item) => array_merge(ReviewQueueController::shape($item), [
                 // e.g. "Nov 8, 2026 · 10:14 AM"
-                'when' => \Illuminate\Support\Carbon::parse($item['at'])->format('M j, Y · g:i A'),
-                'reviewed' => isset($item['reviewed']) ? str_replace('by you', 'by Renegado, Randolph', $item['reviewed']) : null,
+                'when' => \Illuminate\Support\Carbon::parse($item->submitted_at)->format('M j, Y · g:i A'),
             ]))
             ->values()
             ->all();

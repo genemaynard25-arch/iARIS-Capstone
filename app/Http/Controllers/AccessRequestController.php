@@ -78,6 +78,7 @@ class AccessRequestController extends Controller
             "assigned_level" => $validated["role"] === "registrar"
                 ? ($validated["department"] === "IS Registrar" ? "is" : "college")
                 : null,
+            "access_type" => $validated["role"] === "iato_staff" ? "editor" : "viewer",
         ]);
 
         $accessRequest->update([
