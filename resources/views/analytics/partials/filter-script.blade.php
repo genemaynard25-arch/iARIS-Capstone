@@ -19,6 +19,11 @@
             document.querySelectorAll('[data-analytics-stat]').forEach((card, index) => {
                 card.querySelector('[data-stat-value]').textContent = values[index];
                 const delta = card.querySelector('[data-stat-change]'), change = changes[index];
+                if (index === 1) {
+                    delta.textContent = `${format(current.passed)} of ${format(current.took)} who took it`;
+                    delta.className = 'small fw-semibold text-body';
+                    return;
+                }
                 delta.textContent = change === null ? 'No matching prior-year data' : `${change >= 0 ? '+' : ''}${change.toFixed(1)}${index === 1 || index === 2 ? ' pts' : '%'} vs prior AY`;
                 delta.className = 'small ' + (change === null ? 'text-body-secondary' : 'fw-semibold ' + (change >= 0 ? 'text-primary' : 'text-danger'));
             });

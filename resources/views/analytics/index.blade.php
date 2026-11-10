@@ -28,6 +28,7 @@
         'insights' => ['AI Insights', 'bi-stars'],
         'reports' => ['Reports', 'bi-file-earmark-text'],
     ];
+    $passRateRows = collect($filterData['rows'] ?? [])->where('year', $filterData['years'][0] ?? '');
     $locationPreview = false;
     if (($charts['locations']['labels'] ?? []) === ['No location data available']) {
         $charts['locations'] = ['labels' => [], 'values' => []];
@@ -115,7 +116,9 @@
                     <div class="card-body">
                         <div class="small fw-bold text-body-secondary mb-2">{{ $stat['label'] }}</div>
                         <div class="fs-3 fw-bold mb-1" data-stat-value>{{ $stat['value'] }}</div>
-                        @if (in_array($stat['change'], ['N/A', 'No prior-year data']))
+                        @if ($loop->index === 1)
+                            <div class="small fw-semibold text-body" data-stat-change>{{ number_format($passRateRows->sum('passed')) }} of {{ number_format($passRateRows->sum('took')) }} who took it</div>
+                        @elseif (in_array($stat['change'], ['N/A', 'No prior-year data']))
                             <div class="small text-body-secondary" data-stat-change>{{ $stat['change'] }}</div>
                         @else
                             <div data-stat-change class="small fw-semibold {{ $stat['good'] ? 'text-primary' : 'text-danger' }}">
