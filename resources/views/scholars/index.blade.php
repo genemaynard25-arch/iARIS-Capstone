@@ -100,12 +100,12 @@
                 <option value="az">Sort: Name A–Z</option>
                 <option value="review">Sort: Discrepancies First</option>
             </select>
-            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
-                <i class="bi bi-download me-1" aria-hidden="true"></i> Download list
-            </button>
             @if ($canEdit)
                 <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add Scholar</button>
             @endif
+            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
+                <i class="bi bi-download me-1" aria-hidden="true"></i> Export
+            </button>
         </div>
 
         {{-- Admission status pills --}}
