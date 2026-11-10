@@ -153,6 +153,17 @@ class ApplicantRecords
                 'program' => '—',
                 'bar' => '—',
             ]),
+            'ipace' => array_merge($row, [
+                'unit' => 'ipace',
+                'unit_label' => 'iPACE',
+                'group' => self::initials($program),
+                'program_label' => $program,
+                // The import captures learning modality, but not employment details.
+                'program' => $a->learning_modalities ?: '—',
+                'year' => $a->year_level ?: '—',
+                'working' => '—',
+                'employer' => '—',
+            ]),
             'eteeap' => array_merge($row, [
                 'unit' => 'eteeap',
                 'unit_label' => 'ETEEAP',
