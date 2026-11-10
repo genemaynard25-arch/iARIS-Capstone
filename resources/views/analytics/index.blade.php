@@ -28,9 +28,10 @@
         'insights' => ['AI Insights', 'bi-stars'],
         'reports' => ['Reports', 'bi-file-earmark-text'],
     ];
-    $locationPreview = ($charts['locations']['labels'] ?? []) === ['No location data available'];
-    if ($locationPreview) {
-        $charts['locations'] = ['labels' => ['Lipa City', 'Batangas City', 'CALABARZON', 'Others'], 'values' => [1377, 895, 723, 447]];
+    $passRateRows = collect($filterData['rows'] ?? [])->where('year', $filterData['years'][0] ?? '');
+    $locationPreview = false;
+    if (($charts['locations']['labels'] ?? []) === ['No location data available']) {
+        $charts['locations'] = ['labels' => [], 'values' => []];
     }
 @endphp
 
@@ -50,7 +51,7 @@
                     <div class="small fw-bold text-uppercase text-body-secondary mb-2">Date range</div>
                     <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Date range">
                         @foreach ($filters['ranges'] as $range)
-                            <input type="radio" class="btn-check" name="range" id="range{{ $loop->index }}" value="{{ $range }}" {{ $range === 'This Semester' ? 'checked' : '' }}>
+                            <input type="radio" class="btn-check" name="range" id="range{{ $loop->index }}" value="{{ $range }}" {{ $range === 'This AY' ? 'checked' : '' }}>
                             <label class="btn btn-sm btn-outline-primary fw-semibold" for="range{{ $loop->index }}">{{ $range }}</label>
                         @endforeach
                     </div>
@@ -59,7 +60,7 @@
                     <label for="filterDepartment" class="small fw-bold text-uppercase text-body-secondary mb-2 d-block">Department</label>
                     <select class="form-select" id="filterDepartment">
                         <option>All Departments</option>
-                        @foreach ($filters['departments'] as $department)
+                        @foreach (collect($filterData['rows'])->pluck('department')->unique()->sort() as $department)
                             <option>{{ $department }}</option>
                         @endforeach
                     </select>
@@ -67,13 +68,14 @@
                 <div>
                     <label for="filterYear" class="small fw-bold text-uppercase text-body-secondary mb-2 d-block">Academic year</label>
                     <select class="form-select" id="filterYear">
-                        @foreach ($filters['years'] as $year)
+                        @foreach ($filterData['years'] ?: ['No imported school year'] as $year)
                             <option>{{ $year }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
-            <div class="ar-filter-note"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Preview filters update report scope only. Figures below continue to show the current imported school-year data.</div>
+            <div class="ar-filter-note"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Filters use application dates. Week starts Monday; semester means January–June or July–December. Cached AI insights remain institution-wide.</div>
+            <div class="small text-body-secondary mt-2" id="analyticsFilterStatus" role="status" aria-live="polite"></div>
         </div>
     </div>
     @endif
@@ -110,14 +112,16 @@
     <div class="ar-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4">
         @foreach ($stats as $stat)
             <div class="col">
-                <div class="ar-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
+                <div data-analytics-stat="{{ $loop->index }}" class="ar-stat-card card border-0 border-top border-3 border-{{ $stat['tone'] }} shadow-sm rounded-4 h-100">
                     <div class="card-body">
                         <div class="small fw-bold text-body-secondary mb-2">{{ $stat['label'] }}</div>
-                        <div class="fs-3 fw-bold mb-1">{{ $stat['value'] }}</div>
-                        @if (in_array($stat['change'], ['N/A', 'No prior-year data']))
-                            <div class="small text-body-secondary">{{ $stat['change'] }}</div>
+                        <div class="fs-3 fw-bold mb-1" data-stat-value>{{ $stat['value'] }}</div>
+                        @if ($loop->index === 1)
+                            <div class="small fw-semibold text-body" data-stat-change>{{ number_format($passRateRows->sum('passed')) }} of {{ number_format($passRateRows->sum('took')) }} who took it</div>
+                        @elseif (in_array($stat['change'], ['N/A', 'No prior-year data']))
+                            <div class="small text-body-secondary" data-stat-change>{{ $stat['change'] }}</div>
                         @else
-                            <div class="small fw-semibold {{ $stat['good'] ? 'text-primary' : 'text-danger' }}">
+                            <div data-stat-change class="small fw-semibold {{ $stat['good'] ? 'text-primary' : 'text-danger' }}">
                                 <i class="bi {{ str_starts_with($stat['change'], '+') ? 'bi-arrow-up-right' : 'bi-arrow-down-right' }}" aria-hidden="true"></i>
                                 {{ $stat['change'] }} <span class="text-body-secondary fw-normal">vs last AY</span>
                             </div>
@@ -143,7 +147,7 @@
             @include('analytics.partials.chart-card', ['id' => 'funnel', 'title' => 'Conversion funnel', 'subtitle' => 'Applicant pipeline from application to enrollment', 'body' => 'analytics.partials.funnel'])
         </div>
         <div class="col-12 col-xl-6">
-            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by location', 'subtitle' => $locationPreview ? 'Mockup preview · location aggregation is not connected yet' : 'Where applicants come from', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
+            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by location', 'subtitle' => 'Where applicants in the selected scope come from', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
         </div>
     </div>
 
@@ -271,7 +275,7 @@
         <div class="card-body p-4">
             <h2 class="fs-6 fw-bold mb-1">Projected enrollment — {{ $projection['year'] }}</h2>
             <p class="small text-body-secondary mb-3">Based on imported school-year comparisons · For planning purposes only</p>
-            <div class="row row-cols-2 row-cols-lg-4 g-3">
+            <div class="row row-cols-2 row-cols-lg-4 g-3" id="filteredProjection">
                 @foreach ($projection['items'] as $item)
                     <div class="col">
                         <div class="rounded-3 bg-body-tertiary border-top border-3 border-{{ $item['up'] ? 'primary' : 'danger' }} p-3 h-100">
@@ -324,7 +328,9 @@
 
     @if ($hasAnalytics)
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('js/analytics-filters.js') }}"></script>
     <script>
+        const FILTER_DATA = @json($filterData);
         const CHARTS = @json($charts);
         const COMPARISON = @json($comparison);
         const INSIGHTS = @json($insights);
@@ -379,10 +385,11 @@
             instances[id] = new Chart(document.getElementById(`chart-${id}`), { ...config, plugins: [crosshair] });
         }
 
+        let trendYears = null;
         // ---- Applicant trends (bar or line) ----
         function drawTrends(type) {
             const labels = Object.keys(COMPARISON);
-            const years = Object.keys(Object.values(COMPARISON)[0]);
+            const years = trendYears ?? Object.keys(Object.values(COMPARISON)[0]);
             const colors = ['#A8D5C5', '#00674F', '#00503D'];
             const datasets = years.map((year, index) => type === 'line'
                 ? { label: year, data: labels.map(label => COMPARISON[label][year]), borderColor: colors[index], borderWidth: 2, tension: .15, pointRadius: 4 }
@@ -436,7 +443,8 @@
         }
 
         // ---- School year comparison ----
-        let selectedYears = ['Previous SY', 'Current SY'];
+        let selectedYears = Object.keys(Object.values(COMPARISON)[0]).slice(-2);
+        let refreshingComparison = false;
         let comparisonTable = null;
 
         function renderYearChips() {
@@ -464,6 +472,7 @@
 
         document.getElementById('addYear').addEventListener('click', () => {
             const year = document.getElementById('yearPicker').value;
+            if (!year) return compareMessage('No imported academic years are available.');
             if (selectedYears.includes(year)) return compareMessage(`${year} is already added.`);
             if (selectedYears.length >= 3) return compareMessage('You can compare up to 3 academic years. Remove one first.');
             selectedYears.push(year);
@@ -506,14 +515,14 @@
                     scales: { x: axis(false), y: { ...axis(true), beginAtZero: true } } },
             });
             refreshTable('comparison');
-            document.getElementById('comparisonResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (!refreshingComparison) document.getElementById('comparisonResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
         // ---- Table view + CSV export (every chart) ----
         function tableData(id) {
             if (id === 'comparison') return comparisonTable;
             if (id === 'trends') {
-                const years = Object.keys(Object.values(COMPARISON)[0]);
+                const years = trendYears ?? Object.keys(Object.values(COMPARISON)[0]);
                 return { head: ['Division / program', ...years], rows: Object.entries(COMPARISON).map(([label, values]) => [label, ...years.map(year => values[year])]) };
             }
             const { labels, values } = CHARTS[id];
@@ -600,8 +609,8 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         document.getElementById('exportFieldCounts').addEventListener('click', () => {
-            const rows = [...document.querySelectorAll('[data-field-name]')].map(field => [field.dataset.fieldName, field.dataset.fieldValue]);
-            downloadCsv('iaris-applicant-field-counts.csv', [['Field', 'Current school year'], ...rows]);
+            const rows = [...document.querySelectorAll('[data-field-name]')].map(field => [field.dataset.fieldName, field.dataset.fieldValue, field.dataset.fieldChange]);
+            downloadCsv('iaris-applicant-field-counts.csv', [['Field', 'Selected scope count', 'Change vs last AY'], ...rows]);
         });
         document.getElementById('exportInsights').addEventListener('click', () => {
             downloadCsv('iaris-insights.csv', [['Type', 'Title', 'Insight', 'Statistic'], ...INSIGHTS.map(insight => [insight.type, insight.title, insight.body, insight.stat])]);
@@ -619,8 +628,7 @@
             const v = currentView();
             document.getElementById('scopeText').textContent = `${v.range} · ${v.department} · ${v.year}`;
         }
-        document.querySelectorAll('input[name="range"], #filterDepartment, #filterYear').forEach(el => el.addEventListener('change', updateScope));
-        updateScope();
+        @include('analytics.partials.filter-script')
     </script>
     @endif
 

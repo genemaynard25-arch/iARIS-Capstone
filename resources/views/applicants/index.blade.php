@@ -155,6 +155,9 @@
             'finalStep' => 'Admission Confirmed',
         ],
     ][$scope]);
+    if ($isDean) {
+        $page['totalSub'] = \App\Http\Controllers\CollegeController::college()['code'] . ' only';
+    }
     // Extra columns that go before / after the second column
     $extrasFirst = array_filter($page['extras'], fn ($x) => $x['first']);
     $extrasAfter = array_filter($page['extras'], fn ($x) => ! $x['first']);

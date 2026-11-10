@@ -4,7 +4,7 @@
     $top = $funnel['values'][0];
     $colors = ['#00503D', '#00674F', '#2E8A6E', '#4DAB8E', '#7FC4AB'];
 @endphp
-<ol class="list-unstyled d-flex flex-column gap-2 mb-0">
+<ol id="filteredFunnel" class="list-unstyled d-flex flex-column gap-2 mb-0">
     @foreach ($funnel['labels'] as $i => $stage)
         @php($value = $funnel['values'][$i])
         @php($share = $top > 0 ? $value / $top * 100 : 0)

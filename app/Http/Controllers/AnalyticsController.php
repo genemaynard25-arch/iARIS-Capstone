@@ -121,11 +121,13 @@ class AnalyticsController extends Controller
             'tabs' => $tabs,
             'tab' => $tab,
             'reportData' => (new ReportController)->data(),
+            'previousReportData' => $user->canAccess('reports') ? (new ReportController)->data('Previous School Year') : null,
             'filters' => [
                 'ranges' => ['This Week', 'This Month', 'This Semester', 'This AY'],
                 'departments' => $rows->pluck('level_program')->unique()->values()->all(),
                 'years' => ['Current SY', 'Previous SY'],
             ],
+            'filterData' => $user->canAccess('analytics') ? \App\Support\AnalyticsFilterData::make() : null,
             'stats' => $stats,
             'charts' => $charts,
             'comparison' => $comparison,

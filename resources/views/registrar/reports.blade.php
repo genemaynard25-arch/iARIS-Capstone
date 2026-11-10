@@ -128,16 +128,23 @@
 
         // ---- Build a report: [title, header, rows] ----
         function inPeriod(dateText, period) {
-            if (!dateText || period.startsWith('AY')) return true;
-            const d = new Date(dateText), now = new Date();
-            if (period === 'Last 7 days') return (now - d) / 86400000 <= 7;
-            const month = period === 'This month' ? now.getMonth() : (now.getMonth() + 11) % 12;
-            const year = period === 'Last month' && now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+            if (period.startsWith('AY')) return true;
+            if (!dateText) return false;
+            const d = new Date(dateText), today = new Date();
+            if (Number.isNaN(d.getTime())) return false;
+            d.setHours(0, 0, 0, 0); today.setHours(0, 0, 0, 0);
+            if (d > today) return false;
+            if (period === 'Last 7 days') {
+                const start = new Date(today); start.setDate(start.getDate() - 6);
+                return d >= start;
+            }
+            const month = period === 'This month' ? today.getMonth() : (today.getMonth() + 11) % 12;
+            const year = period === 'Last month' && today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
             return d.getMonth() === month && d.getFullYear() === year;
         }
         function build(key, scope, period) {
             const rows = ROWS.filter(r => scope === 'All units' || r.unit === scope);
-            const paid = rows.filter(r => r.status === 'Paid' && inPeriod(r.paid, period));
+            const paid = rows.filter(r => (r.reservation_paid || r.status === 'Paid') && inPeriod(r.paid, period));
             const applied = rows.filter(r => inPeriod(r.applied, period));
             const countBy = (list, keyOf) => Object.entries(list.reduce((m, r) => { const k = keyOf(r); m[k] = (m[k] || 0) + 1; return m; }, {}));
             if (key === 'paid') {

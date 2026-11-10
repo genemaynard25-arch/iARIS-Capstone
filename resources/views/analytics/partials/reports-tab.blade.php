@@ -107,7 +107,7 @@
                 <div id="previewArea">
                     @foreach ($reports as $key => $report)
                         <div class="rounded-3 border bg-body-tertiary p-3 mb-4 d-none" data-preview="{{ $key }}">
-                            <div class="small fw-bold mb-2">{{ $report['title'] }} — Sample Preview</div>
+                            <div class="small fw-bold mb-2">{{ $report['title'] }} — Preview</div>
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle small mb-0 bg-white">
                                     <thead>
@@ -134,7 +134,7 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="small text-body-secondary mt-2">{{ $report['note'] }}</div>
+                            <div class="small text-body-secondary mt-2" data-report-note>{{ $report['note'] }}</div>
                         </div>
                     @endforeach
                 </div>

@@ -13,7 +13,7 @@ class EnsureUserIsAdmin
         $user = $request->user();
 
         if (!$user->isAdmin()) {
-            abort(403, 'This page is for adminisrators only.');
+            abort(403, 'This page is for administrators only.');
         }
 
         return $next($request);
