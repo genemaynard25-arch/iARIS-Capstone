@@ -239,6 +239,14 @@ class CollegeController extends Controller
         $level = self::levelFor($collegeCode);
         $applicants = \App\Models\Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])->get();
 
+        // CEAS is the one college kept showing its authored four-year numbers (see COLLEGES
+        // above) instead of real ones, on purpose: a demo of what the dashboard/analytics
+        // look like with a full year of real use, since no college has that much real
+        // imported history yet. Every other college still gets the real (if sparse) counts.
+        if ($collegeCode === 'CEAS') {
+            return $programs;
+        }
+
         $result = [];
         foreach ($programs as $code => $p) {
             $matched = $applicants->filter(fn ($a) => self::inGroup($a, $p));
@@ -461,21 +469,34 @@ class CollegeController extends Controller
             $levels = auth()->user()->isGradChair() ? ['graduate_school'] : ['ipace', 'eteeap'];
             $deanCollege = auth()->user()->role === 'dean' ? self::college()['code'] : null;
             if ($deanCollege) $levels = [self::levelFor($deanCollege)];
-            $counts = function ($year) use ($levels, $deanCollege) {
-                if (! $year) return [null, null, null];
-                $applicants = \App\Models\Applicant::where('school_year', $year)
-                    ->whereIn('level', $levels)->whereNull('archived_at')->get()
-                    ->when($deanCollege && $levels === ['college'], fn ($rows) => $rows->filter(
-                        fn ($a) => ($a->college ?: \App\Support\ApplicantRecords::collegeFor($a->program_or_track ?? '')) === $deanCollege
-                    ));
-                $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
-                return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
-            };
-            $data['schoolYearComparison'] = [
-                'currentLabel' => $current ? 'AY ' . $current : 'Current SY (no import)',
-                'previousLabel' => $previous ? 'AY ' . $previous : 'Previous SY (unavailable)',
-                'current' => $counts($current), 'previous' => $counts($previous),
-            ];
+
+            if ($deanCollege === 'CEAS') {
+                // Same demo exemption as realPrograms(): derived from CEAS's own authored
+                // four-year numbers instead of the real (sparse) applicants table.
+                $sum = fn (string $key, int $i) => array_sum(array_map(fn ($p) => $p[$key][$i], $data['programs']));
+                $data['schoolYearComparison'] = [
+                    'currentLabel' => ExecutiveController::YEARS[array_key_last(ExecutiveController::YEARS)],
+                    'previousLabel' => ExecutiveController::YEARS[array_key_last(ExecutiveController::YEARS) - 1],
+                    'current' => [$sum('applicants', 3), $sum('status', 1) + $sum('status', 2), $sum('status', 2)],
+                    'previous' => [$sum('applicants', 2), $sum('enrolled', 2), $sum('enrolled', 2)],
+                ];
+            } else {
+                $counts = function ($year) use ($levels, $deanCollege) {
+                    if (! $year) return [null, null, null];
+                    $applicants = \App\Models\Applicant::where('school_year', $year)
+                        ->whereIn('level', $levels)->whereNull('archived_at')->get()
+                        ->when($deanCollege && $levels === ['college'], fn ($rows) => $rows->filter(
+                            fn ($a) => ($a->college ?: \App\Support\ApplicantRecords::collegeFor($a->program_or_track ?? '')) === $deanCollege
+                        ));
+                    $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
+                    return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
+                };
+                $data['schoolYearComparison'] = [
+                    'currentLabel' => $current ? 'AY ' . $current : 'Current SY (no import)',
+                    'previousLabel' => $previous ? 'AY ' . $previous : 'Previous SY (unavailable)',
+                    'current' => $counts($current), 'previous' => $counts($previous),
+                ];
+            }
         }
         return view('college.analytics', $data + ['fieldCounts' => self::fieldCounts($data)]);
     }
@@ -486,6 +507,24 @@ class CollegeController extends Controller
      */
     private static function fieldCounts(array $common): array
     {
+        // Same CEAS demo exemption as realPrograms()/analytics(): proportions of the total
+        // this college's authored numbers already show, not the real (sparse) applicants table.
+        if ($common['college']['code'] === 'CEAS') {
+            $total = array_sum(array_map(fn ($p) => $p['applicants'][3], $common['programs']));
+            $completed = array_sum(array_map(fn ($p) => $p['status'][2], $common['programs']));
+
+            return [
+                ['label' => 'Male', 'value' => (int) round($total * 0.46), 'icon' => 'bi-gender-male', 'tone' => 'blue'],
+                ['label' => 'Female', 'value' => (int) round($total * 0.54), 'icon' => 'bi-gender-female', 'tone' => 'red'],
+                ['label' => 'Applying for scholarship', 'value' => (int) round($total * 0.18), 'icon' => 'bi-award', 'tone' => 'purple'],
+                ['label' => 'Paid entrance exam', 'value' => (int) round($total * 0.82), 'icon' => 'bi-cash-coin', 'tone' => 'green'],
+                ['label' => 'Paid reservation', 'value' => $completed, 'icon' => 'bi-bookmark-check', 'tone' => 'blue'],
+                ['label' => 'NOA issued', 'value' => $completed, 'icon' => 'bi-patch-check', 'tone' => 'green'],
+                ['label' => 'PWD', 'value' => (int) round($total * 0.03), 'icon' => 'bi-person-wheelchair', 'tone' => 'orange'],
+                ['label' => 'SSEN', 'value' => (int) round($total * 0.02), 'icon' => 'bi-person-badge', 'tone' => 'orange'],
+            ];
+        }
+
         $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))->get()
             ->filter(fn ($a) => self::groupOf($a, $common['programs']) !== null);
         $ids = $applicants->pluck('id');
