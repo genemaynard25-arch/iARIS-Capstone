@@ -15,7 +15,7 @@
 @section('page-title', 'Messages with IATO')
 @section('page-subtitle', "Every conversation with IATO in one place: your questions, IATO's replies.")
 
-@if (in_array(auth()->user()->role, ['president', 'chancellor']))
+@if (auth()->user()->isExecutive())
     @include('partials.president-workspace', ['presidentPage' => 'messages', 'presidentLabel' => 'Messages'])
     @section('page-actions')
         <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i> New message</button>
@@ -32,7 +32,7 @@
 @section('content')
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <div class="d-flex flex-wrap gap-2 me-auto" id="tabs" role="group" aria-label="Filter conversations"></div>
-        @unless ((in_array(auth()->user()->role, ['president', 'chancellor']) || auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
+        @unless ((auth()->user()->isExecutive() || auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
         <button type="button" class="btn btn-primary fw-semibold" id="newButton"><i class="bi bi-pencil-square me-1"></i> New message</button>
         @endunless
     </div>

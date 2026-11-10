@@ -26,7 +26,7 @@
         ->values();
 @endphp
 
-@if (in_array(auth()->user()->role, ['president', 'chancellor']))
+@if (auth()->user()->isExecutive())
     @include('partials.president-workspace', ['presidentPage' => 'reports', 'presidentLabel' => 'Reports'])
 @endif
 

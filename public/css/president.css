@@ -23,3 +23,5 @@
     .president-page .director-report-heading { grid-template-columns: 1fr; }
     .president-page .director-report-heading > span { text-align: left; }
 }
+.president-analytics-page .chart-box { min-width: 0; }
+.president-analytics-page .chart-box canvas { max-width: 100%; }
