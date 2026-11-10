@@ -10,6 +10,7 @@ use App\Models\ReviewQueueItem;
 use App\Support\ApplicantEditFlow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReviewQueueController extends Controller
 {
@@ -78,6 +79,7 @@ class ReviewQueueController extends Controller
         $action = $item->pending_action['action'] ?? null;
         $payload = $item->pending_action['payload'] ?? [];
 
+        DB::transaction(function () use ($action, $payload, $item, $request) {
         match ($action) {
             'create' => ApplicantEditFlow::applyCreate($payload['validated'], $payload['level']),
             'update' => $item->applicant && ApplicantEditFlow::applyUpdate($item->applicant, $payload['validated']),
@@ -92,6 +94,7 @@ class ReviewQueueController extends Controller
         $item->update(['status' => 'approved', 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
 
         AuditLog::record('edit', $item->unit, 'Review Queue Item Approved', "Approved **{$item->rq_number}**: {$item->title} — {$item->subject}");
+        });
 
         return response()->json(['ok' => true]);
     }
