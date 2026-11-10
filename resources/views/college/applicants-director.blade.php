@@ -217,7 +217,7 @@
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name} · ${UNIT}`;
             let html = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Payment', r.paid ? 'Paid' : 'Pending')}</div>`
-                + section('Personal information') + table([['Date of birth', r.dob], ...(ETEEAP ? [['Age', r.age + ' years old']] : []), ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]]);
+                + section('Personal information') + table([...(ETEEAP ? [['Age', r.age + ' years old']] : []), ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]]);
             if (ETEEAP) {
                 html += section('Educational background') + table([['Highest educational attainment', r.education]])
                     + section('Employment history') + `<div class="vstack gap-2">${r.work.map(([title, company, period, years]) => `<div class="rounded-3 bg-body-tertiary p-2 small"><div class="fw-semibold">${esc(title)} · ${esc(company)}</div><div class="text-body-secondary">${esc(period)} · ${esc(years)}</div></div>`).join('')}</div>`

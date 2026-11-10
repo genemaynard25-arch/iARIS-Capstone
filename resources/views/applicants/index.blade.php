@@ -70,7 +70,7 @@
             ],
             'labels' => ['group' => 'Level', 'groupAll' => 'All Levels', 'program' => 'Strand', 'programAll' => 'All Strands'],
             'statuses' => $databaseStatuses,
-            // Learners are children: show LRN and the parent / guardian (contact details are the guardian's)
+            // Integrated School uses the learner information layout.
             'guardian' => true,
             'examField' => 'Entrance Exam / Assessment',
         ],
@@ -180,7 +180,6 @@
         'unit_label' => $a['unit_label'] ?? ($a['unit'] === 'college' ? $a['college'] : implode(' · ', array_filter(['Integrated School', $a['sub_level'] ?? null, $a['level']]))),
         'applied_label' => \Illuminate\Support\Carbon::parse($a['applied'])->format('M j, Y'),
         'updated_label' => \Illuminate\Support\Carbon::parse($a['updated'])->format('M j, g:i A'),
-        'dob_label' => $a['dob'] ? \Illuminate\Support\Carbon::parse($a['dob'])->format('F j, Y') : null,
         'paid_label' => $a['paid'] ? \Illuminate\Support\Carbon::parse($a['paid'])->format('M j, Y') : null,
         'tone' => $statusTones[$a['status']],
         'status_label' => $page['statusLabels'][$a['status']] ?? $a['status'],
@@ -441,7 +440,7 @@
         </div>
 
         <ul class="nav nav-underline px-4 border-bottom no-print" role="tablist">
-            <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabInfo" type="button" role="tab">{{ $page['guardian'] ? 'Personal & Guardian' : 'Personal Info' }}</button></li>
+            <li class="nav-item"><button class="nav-link active fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabInfo" type="button" role="tab">Personal Info</button></li>
             @if ($scope === 'eteeap')
                 <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabWork" type="button" role="tab">Work History</button></li>
                 <li class="nav-item"><button class="nav-link fw-bold py-3" data-bs-toggle="tab" data-bs-target="#tabAssessment" type="button" role="tab">Assessment</button></li>
@@ -456,23 +455,20 @@
             {{-- Personal info --}}
             <div class="tab-pane fade show active" id="tabInfo" role="tabpanel">
                 @if ($page['guardian'])
-                    {{-- Integrated School: the learner, then the parent / guardian (the contact details are theirs) --}}
+                    {{-- Integrated School learner and contact information --}}
                     <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Learner Information</div>
                     <div class="row g-3 mb-4">
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Applicant No.</div><div class="fw-semibold" data-field="id"></div></div>
                         {{-- LRN (Learner Reference Number): not in the applicants table yet --}}
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">LRN</div><div class="fw-semibold" data-field="lrn"></div></div>
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">PWD</div><div class="fw-semibold" data-field="pwd"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">SSEN</div><div class="fw-semibold" data-field="ssen"></div></div>
                         <div class="col-12"><div class="small fw-bold text-uppercase text-body-secondary">Address</div><div class="fw-semibold" data-field="address"></div></div>
                     </div>
-                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Parent / Guardian</div>
+                    <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Contact Details</div>
                     <div class="row g-3">
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Name</div><div class="fw-semibold" data-field="guardian_name"></div></div>
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Relationship</div><div class="fw-semibold" data-field="guardian_relationship"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Contact No.</div><div class="fw-semibold" data-field="contact"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Email</div><div class="fw-semibold text-break" data-field="email"></div></div>
                     </div>
@@ -481,7 +477,6 @@
                     <div class="row g-3 mb-4">
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">App Number</div><div class="fw-semibold" data-field="id"></div></div>
-                        <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">PWD</div><div class="fw-semibold" data-field="pwd"></div></div>
                         <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">SSEN</div><div class="fw-semibold" data-field="ssen"></div></div>
