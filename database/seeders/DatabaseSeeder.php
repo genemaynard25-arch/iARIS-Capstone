@@ -68,12 +68,14 @@ class DatabaseSeeder extends Seeder
         ]
     );
 
+    // 'principal' + assigned_sub_level 'shs': isShsPrincipal() picks this up regardless of role
+    // (see User::isShsPrincipal()). Not 'admin' - the paper counts exactly one Super Admin.
     \App\Models\User::firstOrCreate(
         ['email' => 'shsprincipal@gmail.com'],
         [
             'name' => 'Test SHS Principal',
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-            'role' => 'admin',
+            'role' => 'principal',
             'access_type' => 'viewer',
             'assigned_level' => 'is',
             'assigned_sub_level' => 'shs',

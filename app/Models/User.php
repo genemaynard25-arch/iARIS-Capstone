@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(["name", "email", "password", "department", "status", "role", "assigned_college", "assigned_level"])]
+#[Fillable(["name", "email", "password", "department", "status", "role", "assigned_college", "assigned_level", "assigned_sub_level"])]
 #[Hidden(["password", "remember_token"])]
 class User extends Authenticatable
 {
@@ -44,7 +44,11 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        if ($this->role === "admin") {
+        // The paper counts exactly one Super Admin. isShsPrincipal() is excluded here in case a
+        // database still has that account seeded with role 'admin' from before the seeder was
+        // fixed - without this, it would pass every admin-gated check in the app (the `admin`
+        // middleware included), not just the two places that remembered to check for it.
+        if ($this->role === "admin" && ! $this->isShsPrincipal()) {
             return true;
         }
         return \App\Models\TempAdmin::active()
@@ -185,8 +189,9 @@ class User extends Authenticatable
         return $this->role === "program_chair" && $this->assigned_level === "graduate_school";
     }
 
-    // The seeded SHS principal has role 'admin' but is assigned to IS / SHS, so the SHS assignment decides
-    // (a 'principal' assigned to SHS also counts). A 'principal' without it is the IS Principal (below).
+    // Checked by assignment, not role, so this also catches a database still seeded from before
+    // the SHS principal's seed role was fixed (it used to be 'admin' - see DatabaseSeeder and
+    // isAdmin()). A 'principal' without the SHS assignment is the IS Principal (below).
     public function isShsPrincipal(): bool
     {
         return $this->assigned_sub_level === "shs";
