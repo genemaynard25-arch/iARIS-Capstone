@@ -36,6 +36,75 @@ class ApplicantEditFlow
         };
     }
 
+    /** Additional fields collected by the manual form; optional for older API clients. */
+    public static function detailRules(?string $examResult = null): array
+    {
+        return [
+            'date_of_birth' => 'sometimes|nullable|date|before_or_equal:today',
+            'year_level' => 'sometimes|nullable|string|max:30',
+            'exam_date' => 'nullable|required_with:exam_time|date_format:Y-m-d',
+            'exam_time' => 'nullable|required_with:exam_date|date_format:H:i',
+            'exam_result' => 'sometimes|required|in:'.implode(',', array_keys(ApplicantRecords::EXAM_STATUSES)),
+            'applying_for_scholarship' => 'sometimes|boolean',
+            'exam_fee_paid' => 'sometimes|boolean',
+            'reservation_fee_paid' => ['sometimes', 'boolean', function ($attribute, $value, $fail) use ($examResult) {
+                if ($value && ! in_array($examResult, ['passed', 'reconsidered'], true)) {
+                    $fail('Reservation payment can only be confirmed for Passed or Reconsidered applicants.');
+                }
+            }],
+            'pwd' => 'sometimes|boolean',
+            'ssen' => 'sometimes|boolean',
+            'feeder_school' => 'sometimes|nullable|string|max:150',
+            'school_address' => 'sometimes|nullable|string|max:255',
+            'school_classification' => 'sometimes|nullable|string|max:30',
+            'nationality' => 'sometimes|nullable|string|max:50',
+            'permit_no' => 'sometimes|nullable|string|max:50',
+            'gwa' => 'sometimes|nullable|numeric|min:0|max:99.99',
+            'student_type' => 'sometimes|nullable|string|max:50',
+            'learning_modalities' => 'sometimes|nullable|string|max:50',
+        ];
+    }
+
+    private const DETAIL_FIELDS = [
+        'date_of_birth', 'year_level', 'applying_for_scholarship', 'pwd', 'ssen',
+        'feeder_school', 'school_address', 'school_classification', 'nationality',
+        'permit_no', 'gwa', 'student_type', 'learning_modalities',
+    ];
+
+    private static function applyDetails(Applicant $applicant, array $validated): void
+    {
+        $details = array_intersect_key($validated, array_flip(self::DETAIL_FIELDS));
+        if (array_key_exists('exam_date', $validated)) {
+            $details['exam_scheduled_at'] = empty($validated['exam_date']) ? null
+                : $validated['exam_date'].' '.($validated['exam_time'] ?? '00:00');
+        }
+        if (! empty($validated['date_of_birth'])) {
+            $details['age'] = (int) \Illuminate\Support\Carbon::parse($validated['date_of_birth'])->age;
+        }
+        if ($details) {
+            $applicant->update($details);
+        }
+        // Exam results and Cashier-confirmed payments are independent. Legacy status requests retain their flow.
+        if (array_key_exists('exam_result', $validated)) {
+            self::applyExamStatus($applicant, $validated['exam_result']);
+        } else {
+            self::applyStatus($applicant, $validated['status']);
+        }
+        foreach (['exam_fee_paid' => 'application_fee', 'reservation_fee_paid' => 'reservation_fee'] as $field => $fee) {
+            if (! array_key_exists($field, $validated)) {
+                continue;
+            }
+            $payments = DB::table('payments')->where('applicant_id', $applicant->id)->where('fee_type', $fee);
+            $status = $validated[$field] ? 'paid' : 'unpaid';
+            if ($payments->exists()) {
+                // Keep the existing amount and confirmation timestamp when the status is unchanged.
+                $payments->where('status', '!=', $status)->update(['status' => $status, 'paid_at' => $validated[$field] ? now() : null]);
+            } elseif ($validated[$field]) {
+                DB::table('payments')->insert(['applicant_id' => $applicant->id, 'fee_type' => $fee, 'status' => 'paid', 'amount' => null, 'paid_at' => now()]);
+            }
+        }
+    }
+
     public static function applyStatus(Applicant $applicant, string $status): void
     {
         $map = [
@@ -82,9 +151,39 @@ class ApplicantEditFlow
             }
         }
 
-        $groupBefore = $applicant->level === 'college' ? $applicant->college : $applicant->sub_level;
+        $groupBefore = $applicant->level === 'college' ? $applicant->college : (ApplicantRecords::IS_SUB_LEVELS[$applicant->sub_level] ?? $applicant->sub_level);
         if ($groupBefore !== $validated['group']) {
             $diff[] = [$applicant->level === 'college' ? 'College' : 'Group', $groupBefore ?? '—', $validated['group']];
+        }
+
+        foreach (self::DETAIL_FIELDS as $field) {
+            if (! array_key_exists($field, $validated)) {
+                continue;
+            }
+            $beforeValue = $field === 'date_of_birth' ? $applicant->date_of_birth?->format('Y-m-d') : $applicant->$field;
+            $afterValue = $validated[$field];
+            if ((string) $beforeValue !== (string) $afterValue) {
+                $diff[] = [ucwords(str_replace('_', ' ', $field)), $beforeValue ?? '—', $afterValue ?? '—'];
+            }
+        }
+        if (isset($validated['exam_result']) && $applicant->admission_test_status !== $validated['exam_result']) {
+            $diff[] = ['Exam Result', $applicant->admission_test_status, $validated['exam_result']];
+        }
+        if (array_key_exists('exam_date', $validated)) {
+            $beforeExam = $applicant->exam_scheduled_at?->format('Y-m-d H:i');
+            $afterExam = $validated['exam_date'] ? $validated['exam_date'].' '.($validated['exam_time'] ?? '00:00') : null;
+            if ($beforeExam !== $afterExam) {
+                $diff[] = ['Entrance Exam Schedule', $beforeExam ?? '—', $afterExam ?? '—'];
+            }
+        }
+
+        foreach (['exam_fee_paid' => 'application_fee', 'reservation_fee_paid' => 'reservation_fee'] as $field => $fee) {
+            if (array_key_exists($field, $validated)) {
+                $beforePaid = DB::table('payments')->where('applicant_id', $applicant->id)->where('fee_type', $fee)->where('status', 'paid')->exists();
+                if ($beforePaid !== (bool) $validated[$field]) {
+                    $diff[] = [$fee === 'application_fee' ? 'Exam Fee Paid' : 'Reservation Fee Paid', $beforePaid ? 'Yes' : 'No', $validated[$field] ? 'Yes' : 'No'];
+                }
+            }
         }
 
         return $diff;
@@ -92,12 +191,19 @@ class ApplicantEditFlow
 
     public static function diffForCreate(array $validated): array
     {
-        return [
+        $changes = [
             ['Name', '—', "{$validated['last']}, {$validated['first']}"],
             [$validated['group'] === null ? 'Group' : 'College/Group', '—', $validated['group']],
             ['Program / Track', '—', $validated['program']],
             ['Status', '—', $validated['status']],
         ];
+        foreach (array_merge(self::DETAIL_FIELDS, ['exam_date', 'exam_time', 'exam_result', 'exam_fee_paid', 'reservation_fee_paid']) as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] !== null && $validated[$field] !== '') {
+                $changes[] = [ucwords(str_replace('_', ' ', $field)), '—', $validated[$field]];
+            }
+        }
+
+        return $changes;
     }
 
     public static function applyUpdate(Applicant $applicant, array $validated): void
@@ -115,7 +221,7 @@ class ApplicantEditFlow
         ]);
 
         DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $validated['applied']]);
-        self::applyStatus($applicant, $validated['status']);
+        self::applyDetails($applicant, $validated);
     }
 
     public static function applyCreate(array $validated, string $level): Applicant
@@ -138,7 +244,7 @@ class ApplicantEditFlow
         ]);
 
         DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $validated['applied']]);
-        self::applyStatus($applicant, $validated['status']);
+        self::applyDetails($applicant, $validated);
 
         return $applicant;
     }
