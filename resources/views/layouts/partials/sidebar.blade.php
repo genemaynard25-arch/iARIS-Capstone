@@ -43,7 +43,7 @@
             ]],
             ['group' => 'Access & Security', 'icon' => 'bi-shield-lock', 'items' => [
                 $link('Access Control', 'bi-shield-check', '/access-control', 'access-control*', $user->isAdmin()),
-                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', $user->isAdmin(), $user->isAdmin() ? \App\Support\AccessRequests::waitingCount() : 0),
+                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', $user->isAdmin(), $user->isAdmin() ? \App\Models\AccessRequest::waitingCount() : 0),
                 $link('Super User Succession', 'bi-people', '/succession', 'succession*', $isSuperAdmin),
             ]],
         ],
@@ -62,7 +62,7 @@
             $sections['ADMIN (TEMPORARY)'] = [
                 $link('Review Queue', 'bi-list-check', '/review-queue', 'review-queue*', true, \App\Http\Controllers\ReviewQueueController::waitingCount()),
                 $link('Access Control', 'bi-shield-check', '/access-control', 'access-control*'),
-                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', true, \App\Support\AccessRequests::waitingCount()),
+                $link('User Accounts', 'bi-person-gear', '/accounts', 'accounts*', true, \App\Models\AccessRequest::waitingCount()),
             ];
         }
     }

@@ -9,6 +9,7 @@ use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AccessControlController;
+use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\CollegeRecordController;
 use App\Http\Controllers\IsRecordController;
@@ -70,6 +71,11 @@ Route::put('/accounts/{user}', [AccountController::class, 'update'])->middleware
 Route::post('/accounts/{user}/reset-password', [AccountController::class, 'resetPassword'])->middleware(['auth', 'admin']);
 Route::post('/accounts/{user}/status', [AccountController::class, 'setStatus'])->middleware(['auth', 'admin']);
 Route::delete('/accounts/{user}', [AccountController::class, 'destroy'])->middleware(['auth', 'admin']);
+// Request Access: the login page's form (no auth - anyone can ask to be reviewed) and the
+// admin's Approve / Decline on the Access Requests tab of User Accounts.
+Route::post('/access-requests', [AccessRequestController::class, 'store'])->middleware('throttle:6,1')->name('access-requests.store');
+Route::post('/access-requests/{accessRequest}/approve', [AccessRequestController::class, 'approve'])->middleware(['auth', 'admin']);
+Route::post('/access-requests/{accessRequest}/decline', [AccessRequestController::class, 'decline'])->middleware(['auth', 'admin']);
 Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['auth', 'module:audit'])->name('audit-logs');
 // Review Queue (front end only for now) and Super User Succession
 Route::get('/review-queue', [ReviewQueueController::class, 'index'])->middleware(['auth', 'admin'])->name('review-queue');

@@ -1,16 +1,37 @@
 {{--
-    Access Requests tab of User Accounts. FRONT END ONLY: the requests are placeholders (App\Support\AccessRequests)
-    and Approve / Decline change this page until reload.
+    Access Requests tab of User Accounts. Backed by the access_requests table (App\Models\AccessRequest).
+    Approve opens a small modal where the admin confirms the actual role/department before the account
+    is created (the requester's own "Position" is free text, not a users.role value).
 --}}
 @php
     $requestInitials = fn ($name) => collect(explode(', ', $name))->map(fn ($part) => mb_substr($part, 0, 1))->reverse()->implode('');
     $when = fn ($at) => \Illuminate\Support\Carbon::parse($at)->format('M j, Y · g:i A');
+    // Best-effort guess from the requester's free-text Position so the admin starts with a sensible
+    // default; they can change it before approving. No match -> blank, admin must choose.
+    $positionToRole = [
+        'IATO Staff' => 'iato_staff',
+        'Dean' => 'dean',
+        'Program Chair' => 'program_chair',
+        'Integrated School Principal' => 'principal',
+        'Registrar' => 'registrar',
+        'LAMP Office' => 'lamp',
+        'President' => 'president',
+        'Chancellor' => 'chancellor',
+        'Vice Chancellor' => 'vice_chancellor',
+        'Vice President' => 'vice_president',
+        'iPACE Director' => 'director',
+    ];
+    // Same idea for the requester's free-text Department against AccountController::DEPARTMENTS.
+    $departmentGuess = [
+        'Institutional Admissions & Testing Office' => 'IATO',
+        'College of Nursing' => 'CON',
+        'Lasallian Assistance Management Program' => 'Lasallian Mission Office',
+    ];
 @endphp
 
 <div class="alert alert-light border small d-flex gap-2">
     <i class="bi bi-info-circle mt-1"></i>
-    <div>People request access from the login page and choose their position and department. Approving creates the account with that role, limited to that department, and emails them an invitation. They set up MFA on first login.
-        <strong>Front end only for now:</strong> these are sample requests and nothing is saved.</div>
+    <div>People request access from the login page and choose their position and department. Approving creates the account with the role and department you confirm here. They set up MFA on first login.</div>
 </div>
 
 {{-- Waiting --}}
@@ -36,7 +57,7 @@
                     </dl>
                     <div class="small text-body-secondary mb-3 mt-auto">Requested {{ $when($request['at']) }}</div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary fw-semibold flex-fill" data-decide="approve"><i class="bi bi-check-lg me-1"></i> Approve</button>
+                        <button type="button" class="btn btn-primary fw-semibold flex-fill" data-decide="approve" data-role-guess="{{ $positionToRole[$request['position']] ?? '' }}" data-dept-guess="{{ $departmentGuess[$request['department']] ?? (in_array($request['department'], $departments) ? $request['department'] : '') }}"><i class="bi bi-check-lg me-1"></i> Approve</button>
                         <button type="button" class="btn btn-outline-danger flex-fill" data-decide="decline"><i class="bi bi-x-lg me-1"></i> Decline</button>
                     </div>
                 </div>
@@ -87,6 +108,51 @@
     </div>
 </div>
 
+{{-- Approve: confirm the actual role/department before the account is created --}}
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 rounded-4" id="approveForm" novalidate>
+            <div class="modal-body p-4">
+                <h3 class="fs-5 fw-bold mb-1" id="approveTitle">Approve this request?</h3>
+                <p class="small text-body-secondary mb-3" id="approveText"></p>
+                <div class="alert alert-danger small d-none" id="approveError"></div>
+                <div class="mb-3">
+                    <label for="approveRole" class="form-label small fw-bold text-uppercase">Role</label>
+                    <select class="form-select" id="approveRole" required>
+                        <option value="">Select role</option>
+                        @foreach ($roles as $key => $role)
+                            @continue($key === 'admin')
+                            <option value="{{ $key }}">{{ $role['name'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="approveDept" class="form-label small fw-bold text-uppercase">Department / unit</label>
+                    <select class="form-select" id="approveDept" required>
+                        <option value="">Select department</option>
+                        @foreach ($departments as $department)
+                            <option>{{ $department }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="d-none" id="approveCollegeField">
+                    <label for="approveCollege" class="form-label small fw-bold text-uppercase">Assigned college</label>
+                    <select class="form-select" id="approveCollege">
+                        <option value="">Not assigned yet</option>
+                        @foreach ($colleges as $college)
+                            <option>{{ $college }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Approve &amp; Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {{-- Decline: optional note to the requester --}}
 <div class="modal fade" id="declineModal" tabindex="-1" aria-labelledby="declineTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -108,49 +174,85 @@
 <script>
     // Runs after Bootstrap has loaded
     document.addEventListener('DOMContentLoaded', () => {
-        const ME = @json(auth()->user()->name);
         const $ = id => document.getElementById(id);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const approveModal = bootstrap.Modal.getOrCreateInstance($('approveModal'));
         const declineModal = bootstrap.Modal.getOrCreateInstance($('declineModal'));
-        let declining = null;
+        let current = null; // the card being approved/declined
 
-        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const stamp = () => new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(/, (\d+:)/, ' · $1');
-
-        // Move a card into "Decided requests" and update the counts
-        function decide(card, approved, note = '') {
-            const get = sel => card.querySelector(sel).textContent.trim();
-            const email = card.querySelector('[data-name]').nextElementSibling.textContent.trim();
-            $('decidedRows').insertAdjacentHTML('afterbegin', `<tr class="table-warning">
-                <td><div class="fw-semibold">${esc(get('[data-name]'))}</div><div class="text-body-secondary">${esc(email)}</div></td>
-                <td>${esc(get('[data-position]'))} · ${esc(get('[data-department]'))}</td>
-                <td>${approved ? '<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis"><i class="bi bi-check-lg me-1"></i>Approved</span>'
-                    : `<span class="badge rounded-pill bg-danger-subtle text-danger-emphasis"><i class="bi bi-x-lg me-1"></i>Declined</span>${note ? `<div class="text-body-secondary mt-1">${esc(note)}</div>` : ''}`}</td>
-                <td>${esc(ME)}</td><td class="text-nowrap text-body-secondary">${stamp()}</td></tr>`);
-            card.remove();
-            const left = document.querySelectorAll('#requestCards [data-request]').length;
-            $('requestsCount').textContent = left;
-            $('requestsCount').classList.toggle('d-none', !left);
-            $('noRequests').classList.toggle('d-none', left > 0);
-            toast(approved
-                ? `${get('[data-name]')} approved on this page only. Creating the account and sending the invitation need the backend.`
-                : `${get('[data-name]')} declined on this page only. Not saved yet: needs the backend.`);
-        }
+        $('approveRole').addEventListener('change', () =>
+            $('approveCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes($('approveRole').value)));
 
         $('requestCards').addEventListener('click', e => {
             const btn = e.target.closest('[data-decide]');
             if (!btn) return;
-            const card = btn.closest('[data-request]');
-            if (btn.dataset.decide === 'approve') return decide(card, true);
-            declining = card;
-            $('declineText').textContent = `${card.querySelector('[data-name]').textContent.trim()} won't get an account. They can request again later.`;
+            current = btn.closest('[data-request]');
+            const name = current.querySelector('[data-name]').textContent.trim();
+
+            if (btn.dataset.decide === 'approve') {
+                $('approveText').textContent = `Creates an account for ${name}. They'll set up MFA on first login.`;
+                $('approveError').classList.add('d-none');
+                $('approveForm').reset();
+                $('approveRole').value = btn.dataset.roleGuess || '';
+                $('approveDept').value = btn.dataset.deptGuess || '';
+                $('approveCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes($('approveRole').value));
+                approveModal.show();
+                return;
+            }
+
+            $('declineText').textContent = `${name} won't get an account. They can request again later.`;
             $('declineForm').reset();
             declineModal.show();
         });
 
-        $('declineForm').addEventListener('submit', e => {
+        $('approveForm').addEventListener('submit', async e => {
             e.preventDefault();
-            declineModal.hide();
-            decide(declining, false, $('declineNote').value.trim());
+            const submit = e.submitter;
+            submit.disabled = true;
+            try {
+                const res = await fetch(`/access-requests/${current.dataset.request}/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        role: $('approveRole').value,
+                        department: $('approveDept').value,
+                        assigned_college: $('approveCollege').value || null,
+                    }),
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    const message = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Something went wrong.');
+                    $('approveError').textContent = message;
+                    $('approveError').classList.remove('d-none');
+                    return;
+                }
+                location.reload();
+            } catch {
+                $('approveError').textContent = 'Could not reach the server. Please try again.';
+                $('approveError').classList.remove('d-none');
+            } finally {
+                submit.disabled = false;
+            }
+        });
+
+        $('declineForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const submit = e.submitter;
+            submit.disabled = true;
+            try {
+                const res = await fetch(`/access-requests/${current.dataset.request}/decline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ note: $('declineNote').value.trim() || null }),
+                });
+                if (!res.ok) throw new Error();
+                location.reload();
+            } catch {
+                declineModal.hide();
+                toast('Something went wrong declining that request. Please try again.');
+            } finally {
+                submit.disabled = false;
+            }
         });
     });
 </script>

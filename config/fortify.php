@@ -162,7 +162,11 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Self-service registration is off: there's no view for it, and it would let
+        // anyone create an account with any role, bypassing admin review. The real
+        // sign-up path is "Request Access" on the login page -> admin approval
+        // (AccessRequestController), which creates the account with a confirmed role.
+        // Features::registration(),
         Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),

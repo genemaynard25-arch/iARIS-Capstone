@@ -338,7 +338,7 @@
         </div>
     </div>
 
-    {{-- Request access modal. TODO: needs an access-request table + admin approval before it can submit. Front end only for now. --}}
+    {{-- Request access modal. --}}
     <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-4 overflow-hidden">
@@ -350,8 +350,8 @@
                     <button type="button" class="btn-close btn-close-white align-self-start" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                {{-- Front end only for now (the script shows "Request Submitted!"). TODO: save requests for the IATO Admin to approve. --}}
-                <form class="modal-body p-4 js-demo-form">
+                <form class="modal-body p-4" id="registerForm" novalidate>
+                    <div class="alert alert-danger small d-none" id="regError"></div>
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6">
                             <label for="regLast" class="form-label small fw-bold text-uppercase">Last Name</label>
@@ -413,16 +413,16 @@
 
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-light border flex-fill" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary fw-bold flex-fill"><i class="bi bi-send me-1"></i> Submit Request</button>
+                        <button type="submit" class="btn btn-primary fw-bold flex-fill" id="regSubmit"><i class="bi bi-send me-1"></i> Submit Request</button>
                     </div>
                 </form>
 
-                <div class="modal-body text-center p-5 d-none js-demo-success">
+                <div class="modal-body text-center p-5 d-none" id="regSuccess">
                     <div class="icon-circle rounded-circle bg-primary-subtle text-primary fs-4 d-flex align-items-center justify-content-center mx-auto mb-3">
                         <i class="bi bi-clock-history"></i>
                     </div>
                     <h4 class="fs-5 fw-bold">Request Submitted!</h4>
-                    <p class="text-body-secondary">Your access request has been sent to the IATO Admin for review. You will receive an email at your DLSL address once your account has been approved.</p>
+                    <p class="text-body-secondary">Your access request has been sent to the IATO Admin for review.</p>
                     <button type="button" class="btn btn-primary fw-bold w-100" data-bs-dismiss="modal">Got it</button>
                 </div>
             </div>
@@ -442,7 +442,7 @@
             toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
         });
 
-        // Forgot Password and Request Access are front end only: on submit, show the success message instead of sending anything.
+        // Forgot Password is front end only: on submit, show the success message instead of sending anything.
         document.querySelectorAll('.js-demo-form').forEach(form => {
             const modal = form.closest('.modal');
             const success = modal.querySelector('.js-demo-success');
@@ -461,6 +461,64 @@
                 success.classList.add('d-none');
             });
         });
+
+        // Request Access: submits to the backend; waits for IATO Admin approval.
+        (() => {
+            const form = document.getElementById('registerForm');
+            const modal = form.closest('.modal');
+            const success = document.getElementById('regSuccess');
+            const error = document.getElementById('regError');
+            const field = id => document.getElementById(id);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            modal.addEventListener('show.bs.modal', () => {
+                form.reset();
+                form.classList.remove('d-none');
+                success.classList.add('d-none');
+                error.classList.add('d-none');
+            });
+
+            form.addEventListener('submit', async e => {
+                e.preventDefault();
+                error.classList.add('d-none');
+
+                const submit = document.getElementById('regSubmit');
+                submit.disabled = true;
+
+                try {
+                    const res = await fetch('{{ route('access-requests.store') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            first: field('regFirst').value.trim(),
+                            last: field('regLast').value.trim(),
+                            email: field('regEmail').value.trim(),
+                            password: field('regPassword').value,
+                            position: field('regRole').value,
+                            department: field('regDept').value,
+                            reason: field('regReason').value.trim(),
+                        }),
+                    });
+
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        const message = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Something went wrong. Please try again.');
+                        error.textContent = message;
+                        error.classList.remove('d-none');
+                        return;
+                    }
+
+                    form.classList.add('d-none');
+                    success.classList.remove('d-none');
+                    success.querySelector('button').focus();
+                } catch {
+                    error.textContent = 'Could not reach the server. Please check your connection and try again.';
+                    error.classList.remove('d-none');
+                } finally {
+                    submit.disabled = false;
+                }
+            });
+        })();
 
         // Open any modal marked data-open-on-load as soon as the page loads (reset password, /forgot-password)
         document.querySelectorAll('.modal[data-open-on-load]').forEach(modal => {

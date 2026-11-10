@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
-    protected array $roles = [
+    public const ROLES = [
         "admin" => ["name" => "IATO Admin", "tone" => "primary"],
         "iato_staff" => ["name" => "IATO Staff", "tone" => "primary"],
         "program_chair" => ["name" => "Program Chair", "tone" => "info"],
@@ -26,14 +26,14 @@ class AccountController extends Controller
         "director" => ["name" => "Director", "tone" => "info"],
     ];
 
-    protected array $statuses = [
+    public const STATUSES = [
         "Active" => "primary",
         "Pending" => "warning",
         "Suspended" => "danger",
         "Inactive" => "secondary",
     ];
 
-    protected array $departments = [
+    public const DEPARTMENTS = [
         "IATO",
         "CITE",
         "CEAS",
@@ -49,7 +49,7 @@ class AccountController extends Controller
         "Office of the President",
     ];
 
-    protected array $colleges = [
+    public const COLLEGES = [
         "CITE",
         "CBEAM",
         "CEAS",
@@ -57,6 +57,11 @@ class AccountController extends Controller
         "CON",
         "CCJE",
     ];
+
+    protected array $roles = self::ROLES;
+    protected array $statuses = self::STATUSES;
+    protected array $departments = self::DEPARTMENTS;
+    protected array $colleges = self::COLLEGES;
 
     public function index()
     {
@@ -67,7 +72,23 @@ class AccountController extends Controller
             ->all();
 
         return view("accounts.index", [
-            "accessRequests" => \App\Support\AccessRequests::sample(),
+            "accessRequests" => \App\Models\AccessRequest::with('decider')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (\App\Models\AccessRequest $r) => [
+                    "id" => $r->id,
+                    "name" => $r->name(),
+                    "email" => $r->email,
+                    "position" => $r->position,
+                    "department" => $r->department,
+                    "reason" => $r->reason,
+                    "at" => $r->created_at->format("Y-m-d H:i"),
+                    "status" => $r->status,
+                    "by" => $r->decider?->name,
+                    "decided" => $r->decided_at?->format("Y-m-d H:i"),
+                    "note" => $r->note,
+                ])
+                ->all(),
             "roles" => $this->roles,
             "statuses" => $this->statuses,
             "departments" => $this->departments,

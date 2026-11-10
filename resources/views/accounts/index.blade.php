@@ -121,7 +121,7 @@
     </div>
     </div>{{-- /Accounts tab --}}
 
-    {{-- Access Requests tab (front end only, see App\Support\AccessRequests) --}}
+    {{-- Access Requests tab (see App\Models\AccessRequest) --}}
     <div class="tab-pane fade" id="paneRequests" role="tabpanel" tabindex="0">
         @include('accounts.partials.access-requests')
     </div>
