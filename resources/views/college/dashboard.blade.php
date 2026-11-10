@@ -91,8 +91,8 @@
                                     @foreach ($parts as $i => [$partLabel, $count])
                                         <div class="d-flex align-items-center gap-2 small mb-1">
                                             <span style="width: 170px;">{{ $partLabel }}</span>
-                                            <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 10px;"><div class="rounded" style="height: 10px; width: {{ round($count / $sum * 100, 1) }}%; background: {{ ['#00674F', '#4DAB8E', '#2558D9', '#B96000'][$i % 4] }};"></div></div>
-                                            <span class="fw-bold text-end text-nowrap" style="width: 84px;">{{ number_format($count) }} · {{ round($count / $sum * 100) }}%</span>
+                                            <div class="flex-grow-1 bg-body-tertiary rounded" style="height: 10px;"><div class="rounded" style="height: 10px; width: {{ ($sum ? round($count / $sum * 100, 1) : 0) }}%; background: {{ ['#00674F', '#4DAB8E', '#2558D9', '#B96000'][$i % 4] }};"></div></div>
+                                            <span class="fw-bold text-end text-nowrap" style="width: 84px;">{{ number_format($count) }} · {{ ($sum ? round($count / $sum * 100) : 0) }}%</span>
                                         </div>
                                     @endforeach
                                 </div>
