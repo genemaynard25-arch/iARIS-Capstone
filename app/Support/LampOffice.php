@@ -38,12 +38,19 @@ class LampOffice
     /** Applicants who answered Yes to the scholarship question this school year. */
     public static function applicants(): array
     {
-        return self::query()->latest()->get()->map(function (Applicant $a) {
+        $applicants = self::query()->latest()->get();
+        $checks = \App\Models\LampScholarRecord::whereIn('applicant_id', $applicants->pluck('id'))->get()->keyBy('applicant_id');
+
+        return $applicants->map(function (Applicant $a) use ($checks) {
+            $check = $checks->get($a->id);
             $result = self::RESULTS[$a->admission_test_status] ?? 'Not yet taken';
             $program = $a->program_or_track ?: '—';
 
             return [
                 'id' => $a->reference_number,
+                'applicant_id' => $a->id,
+                'iato_status' => $check?->decision ? $check->iato_status : null,
+                'at' => $check?->checked_at?->format('M j, Y · g:i A') ?? '',
                 'name' => "{$a->last_name}, {$a->first_name}",
                 'sex' => strtoupper(substr((string) $a->gender, 0, 1)),
                 'pwd' => (bool) $a->pwd,
@@ -55,7 +62,7 @@ class LampOffice
                 },
                 'result' => $result,
                 'lamp' => match ($result) {
-                    'Pass', 'Reconsidered' => 'wait',
+                    'Pass', 'Reconsidered' => $check?->decision ?: 'wait',
                     'Fail' => 'fail',
                     default => 'notyet',
                 },
