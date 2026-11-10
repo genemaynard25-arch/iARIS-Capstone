@@ -71,10 +71,7 @@ class AnalyticsController extends Controller
                 'labels' => $summary['funnelLabels'],
                 'values' => $summary['funnelValues'],
             ],
-            'locations' => [
-                'labels' => ['No location data available'],
-                'values' => [1],
-            ],
+            'locations' => $this->locationChart(),
         ];
 
         $comparison = $rows->mapWithKeys(fn (array $row) => [
@@ -206,5 +203,23 @@ class AnalyticsController extends Controller
         $change = $current - $previous;
 
         return ($change >= 0 ? '+' : '') . number_format($change, 1) . ' pts';
+    }
+
+    /** Current school year's applicants, bucketed by address (App\Support\AddressClassifier). */
+    protected function locationChart(): array
+    {
+        $schoolYear = AdmissionStats::currentSchoolYear();
+        $counts = $schoolYear
+            ? \App\Models\Applicant::where('school_year', $schoolYear)->whereNull('archived_at')
+                ->get(['address'])->countBy(fn ($a) => \App\Support\AddressClassifier::classify($a->address))
+            : collect();
+
+        if ($counts->isEmpty()) {
+            return ['labels' => ['No location data available'], 'values' => [1]];
+        }
+
+        $groups = collect(\App\Support\AddressClassifier::GROUPS)->filter(fn ($g) => $counts->get($g, 0) > 0);
+
+        return ['labels' => $groups->values()->all(), 'values' => $groups->map(fn ($g) => $counts->get($g, 0))->values()->all()];
     }
 }
