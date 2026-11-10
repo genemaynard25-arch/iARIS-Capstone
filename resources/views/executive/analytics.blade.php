@@ -20,7 +20,7 @@
     $confidenceTones = ['High' => 'primary', 'Medium' => 'warning', 'Low' => 'danger'];
 @endphp
 
-@if (auth()->user()->role === 'president')
+@if (in_array(auth()->user()->role, ['president', 'chancellor']))
     @include('partials.president-workspace', ['presidentPage' => 'analytics', 'presidentLabel' => 'Analytics'])
     @section('page-actions')
         <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
@@ -37,7 +37,7 @@
     {{-- Same id as the dashboard, so "Export PDF" prints this page the same way (iaris.css section 9) --}}
     <div id="executiveReport">
         {{-- Toolbar: read-only notice, academic year, export --}}
-        @unless (auth()->user()->role === 'president')
+        @unless (in_array(auth()->user()->role, ['president', 'chancellor']))
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2">
                 <i class="bi bi-eye me-1"></i> Read-only view
@@ -51,7 +51,7 @@
         </div>
 
         @endunless
-        @if (auth()->user()->role === 'president')
+        @if (in_array(auth()->user()->role, ['president', 'chancellor']))
             <p class="small text-body-secondary mb-3"><i class="bi bi-info-circle me-1"></i>Preview data · Executive analytics is not connected to imported records yet.</p>
         @endif
         {{-- Unit filter: changes the stat cards, trend chart and funnel --}}
