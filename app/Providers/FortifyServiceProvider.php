@@ -79,15 +79,6 @@ class FortifyServiceProvider extends ServiceProvider
             );
         });
 
-        RateLimiter::for("passkeys", function (Request $request) {
-            $credentialId = $request->input("credential.id");
-            return Limit::perMinute(10)->by(
-                ($credentialId ?: $request->session()->getId()) .
-                    "|" .
-                    $request->ip(),
-            );
-        });
-
         // Make sure users with Suspended or Inactive status cannot log in, and update last_login_at on successful login
         Fortify::authenticateUsing(function (Request $request) {
             $user = \App\Models\User::where("email", $request->email)->first();
