@@ -28,7 +28,7 @@ class CollegeRecordController extends Controller
             "academicYear" => ApplicantRecords::academicYear(),
             "periodLabel" => now()->format("F Y"),
             "applicants" => \App\Support\RegistrarData::forRecords($students, 'college'),
-            'groupOrder' => ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
+            'groupOrder' => $user->role === 'dean' ? [CollegeController::college()['code']] : ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
         ]);
     }
 }

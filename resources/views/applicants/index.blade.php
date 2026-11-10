@@ -311,6 +311,7 @@
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
             <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All @if ($isPrincipal)<span class="ms-1 opacity-75">{{ $rows->count() }}</span>@endif</button>
             @foreach ($examResults as $result => [$label, $tone])
+                @continue($isDean && $result === 'took_test')
                 @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
                 <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }} @if ($isPrincipal)<span class="ms-1 opacity-75">{{ $rows->where('exam_result', $result)->count() }}</span>@endif</button>
             @endforeach
