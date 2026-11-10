@@ -4,7 +4,7 @@
     LAMP Office Scholars (LampController::scholars): every applicant who answered Yes to the scholarship question,
     with their entrance exam result. LAMP checks each one who passed (Confirm scholar / Not a scholar), and IATO
     confirms the change. Filter by unit, exam result and LAMP check; "Download list" saves the filtered list.
-    ?open=APP-2026-0383 opens that applicant. The applicants are real; checks are kept in this browser (partials/check-script).
+    ?open=APP-2026-0383 opens that applicant. Applicants and LAMP checks are database-backed.
 --}}
 
 @php
