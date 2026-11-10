@@ -53,10 +53,10 @@ Route::get('/loading', function () {
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
 Route::post('/applicants', [ApplicantController::class, 'store'])->middleware(['auth', 'module:college']);
-Route::put('/applicants/{applicant:reference_number}', [ApplicantController::class, 'update'])->middleware('auth');
-Route::delete('/applicants/{applicant:reference_number}', [ApplicantController::class, 'destroy'])->middleware('auth');
-Route::post('/applicants/{applicant:reference_number}/restore', [ApplicantController::class, 'restore'])->middleware('auth');
-Route::patch('/applicants/{applicant:reference_number}/exam-status', [ApplicantController::class, 'updateExamStatus'])->middleware('auth');
+Route::put('/applicants/{applicant:reference_number}', [ApplicantController::class, 'update'])->middleware(['auth', 'module:edit']);
+Route::delete('/applicants/{applicant:reference_number}', [ApplicantController::class, 'destroy'])->middleware(['auth', 'module:edit']);
+Route::post('/applicants/{applicant:reference_number}/restore', [ApplicantController::class, 'restore'])->middleware(['auth', 'module:edit']);
+Route::patch('/applicants/{applicant:reference_number}/exam-status', [ApplicantController::class, 'updateExamStatus'])->middleware(['auth', 'module:edit']);
 Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->name('reports'); // now redirects to the Reports tab of /analytics
 // Analytics & Reports: one page with tabs. The controller checks the 'analytics' / 'reports' permissions per tab.
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
@@ -92,25 +92,24 @@ Route::post('/ai-widget/ask', [AiChatController::class, 'widgetAsk'])->middlewar
 // different assigned_level (e.g. Integrated School) get a 403.
 Route::get('/records/college', [CollegeRecordController::class, 'index'])->middleware(['auth', 'level:college', 'module:college'])->name('records.college');
 Route::get('/records/is', [IsRecordController::class, 'index'])->middleware(['auth', 'level:is', 'module:is'])->name('records.is');
-// TODO (RBAC): no 'law', 'ipace' or 'graduate' level exists yet, so only sign-in is checked for these.
+// No dean/registrar-equivalent role exists for these yet, so 'module:' (no 'level:') - IATO staff only.
+Route::get('/records/law', [LawRecordController::class, 'index'])->middleware(['auth', 'module:law'])->name('records.law');
+Route::get('/records/ipace', [IpaceRecordController::class, 'index'])->middleware(['auth', 'module:ipace'])->name('records.ipace');
+Route::get('/records/eteeap', [EteeapRecordController::class, 'index'])->middleware(['auth', 'module:eteeap'])->name('records.eteeap');
 // Scholars mixes College and IS students, so it needs its own rule (LAMP Office + IATO).
-Route::get('/records/law', [LawRecordController::class, 'index'])->middleware('auth')->name('records.law');
-Route::get('/records/ipace', [IpaceRecordController::class, 'index'])->middleware('auth')->name('records.ipace');
-Route::get('/records/eteeap', [EteeapRecordController::class, 'index'])->middleware('auth')->name('records.eteeap');
 Route::get('/records/scholars', [ScholarController::class, 'index'])->middleware(['auth', 'module:scholars'])->name('records.scholars');
-Route::get('/records/graduate', [GraduateRecordController::class, 'index'])->middleware('auth')->name('records.graduate');
+Route::get('/records/graduate', [GraduateRecordController::class, 'index'])->middleware(['auth', 'module:graduate'])->name('records.graduate');
 
-// LAMP Office pages (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to users whose role is 'lamp', plus IATO admins
-Route::middleware('auth')->prefix('lamp')->name('lamp.')->group(function () {
+// LAMP Office pages (their own sidebar: see layouts/app.blade.php). Admins can still preview
+// (role:isLamp lets isAdmin() through too - see EnsureUserHasRole).
+Route::middleware(['auth', 'role:isLamp'])->prefix('lamp')->name('lamp.')->group(function () {
     Route::get('/', [LampController::class, 'dashboard'])->name('dashboard');
     Route::get('/scholars', [LampController::class, 'scholars'])->name('scholars');
     Route::get('/reports', [LampController::class, 'reports'])->name('reports');
 });
 
 // College Registrar pages (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to users whose role is 'registrar', plus IATO admins
-Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(function () {
+Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('registrar.')->group(function () {
     Route::get('/', [RegistrarController::class, 'dashboard'])->name('dashboard');
     Route::get('/enrollment', [RegistrarController::class, 'enrollment'])->name('enrollment');
     Route::get('/reports', [RegistrarController::class, 'reports'])->name('reports');
@@ -118,23 +117,21 @@ Route::middleware('auth')->prefix('registrar')->name('registrar.')->group(functi
 });
 
 // SHS principal's dashboard (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to the SHS principal, plus IATO admins
-Route::get('/shs', [ShsController::class, 'dashboard'])->middleware('auth')->name('shs.dashboard');
+Route::get('/shs', [ShsController::class, 'dashboard'])->middleware(['auth', 'role:isShsPrincipal'])->name('shs.dashboard');
 
 // IATO's Messages (Super Admin and IATO Staff): every conversation with the other offices
 Route::get('/messages', [IatoMessagesController::class, 'index'])->middleware('auth')->name('messages');
 
 // Messages with IATO for the LAMP Office, the Registrars and the SHS Principal (one page, three addresses)
-Route::get('/lamp/messages', [MessagesController::class, 'index'])->middleware('auth')->name('lamp.messages');
-Route::get('/registrar/messages', [MessagesController::class, 'index'])->middleware('auth')->name('registrar.messages');
-Route::get('/shs/messages', [MessagesController::class, 'index'])->middleware('auth')->name('shs.messages');
+Route::get('/lamp/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:isLamp'])->name('lamp.messages');
+Route::get('/registrar/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:registrar'])->name('registrar.messages');
+Route::get('/shs/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:isShsPrincipal'])->name('shs.messages');
 
 // Executive Office: President, Chancellor, Vice Presidents, Vice Chancellors (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to executive roles, plus IATO admins
-Route::get('/executive', [ExecutiveController::class, 'dashboard'])->middleware('auth')->name('executive.dashboard');
-Route::get('/executive/analytics', [ExecutiveController::class, 'analytics'])->middleware('auth')->name('executive.analytics');
-Route::get('/executive/reports', [ExecutiveController::class, 'reports'])->middleware('auth')->name('executive.reports');
-Route::get('/executive/messages', [ExecutiveController::class, 'messages'])->middleware('auth')->name('executive.messages');
+Route::get('/executive', [ExecutiveController::class, 'dashboard'])->middleware(['auth', 'role:isExecutive'])->name('executive.dashboard');
+Route::get('/executive/analytics', [ExecutiveController::class, 'analytics'])->middleware(['auth', 'role:isExecutive'])->name('executive.analytics');
+Route::get('/executive/reports', [ExecutiveController::class, 'reports'])->middleware(['auth', 'role:isExecutive'])->name('executive.reports');
+Route::get('/executive/messages', [ExecutiveController::class, 'messages'])->middleware(['auth', 'role:isExecutive'])->name('executive.messages');
 // The old /chancellor addresses still work
 Route::redirect('/chancellor', '/executive');
 Route::get('/chancellor/{page}', fn ($page) => redirect('/executive/' . $page))->where('page', 'analytics|reports|messages');
@@ -143,16 +140,15 @@ Route::get('/chancellor/{page}', fn ($page) => redirect('/executive/' . $page))-
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');
 
 // College dashboard for Deans and Program Chairs (their own sidebar: see layouts/app.blade.php)
-// TODO (RBAC): limit to deans and program chairs, plus IATO admins
-Route::get('/college', [CollegeController::class, 'dashboard'])->middleware('auth')->name('college.dashboard');
-Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware('auth')->name('college.applicants');
-Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware('auth')->name('college.analytics');
-Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware('auth')->name('college.reports');
-Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware('auth')->name('college.messages');
+Route::get('/college', [CollegeController::class, 'dashboard'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.dashboard');
+Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.applicants');
+Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.analytics');
+Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.reports');
+Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.messages');
 
 // Integrated School Principal: the same pages as a Dean, by level (their own sidebar: see layouts/app.blade.php)
 // TOIC (system support): how iARIS runs, never applicant data (their own sidebar: see layouts/app.blade.php)
-Route::middleware('auth')->prefix('toic')->name('toic.')->group(function () {
+Route::middleware(['auth', 'role:isToic'])->prefix('toic')->name('toic.')->group(function () {
     Route::get('/', [ToicController::class, 'dashboard'])->name('dashboard');
     Route::get('/issues', [ToicController::class, 'issuesPage'])->name('issues');
     Route::get('/security', [ToicController::class, 'security'])->name('security');
@@ -163,7 +159,7 @@ Route::middleware('auth')->prefix('toic')->name('toic.')->group(function () {
 });
 
 // iPACE Director (also heads ETEEAP): the same pages as a Dean, for both units
-Route::middleware('auth')->prefix('director')->name('director.')->group(function () {
+Route::middleware(['auth', 'role:isDirector'])->prefix('director')->name('director.')->group(function () {
     Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
     Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
     Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');
@@ -171,7 +167,7 @@ Route::middleware('auth')->prefix('director')->name('director.')->group(function
     Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
 });
 
-Route::middleware('auth')->prefix('principal')->name('principal.')->group(function () {
+Route::middleware(['auth', 'role:isPrincipal'])->prefix('principal')->name('principal.')->group(function () {
     Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
     Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
     Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');

@@ -140,6 +140,30 @@ class AccessControlController extends Controller
                     "on" => $permissions->get("scholars", []),
                 ],
                 [
+                    "key" => "graduate",
+                    "name" => "Graduate Programs Records",
+                    "description" => "View Master's/Doctoral applicant records",
+                    "on" => $permissions->get("graduate", []),
+                ],
+                [
+                    "key" => "law",
+                    "name" => "College of Law Records",
+                    "description" => "View College of Law applicant records",
+                    "on" => $permissions->get("law", []),
+                ],
+                [
+                    "key" => "ipace",
+                    "name" => "iPACE Records",
+                    "description" => "View iPACE applicant records",
+                    "on" => $permissions->get("ipace", []),
+                ],
+                [
+                    "key" => "eteeap",
+                    "name" => "ETEEAP Records",
+                    "description" => "View ETEEAP applicant records",
+                    "on" => $permissions->get("eteeap", []),
+                ],
+                [
                     "key" => "import",
                     "name" => "Import Data",
                     "description" => "Upload Excel/CSV records",

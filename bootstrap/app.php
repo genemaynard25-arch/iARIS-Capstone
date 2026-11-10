@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             "level" => \App\Http\Middleware\EnsureUserHasAccess::class,
             "admin" => \App\Http\Middleware\EnsureUserIsAdmin::class,
             "module" => \App\Http\Middleware\EnsureCanAccessModule::class,
+            "role" => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
 
         $middleware->web(

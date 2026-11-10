@@ -15,6 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+    // Without this, role_permissions stays empty and every non-admin account gets a blanket 403
+    // on every module: route (dashboard, applicants, college records, ...) right after logging in.
+    // DemoSeeder already called this on its own; the plain `db:seed` path (this class) needs it too.
+    $this->call(RolePermissionSeeder::class);
+
     \App\Models\User::firstOrCreate(
         ['email' => 'admin@gmail.com'],
         [

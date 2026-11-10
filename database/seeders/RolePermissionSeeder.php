@@ -26,6 +26,11 @@ class RolePermissionSeeder extends Seeder
             'college' => ['iato_staff', 'program_chair', 'dean', 'registrar'],
             'is' => ['iato_staff', 'principal', 'registrar'],
             'scholars' => ['iato_staff', 'lamp'],
+            // No dean/registrar-equivalent role for these yet - only IATO staff
+            'law' => ['iato_staff'],
+            'ipace' => ['iato_staff'],
+            'eteeap' => ['iato_staff'],
+            'graduate' => ['iato_staff'],
             'import' => ['iato_staff'],
             'edit' => ['iato_staff'],
             'audit' => ['iato_staff'],
