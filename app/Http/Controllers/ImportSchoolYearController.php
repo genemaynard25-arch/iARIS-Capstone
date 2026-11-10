@@ -39,4 +39,23 @@ class ImportSchoolYearController extends Controller
             ? response()->json(['ok' => true, 'moved' => $count, 'school_year' => $data['school_year']])
             : redirect('/import/'.$batch->id)->with('success', "Moved {$count} applicants to SY {$data['school_year']}. Analytics and reports now use the corrected school year.");
     }
+
+    public function archiveDuplicates(Request $request, ImportBatch $batch): JsonResponse|RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate(['from_school_year' => ['required', 'regex:/^\d{4}-\d{4}$/'], 'expected_count' => 'required|integer|min:1']);
+        try {
+            $count = ImportSchoolYear::archiveDuplicateCopy($batch, $data['from_school_year'], (int) $data['expected_count']);
+        } catch (HttpExceptionInterface $exception) {
+            if ($request->expectsJson() || ! in_array($exception->getStatusCode(), [409, 422], true)) {
+                throw $exception;
+            }
+
+            return redirect('/import/'.$batch->id)->withErrors(['duplicates' => $exception->getMessage()]);
+        }
+
+        return $request->expectsJson()
+            ? response()->json(['ok' => true, 'archived' => $count])
+            : redirect('/import/'.$batch->id)->with('success', "Archived {$count} duplicate records from this batch. The correctly assigned copy remains active; Analytics now excludes the extra copy.");
+    }
 }

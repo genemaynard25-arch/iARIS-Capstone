@@ -25,6 +25,7 @@ class ImportController extends Controller
             ->take(6)
             // How many applicants each import saved (row_count isn't filled in by store())
             ->selectRaw('(select count(*) from applicants where applicants.imported_batch_id = import_batches.id) as saved_count')
+            ->selectRaw('(select count(*) from applicants where applicants.imported_batch_id = import_batches.id and applicants.archived_at is null) as active_count')
             ->addSelect(['import_batches.*', 'users.name as uploader'])
             ->get();
 
@@ -56,6 +57,14 @@ class ImportController extends Controller
         }
         if ($declaredYear && $declaredYear !== $validated['school_year']) {
             throw ValidationException::withMessages(['school_year' => "This file declares SY {$declaredYear}, but the form selects {$validated['school_year']}. Set School Year to {$declaredYear} before importing."]);
+        }
+
+        if ($declaredYear) {
+            foreach (ImportSchoolYear::warnings() as $warning) {
+                if ($warning['file'] === $request->file('file')->getClientOriginalName() && $warning['declared'] === $declaredYear) {
+                    throw ValidationException::withMessages(['file' => "Batch #{$warning['batch']} of this file already has active records assigned to {$warning['assigned']}. Review that batch before importing this file again."]);
+                }
+            }
         }
 
         $batch = ImportBatch::create([
@@ -148,6 +157,8 @@ class ImportController extends Controller
         $applicants = Applicant::where('imported_batch_id', $batch->id)->get();
 
         return view('import-results', [
+            'duplicateSummary' => ImportSchoolYear::duplicateSummary($batch),
+            'otherImportYearWarnings' => auth()->user()->isAdmin() ? array_values(array_filter(ImportSchoolYear::warnings(), fn ($warning) => $warning['batch'] !== $batch->id)) : [],
             'batch' => $batch,
             'applicants' => $applicants,
             'assignedYears' => $applicants->pluck('school_year')->unique()->values()->all(),

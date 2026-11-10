@@ -9,11 +9,14 @@
 @section('content')
     @if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
+    @foreach($otherImportYearWarnings as $warning)
+        @include('partials.import-year-warning', ['warning' => $warning])
+    @endforeach
     <div class="card card-body mb-4">
         <h2 class="h5">School year for this import</h2>
         <p>Assigned school year: <strong>{{ implode(', ', $assignedYears) ?: 'No saved applicants' }}</strong>
         @if($declaredYear) · Filename declares <strong>{{ $declaredYear }}</strong>@endif</p>
-        @if(auth()->user()->isAdmin() && count($assignedYears) === 1 && $batch->status === 'completed')
+        @if(auth()->user()->isAdmin() && count($assignedYears) === 1 && $batch->status === 'completed' && $duplicateSummary['count'] > 0)
             <form method="POST" action="{{ route('imports.school-year.update', $batch) }}" id="correctSchoolYearForm" class="d-flex flex-wrap align-items-end gap-3">
                 @csrf
                 <input type="hidden" name="from_school_year" value="{{ $assignedYears[0] }}">
@@ -26,6 +29,21 @@
             <p class="small text-body-secondary mt-2 mb-0">Moves the existing batch to the selected school year. Applicant IDs, reference numbers, scholarship decisions and payments are preserved. The correction is audited.</p>
         @endif
     </div>
+    @if($duplicateSummary['count'] === 0 && $applicants->isNotEmpty())
+        <div class="alert alert-info">This batch has no active records. Its archived records are retained and excluded from Analytics.</div>
+    @endif
+    @if(auth()->user()->isAdmin() && $duplicateSummary['count'] > 0 && $duplicateSummary['matching'] === $duplicateSummary['count'] && count($duplicateSummary['assigned']) === 1)
+        <section class="card card-body border-warning mb-4" id="duplicateCopyReview">
+            <h2 class="h5">Review the extra copy — batch #{{ $batch->id }}</h2>
+            <p>All {{ number_format($duplicateSummary['count']) }} active application numbers in this batch also exist in SY {{ $duplicateSummary['declared'] }}@if($duplicateSummary['target_batches']) (batch {{ implode(', ', array_map(fn ($id) => '#'.$id, $duplicateSummary['target_batches'])) }})@endif.</p>
+            <p>Verify matching applicant details and imported payment flags, then archive this extra copy. Both sets of records and all payment records are retained. Differing details, recorded payment amounts, or scholarship/request history require manual review.</p>
+            <form method="POST" action="{{ route('imports.archive-duplicates', $batch) }}" id="archiveDuplicateCopyForm">@csrf
+                <input type="hidden" name="from_school_year" value="{{ $duplicateSummary['assigned'][0] }}">
+                <input type="hidden" name="expected_count" value="{{ $duplicateSummary['count'] }}">
+                <button class="btn btn-warning" type="submit">Verify and archive {{ number_format($duplicateSummary['count']) }} duplicate records</button>
+            </form>
+        </section>
+    @endif
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4 d-flex flex-wrap align-items-center gap-3">
             <div class="icon-circle rounded-circle bg-primary text-white fs-5 d-flex align-items-center justify-content-center">
@@ -110,7 +128,7 @@
                                     </td>
                                     <td class="text-nowrap">{{ $applicant->school_year }}</td>
                                     <td>{{ $applicant->program_or_track ?: '—' }}</td>
-                                    <td><span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ Str::headline($applicant->application_status) }}</span></td>
+                                    <td><span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ Str::headline($applicant->application_status) }}</span>@if($applicant->archived_at) <span class="badge text-bg-secondary">Archived</span>@endif</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -123,6 +141,9 @@
 
 @section('scripts')
 <script>
+    document.getElementById('archiveDuplicateCopyForm')?.addEventListener('submit', event => {
+        event.currentTarget.querySelector('button[type="submit"]').disabled = true;
+    });
     const correctionForm = document.getElementById('correctSchoolYearForm');
     if (correctionForm) {
         const targetYear = correctionForm.elements.school_year;

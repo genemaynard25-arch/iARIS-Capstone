@@ -217,3 +217,5 @@ Route::get('/analytics/reports/generated/{report}', [ReportExportController::cla
 Route::get('/analytics/reports/{key}/preview', [ReportExportController::class, 'preview'])->middleware(['auth', 'module:reports'])->name('reports.preview');
 
 Route::post('/import/{batch}/school-year', [ImportSchoolYearController::class, 'update'])->middleware(['auth', 'admin'])->name('imports.school-year.update');
+
+Route::post('/import/{batch}/archive-duplicates', [ImportSchoolYearController::class, 'archiveDuplicates'])->middleware(['auth', 'admin'])->name('imports.archive-duplicates');

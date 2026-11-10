@@ -177,9 +177,10 @@
                     <a href="{{ url('/import/' . $batch->id) }}" class="d-flex gap-3 py-3 text-decoration-none text-body {{ $loop->first ? '' : 'border-top' }}">
                         <span class="icon-circle rounded-3 bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi {{ $icon }}" aria-hidden="true"></i></span>
                         <span class="overflow-hidden">
-                            <span class="d-block small fw-bold text-truncate">{{ $batch->original_filename }}</span>
+                            <span class="d-block small fw-bold text-truncate">Batch #{{ $batch->id }} · {{ $batch->original_filename }}</span>
                             <span class="d-block small text-body-secondary">By {{ $batch->uploader ?? 'Unknown user' }} · {{ \Illuminate\Support\Carbon::parse($batch->created_at)->format('M j, Y · g:i A') }}</span>
                             <span class="badge rounded-pill bg-{{ $tone }}-subtle text-{{ $tone }}-emphasis mt-1">{{ $label }}</span>
+                            <span class="d-block small text-body-secondary">{{ number_format($batch->active_count) }} active · {{ number_format($batch->saved_count - $batch->active_count) }} archived</span>
                             @if ($batch->error_count)
                                 <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis mt-1">{{ $batch->error_count }} skipped</span>
                             @endif
