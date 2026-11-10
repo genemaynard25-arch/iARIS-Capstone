@@ -72,7 +72,7 @@
             </div>
             <select class="form-select w-auto" id="unitFilter" aria-label="Filter by unit">
                 <option value="">All units</option>
-                @foreach ($scholars->pluck('unit')->unique()->sort() as $unit)
+                @foreach (collect(['CBEAM', 'CEAS', 'CIHTM', 'CITE', 'CON', 'CCJE', 'Integrated School · Preschool', 'Integrated School · Grade School', 'Integrated School · Junior High', 'Integrated School · Senior High', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'])->merge($scholars->pluck('unit'))->unique()->sort() as $unit)
                     <option>{{ $unit }}</option>
                 @endforeach
             </select>

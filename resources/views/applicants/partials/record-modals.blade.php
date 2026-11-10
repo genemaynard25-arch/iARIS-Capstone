@@ -1,10 +1,7 @@
 {{--
     Add / Edit / Remove an applicant on the Records pages (only for roles with the 'edit' permission).
-    FRONT END ONLY for now: the form checks the fields and the toast says nothing was saved.
-    Remove hides the row on this page until the next reload.
-    IATO Staff (not a Temporary Admin): changes go to the Review Queue instead. The row stays and gets a
-    "waiting for review" tag with a made-up RQ number.
-    TODO (backend): POST / PUT / DELETE routes for the applicants table, then send these forms there.
+    College and Integrated School forms use the applicant endpoints. IATO Staff changes are
+    staged in the Review Queue; unsupported scopes display an explicit backend notice.
     The page tells the form where its things are with window.RECORD_FORM (set in the page's script):
       items (the people), rows (table rows), tbody (its id), render(), drawer, current() (the person in the drawer),
       labels() ({group, program}), groupOrder, statuses, statusLabels, noun, toForm(person) (fields for the form).
@@ -74,9 +71,12 @@
                     </div>
                     <div class="col-sm-6">
                         <label for="recProgram" class="form-label small fw-bold text-uppercase"><span id="recProgramLabel">Program</span> <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="recProgram" list="recPrograms" required>
-                        <datalist id="recPrograms"></datalist>
-                        <div class="invalid-feedback">Enter the program.</div>
+                        @if (($scope ?? null) === 'law')
+                            <input type="text" class="form-control" id="recProgram" required>
+                        @else
+                            <select class="form-select" id="recProgram" required></select>
+                        @endif
+                        <div class="invalid-feedback">{{ ($scope ?? null) === 'law' ? 'Enter the prior degree.' : 'Choose one.' }}</div>
                     </div>
                     @isset($scholarFields)
                         <div class="col-sm-6">
@@ -166,6 +166,7 @@
     </div>
 </div>
 
+<script src="{{ asset('js/admission-catalog.js') }}"></script>
 <script>
     // Runs after the page's own script and Bootstrap have loaded
     document.addEventListener('DOMContentLoaded', () => {
@@ -202,15 +203,27 @@
             cell.appendChild(tag);
         }
 
-        // Fill the selects from what's on this page (colleges / sub-levels / programs, and this page's statuses)
+        // Offer the complete admission catalog even on empty pages; keep imported groups available.
         function fillChoices() {
             const labels = R.labels();
             $('recGroupLabel').textContent = labels.group;
             $('recProgramLabel').textContent = labels.program;
-            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...(R.groupOrder || []), ...R.items.map(a => R.toForm(a).group)]).map(v => new Option(v, v)));
-            $('recPrograms').replaceChildren(...unique(R.items.map(a => R.toForm(a).program)).map(v => new Option(v)));
+            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...IarisAdmissionCatalog.groups(R.scope), ...(R.groupOrder || []), ...R.items.map(a => R.toForm(a).group)]).map(v => new Option(v, v)));
+            fillPrograms();
             $('recStatus').replaceChildren(...R.statuses.map(v => new Option(R.statusLabels[v] ?? v, v)));
         }
+
+        function fillPrograms(existing = '') {
+            const select = $('recProgram');
+            if (select.tagName !== 'SELECT') return;
+            const choices = IarisAdmissionCatalog.programs(R.scope, $('recGroup').value) || [];
+            // Preserve legacy imported values on edit without offering unrelated programs on new records.
+            const values = [...new Set([...choices, ...(existing ? [existing] : [])])];
+            select.replaceChildren(new Option('Choose…', ''), ...values.map(v => new Option(v, v)));
+            select.disabled = !$('recGroup').value;
+            if (existing) select.value = existing;
+        }
+        $('recGroup').addEventListener('change', () => fillPrograms());
 
         // mode 'add' = empty form; 'edit' = filled in from an applicant
         window.openRecordForm = (mode, a = R.current()) => {
@@ -226,7 +239,7 @@
                 const set = (id, value) => { if (value && value !== '—') $(id).value = value; };
                 set('recLast', f.last); set('recFirst', f.first); set('recMi', f.mi);
                 set('recGender', f.gender); set('recEmail', f.email); set('recContact', f.contact);
-                set('recAddress', f.address); set('recGroup', f.group); set('recProgram', f.program);
+                set('recAddress', f.address); set('recGroup', f.group); fillPrograms(f.program); set('recProgram', f.program);
                 set('recStatus', f.status); set('recApplied', f.applied);
                 if ($('recScholarship')) set('recScholarship', f.scholarship);
             } else {
