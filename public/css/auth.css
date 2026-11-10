@@ -48,10 +48,6 @@
 .auth-options .form-check-input { width: 16px; height: 16px; }
 .auth-submit { padding: 16px; border: 0; border-radius: 11px; font-size: 16px; line-height: 1.2; background: linear-gradient(135deg,#00674f,#00503d); box-shadow: 0 6px 20px -4px rgba(0,80,61,.38); }
 .auth-submit:hover { background: linear-gradient(135deg,#005c46,#003d2e); }
-.auth-divider { margin: 20px 0; gap: 14px; }
-.auth-divider hr { border-color: var(--auth-border); opacity: 1; border-width: 1.5px; }
-.auth-divider span { font-size: 13px; line-height: 1.2; }
-.auth-google { padding: 14px; border: 1.5px solid var(--auth-border) !important; border-radius: 11px; font-size: 15px !important; line-height: 1.2; gap: 12px; }
 .auth-register { margin-top: 22px; font-size: 14.5px; line-height: 1.2; }
 .auth-register .btn-link { font-size: inherit; }
 .auth-copyright { margin-top: 20px; font-size: 12.5px; line-height: 1.2; }
