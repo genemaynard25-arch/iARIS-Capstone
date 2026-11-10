@@ -1,6 +1,4 @@
 @php
-    $fieldTotal = $charts['funnel']['values'][0] ?? 0;
-    $fieldPercent = fn ($count) => number_format($fieldTotal > 0 ? $count / $fieldTotal * 100 : 0, 1, '.', '');
     $reservedIndex = array_search('Reserved', $charts['funnel']['labels'], true);
     $fieldCounts = [
         ['label' => 'Male', 'value' => $yesNoBreakdown['male'], 'icon' => 'bi-gender-male', 'tone' => 'blue'],
@@ -12,6 +10,17 @@
         ['label' => 'PWD', 'value' => $yesNoBreakdown['pwd'], 'icon' => 'bi-person-wheelchair', 'tone' => 'orange'],
         ['label' => 'SSEN', 'value' => $yesNoBreakdown['ssen'], 'icon' => 'bi-person-badge', 'tone' => 'orange'],
     ];
+    $fieldMetrics = ['male', 'female', 'scholars', 'paidExam', 'reserved', 'noaIssued', 'pwd', 'ssen'];
+    $selectedYear = $filterData['years'][0] ?? null;
+    $previousYear = $selectedYear ? ((int) substr($selectedYear, 0, 4) - 1) . '-' . ((int) substr($selectedYear, 5, 4) - 1) : null;
+    $priorFields = collect($filterData['rows'] ?? [])->where('year', $previousYear);
+    foreach ($fieldCounts as $i => &$field) {
+        $before = $priorFields->sum($fieldMetrics[$i]);
+        $field['change'] = $before > 0 ? ($field['value'] - $before) / $before * 100 : null;
+        $field['changeLabel'] = $field['change'] === null ? 'N/A' : ($field['change'] >= 0 ? '+' : '') . number_format($field['change'], 1, '.', '') . '%';
+    }
+    unset($field);
+
 @endphp
 <section class="ar-field-card card border-0 shadow-sm rounded-4 mb-4" aria-labelledby="fieldCountTitle">
     <div class="card-body p-4">
@@ -30,20 +39,20 @@
         </div>
         <div class="ar-field-grid" id="fieldCountCards">
             @foreach ($fieldCounts as $field)
-                <div class="ar-field-tile ar-field-{{ $field['tone'] }}" data-field-name="{{ $field['label'] }}" data-field-value="{{ $field['value'] }}" data-field-percent="{{ $fieldPercent($field['value']) }}">
+                <div class="ar-field-tile ar-field-{{ $field['tone'] }}" data-field-name="{{ $field['label'] }}" data-field-value="{{ $field['value'] }}" data-field-change="{{ $field['changeLabel'] }}">
                     <div class="ar-field-icon"><i class="bi {{ $field['icon'] }}" aria-hidden="true"></i></div>
                     <div class="ar-field-details">
                         <strong>{{ number_format($field['value']) }}</strong>
                         <span>{{ $field['label'] }}</span>
-                        <small>{{ $fieldPercent($field['value']) }}% of applicants</small>
+                        <small class="{{ $field['change'] === null ? 'text-body-secondary' : ($field['change'] < 0 ? 'text-danger' : '') }}">{{ $field['changeLabel'] }} vs last AY</small>
                     </div>
                 </div>
             @endforeach
         </div>
         <div class="table-responsive d-none" id="fieldCountTable">
-            <table class="table align-middle mb-0"><thead><tr><th scope="col">Imported field</th><th scope="col" class="text-end">Selected scope</th><th scope="col" class="text-end">% of applicants</th></tr></thead><tbody>
+            <table class="table align-middle mb-0"><thead><tr><th scope="col">Imported field</th><th scope="col" class="text-end">Selected scope</th><th scope="col" class="text-end">Change vs last AY</th></tr></thead><tbody>
                 @foreach ($fieldCounts as $field)
-                    <tr><th scope="row">{{ $field['label'] }}</th><td class="text-end">{{ number_format($field['value']) }}</td><td class="text-end" data-field-percent>{{ $fieldPercent($field['value']) }}%</td></tr>
+                    <tr><th scope="row">{{ $field['label'] }}</th><td class="text-end">{{ number_format($field['value']) }}</td><td class="text-end" data-field-percent>{{ $field['changeLabel'] }}</td></tr>
                 @endforeach
             </tbody></table>
         </div>

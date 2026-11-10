@@ -606,8 +606,8 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         document.getElementById('exportFieldCounts').addEventListener('click', () => {
-            const rows = [...document.querySelectorAll('[data-field-name]')].map(field => [field.dataset.fieldName, field.dataset.fieldValue, `${field.dataset.fieldPercent}%`]);
-            downloadCsv('iaris-applicant-field-counts.csv', [['Field', 'Selected scope count', '% of applicants'], ...rows]);
+            const rows = [...document.querySelectorAll('[data-field-name]')].map(field => [field.dataset.fieldName, field.dataset.fieldValue, field.dataset.fieldChange]);
+            downloadCsv('iaris-applicant-field-counts.csv', [['Field', 'Selected scope count', 'Change vs last AY'], ...rows]);
         });
         document.getElementById('exportInsights').addEventListener('click', () => {
             downloadCsv('iaris-insights.csv', [['Type', 'Title', 'Insight', 'Statistic'], ...INSIGHTS.map(insight => [insight.type, insight.title, insight.body, insight.stat])]);

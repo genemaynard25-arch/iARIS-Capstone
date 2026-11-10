@@ -12,6 +12,7 @@ Date rules:
 - This Semester uses January–June / July–December through today until official academic term dates are supplied.
 - Date windows are anchored to today in Asia/Manila. Choosing an old school year with This Week can therefore correctly return zero.
 - Cached AI insight text is institution-wide; changing a selector does not regenerate AI analysis.
+- Applicant field-card percentages are year-over-year change for each field, not a share of total applicants. They use the exact preceding AY and the corresponding date window one calendar year earlier. Missing or zero prior counts show N/A. Cards, table, and CSV use the same calculation.
 
 The Admin/Staff report modal's Current/Previous School Year selector updates its preview. PDF requests carry `period=Current School Year` or `period=Previous School Year`, which `ReportController::pdf()` validates and uses to select report data. No prior-year import means an empty report, not current-year or mockup fallback rows. Current-year Law/iPACE preview templates remain previews; previous-year versions do not reuse their sample people.
 

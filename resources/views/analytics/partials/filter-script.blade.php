@@ -36,17 +36,23 @@
                 row.querySelector('.ar-funnel-track > div').style.width = Math.min(share, 100) + '%';
                 row.querySelector('.ar-funnel-track > div').style.background = funnelColors[i];
             });
+            const priorFields = filterEngine.previousYearTotals(FILTER_DATA, scope);
             document.querySelectorAll('[data-field-name]').forEach((card, i) => {
                 const count = current[countFields[i]];
-                const percent = rate(count, current.applicants).toFixed(1);
+                const before = priorFields?.[countFields[i]];
+                const change = before > 0 ? (count - before) / before * 100 : null;
+                const percent = change === null ? null : `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+                const changeLabel = percent === null ? 'N/A vs last AY' : `${percent} vs last AY`;
                 card.dataset.fieldValue = count;
-                card.dataset.fieldPercent = percent;
+                card.dataset.fieldChange = percent ?? 'N/A';
                 card.querySelector('strong').textContent = format(count);
-                card.querySelector('small').textContent = `${percent}% of applicants`;
+                card.querySelector('small').textContent = changeLabel;
+                card.querySelector('small').classList.toggle('text-body-secondary', change === null);
+                card.querySelector('small').classList.toggle('text-danger', change !== null && change < 0);
                 const tableCell = document.querySelectorAll('#fieldCountTable tbody tr')[i]?.querySelector('td');
                 if (tableCell) tableCell.textContent = format(count);
                 const percentCell = document.querySelectorAll('#fieldCountTable tbody tr')[i]?.querySelector('[data-field-percent]');
-                if (percentCell) percentCell.textContent = `${percent}%`;
+                if (percentCell) percentCell.textContent = percent ?? 'N/A';
             });
             const fieldHeading = document.querySelector('#fieldCountTable thead th:nth-child(2)');
             if (fieldHeading) fieldHeading.textContent = 'Selected scope';
