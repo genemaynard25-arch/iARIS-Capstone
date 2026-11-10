@@ -125,7 +125,7 @@
                                 <option value="{{ $value }}">{{ $value === 'took_test' ? 'Awaiting Result' : $label }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text">Passing results issue the Notice of Admission.</div>
+                        <div class="form-text" id="recExamResultHint">Set Exam fee paid to Yes first.</div>
                     </div>
                     <div class="col-sm-6">
                         <label for="recReservationPaid" class="form-label small fw-bold">Reservation fee paid <span class="text-danger">*</span></label>
@@ -343,7 +343,7 @@
                 fillYears();
             }
             bootstrap.Offcanvas.getInstance($('applicantDrawer'))?.hide();
-            updateReservationAvailability();
+            updateExamAvailability();
             recordModal.show();
         };
 
@@ -352,8 +352,17 @@
         $('recExamDate').addEventListener('change', () => { $('recExamTime').required = !!$('recExamDate').value; });
         $('recExamTime').addEventListener('change', () => { $('recExamDate').required = !!$('recExamTime').value; });
 
+        function updateExamAvailability() {
+            const paid = $('recExamPaid').value === '1';
+            $('recExamResult').disabled = !paid;
+            if (!paid) $('recExamResult').value = editing ? (R.toForm(editing).exam_status || 'not_taken') : 'not_taken';
+            $('recExamResultHint').textContent = paid ? 'Passing results issue the Notice of Admission.' : 'Set Exam fee paid to Yes first.';
+            updateReservationAvailability();
+        }
+        $('recExamPaid').addEventListener('change', updateExamAvailability);
+
         function updateReservationAvailability() {
-            const allowed = ['passed', 'reconsidered'].includes($('recExamResult').value);
+            const allowed = $('recExamPaid').value === '1' && ['passed', 'reconsidered'].includes($('recExamResult').value);
             $('recReservationPaid').disabled = !allowed;
             // Previously recorded payments remain visible when a result changes.
         }
@@ -390,7 +399,7 @@
                 year_level: $('recYear').value,
                 exam_date: $('recExamDate').value || null,
                 exam_time: $('recExamTime').value || null,
-                exam_result: $('recExamResult').value,
+                exam_result: $('recExamResult').disabled ? (editing ? (R.toForm(editing).exam_status || 'not_taken') : 'not_taken') : $('recExamResult').value,
                 exam_fee_paid: $('recExamPaid').value === '1',
                 ...(!$('recReservationPaid').disabled ? {reservation_fee_paid: $('recReservationPaid').value === '1'} : {}),
                 applying_for_scholarship: $('recApplyingScholarship').value === '1',
