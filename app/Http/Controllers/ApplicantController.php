@@ -11,9 +11,8 @@ class ApplicantController extends Controller
      * Applicants: the master pipeline of every division (Integrated School, College, Graduate Programs,
      * College of Law, iPACE, ETEEAP).
      *
-     * IS, College, Graduate Programs, College of Law and ETEEAP come from the database (Import Data,
-     * via ApplicantRecords). The applicants table has no iPACE level yet, so it still uses its
-     * Records page's placeholder people.
+     * IS, College, Graduate Programs, College of Law, iPACE and ETEEAP come from the database
+     * (Import Data, via ApplicantRecords).
      */
     public function index()
     {
@@ -23,14 +22,14 @@ class ApplicantController extends Controller
             'academicYear' => ApplicantRecords::academicYear(),
             'divisions' => self::DIVISIONS,
             'applicants' => self::pipeline(),
-            // Exam result editing is only wired up for the divisions backed by real
-            // database records — iPACE still uses placeholder data.
+            // Exam result editing is available for divisions with database-backed records.
             'canEditExam' => [
                 'Integrated School' => $user->canEdit('is'),
                 'College' => $user->canEdit('college'),
                 'Graduate Programs' => $user->canEdit('graduate_school'),
                 'College of Law' => $user->canEdit('law'),
                 'ETEEAP' => $user->canEdit('eteeap'),
+                'iPACE' => $user->canEdit('ipace'),
             ],
             'examStatuses' => ApplicantRecords::EXAM_STATUSES,
         ]);
@@ -312,7 +311,7 @@ class ApplicantController extends Controller
         foreach (ApplicantRecords::forLevel('law') as $a) {
             $all[] = $row($a, 'College of Law', $a['group'], $a['program_label'], $a['program_label']);
         }
-        foreach (IpaceRecordController::sample() as $a) {
+        foreach (ApplicantRecords::forLevel('ipace') as $a) {
             $all[] = $row($a, 'iPACE', $a['group'], $a['program_label'], "{$a['program_label']} · {$a['program']}");
         }
 
