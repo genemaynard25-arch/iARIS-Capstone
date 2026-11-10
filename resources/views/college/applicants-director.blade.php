@@ -142,7 +142,7 @@
             took_test: ['Awaiting result', 'warning'], qualified_other_degree: ['Qualified (other program)', 'info'], unknown: ['Not recorded', 'secondary'],
         };
         const examResult = r => r.exam_status || 'unknown';
-        const reserved = r => !!(r.paid || r.amount || r.status === 'Paid');
+        const reserved = r => !!(r.paid || r.status === 'Paid');
         const workYears = r => r.workYears == null ? '—' : r.workYears + ' years';
         $('tiles').innerHTML = [
             ['Total applicants', ROWS.length, 'All programs combined', 'primary'],
@@ -195,7 +195,7 @@
             const table = rows => `<table class="table table-sm small mb-0"><tbody>${rows.map(([l, v]) => `<tr><td class="text-body-secondary" style="width: 42%;">${l}</td><td class="fw-semibold">${esc(v || '—')}</td></tr>`).join('')}</tbody></table>`;
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name} · ${UNIT}`;
-            let html = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.amount || '—')}</div>`
+            let html = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', r.status)}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Payment', r.paid ? 'Paid' : 'Pending')}</div>`
                 + section('Personal information') + table([['Date of birth', r.dob], ...(ETEEAP ? [['Age', r.age + ' years old']] : []), ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]]);
             if (ETEEAP) {
                 html += section('Educational background') + table([['Highest educational attainment', r.education]])

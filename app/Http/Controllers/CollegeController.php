@@ -585,7 +585,7 @@ class CollegeController extends Controller
                 'status' => $a['status'] === 'For Exam' ? 'For Assessment' : $a['status'],
                 'applied' => $a['applied'], 'updated' => $a['updated'], 'dob' => $a['dob'],
                 'gender' => $a['gender'], 'email' => $a['email'], 'phone' => $a['contact'], 'address' => $a['address'],
-                'paid' => $a['paid'], 'amount' => $a['amount'] === null ? null : '₱' . number_format($a['amount'], 2),
+                'paid' => $a['paid'],
                 'exam_status' => $a['exam_status'], 'exam_paid' => $a['exam_paid'], 'preview' => false,
             ];
         }, \App\Support\ApplicantRecords::forLevel('eteeap'));

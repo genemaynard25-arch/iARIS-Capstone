@@ -9,7 +9,7 @@
 @php
     // key => [title, icon, colour, description]
     $templates = [
-        'paid' => ['Paid reservations list', 'bi-clipboard-check', 'info', 'Every applicant who paid, with payment date and amount. For enrollment.'],
+        'paid' => ['Paid reservations list', 'bi-clipboard-check', 'info', 'Every applicant who paid, with payment date. For enrollment.'],
         'status' => ['Applicants by status', 'bi-bar-chart', 'primary', 'Pending, For Exam, Passed and Paid counts by unit and department (or level).'],
         'daily' => ['Daily payments summary', 'bi-calendar-day', 'warning', 'Reservations paid per day, with totals.'],
         'program' => ['Applicants by program / grade', 'bi-layers', 'secondary', 'Counts per program or grade, by unit.'],
@@ -141,8 +141,9 @@
             const applied = rows.filter(r => inPeriod(r.applied, period));
             const countBy = (list, keyOf) => Object.entries(list.reduce((m, r) => { const k = keyOf(r); m[k] = (m[k] || 0) + 1; return m; }, {}));
             if (key === 'paid') {
-                return [['Applicant No.', 'Name', 'Unit', 'Department', 'Program', 'Paid on', 'Amount'],
-                    paid.map(r => [r.id, r.name, r.unit, r.dept, r.program, r.paid_label, r.amount])];
+                // No Amount column: that's the cashier's record, not the Registrar's.
+                return [['Applicant No.', 'Name', 'Unit', 'Department', 'Program', 'Paid on'],
+                    paid.map(r => [r.id, r.name, r.unit, r.dept, r.program, r.paid_label])];
             }
             if (key === 'status') {
                 const groups = [...new Set(applied.map(r => `${r.unit}|${r.dept}`))].sort();
@@ -154,12 +155,12 @@
                     })];
             }
             if (key === 'daily') {
-                const amount = r => Number(String(r.amount).replace(/[^\d.]/g, '')) || 0;
+                // No Total amount column: that's the cashier's record, not the Registrar's.
                 const days = [...new Set(paid.map(r => r.paid))].sort();
-                return [['Date', 'Reservations paid', 'Total amount'],
+                return [['Date', 'Reservations paid'],
                     days.map(day => {
                         const mine = paid.filter(r => r.paid === day);
-                        return [mine[0].paid_label, mine.length, '₱' + mine.reduce((s, r) => s + amount(r), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })];
+                        return [mine[0].paid_label, mine.length];
                     })];
             }
             return [['Unit', 'Program', 'Applicants'],

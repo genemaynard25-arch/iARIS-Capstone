@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
  *     because the applicants table has no level for them yet.
  *   IS Registrar ('is'): the Integrated School only, from the applicants table, by level.
  *
- * Each row: id, name, unit, dept, program, status, applied, paid, amount, url (opens the record).
+ * Each row: id, name, unit, dept, program, status, applied, paid, url (opens the record). No
+ * amount: that's the cashier's record, not the Registrar's.
  */
 class RegistrarData
 {
@@ -63,7 +64,9 @@ class RegistrarData
 
     private static function hasReservation(array $record): bool
     {
-        return ($record['amount'] ?? null) !== null || ($record['paid'] ?? null) !== null || in_array($record['status'], ['Paid', 'Enrolled']);
+        // No 'amount' field (cashier-only, out of scope here too) - the paid date already says
+        // whether the reservation fee came in.
+        return ($record['paid'] ?? null) !== null || in_array($record['status'], ['Paid', 'Enrolled']);
     }
 
     /** Every applicant in the Registrar's units. */

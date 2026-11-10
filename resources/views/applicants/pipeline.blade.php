@@ -350,7 +350,7 @@
                 All: base.length,
                 examPaid: base.filter(a => a.exam_paid).length,
                 passedExam: base.filter(a => ['passed', 'reconsidered', 'qualified_other_degree'].includes(a.exam_status) || (!a.exam_status && a.status === 'Passed')).length,
-                reserved: base.filter(a => a.amount != null || a.paid != null || ['Paid', 'Enrolled'].includes(a.status)).length,
+                reserved: base.filter(a => a.paid != null || ['Paid', 'Enrolled'].includes(a.status)).length,
             };
             Object.keys(STATUSES).forEach(k => counts[k] = base.filter(a => a.status === k).length);
             document.querySelectorAll('[data-stat]').forEach(el => el.textContent = counts[el.dataset.stat].toLocaleString());

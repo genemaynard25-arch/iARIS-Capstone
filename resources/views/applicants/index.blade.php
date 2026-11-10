@@ -198,7 +198,9 @@
         };
         [$resultLabel, $resultTone] = $examResults[$result] ?? $examResults['unknown'];
         $examPaid = $a['exam_paid'] ?? null;
-        $reserved = $a['amount'] !== null || $a['paid'] !== null || in_array($a['status'], ['Paid', 'Enrolled']);
+        // No 'amount' field (IATO doesn't need the peso figure - see ApplicantRecords::shape());
+        // the paid date already says whether the reservation fee came in.
+        $reserved = $a['paid'] !== null || in_array($a['status'], ['Paid', 'Enrolled']);
         return $a + [
             'exam_result' => $result, 'exam_result_label' => $resultLabel, 'exam_result_tone' => $resultTone,
             'exam_fee_label' => $examPaid === null ? 'Not recorded' : ($examPaid ? 'Exam fee paid' : 'Exam fee not paid'),

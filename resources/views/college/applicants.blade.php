@@ -210,7 +210,7 @@
             const table = rows => `<table class="table table-sm small mb-0"><tbody>${rows.map(([l, v]) => `<tr><td class="text-body-secondary" style="width: 42%;">${l}</td><td class="fw-semibold">${esc(v || '—')}</td></tr>`).join('')}</tbody></table>`;
             $('applicantName').textContent = r.name;
             $('applicantSub').textContent = `${r.id} · ${PROGRAMS[r.program].name}`;
-            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', labelOf(r.status))}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Amount', r.paid ? (r.amount || '₱2,000.00') : '—')}</div>`
+            $('applicantBody').innerHTML = `<div class="row row-cols-2 row-cols-sm-4 g-2">${stat('Status', labelOf(r.status))}${stat('Applied', longDate(r.applied))}${stat('Paid on', r.paid || '—')}${stat('Payment', r.paid ? 'Paid' : 'Pending')}</div>`
                 + section('Application') + table([['Unit', COLLEGE], [WORD[0].toUpperCase() + WORD.slice(1), PROGRAMS[r.program].name], ['Year / level', r.year || '1st Year'], ...(r.undergrad ? [['Undergraduate / graduate degree', r.undergrad]] : []), ...(r.bar ? [['Bar exam passer', r.bar]] : []), ['Entrance exam / interview', r.exam || 'Not yet scheduled']])
                 + section('Applicant') + table([['Date of birth', r.dob], ['Gender', r.gender], ['Email', r.email], ['Contact', r.phone], ['Address', r.address]])
                 + '<p class="small text-body-secondary mt-4 mb-0"><i class="bi bi-lock me-1"></i>View only. IATO manages applicant records.</p>';
