@@ -31,13 +31,6 @@
 @endif
 
 @section('content')
-    @if (auth()->user()->role === 'president')
-        <div class="director-report-heading d-flex align-items-baseline gap-2 mb-3">
-            <h2 class="fs-6 fw-bold mb-0">From IATO</h2>
-            <span class="small text-body-secondary">Open a report to read or download it. Questions go to Messages.</span>
-        </div>
-    @endif
-
     {{-- Two views: reports the IATO sent, and generating your own.
          canGenerate false hides the "Generate a Report" tab (its section stays, the script uses it). --}}
     <ul class="nav nav-pills gap-2 mb-4" role="tablist">
