@@ -237,7 +237,28 @@ class CollegeController extends Controller
     private static function realPrograms(string $collegeCode, array $programs): array
     {
         $level = self::levelFor($collegeCode);
-        $applicants = \App\Models\Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])->get();
+        $applicants = \App\Models\Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])
+            ->whereNull('archived_at')->get();
+
+        // Build iPACE program groups from imported values. The previous fixed demo
+        // program names did not necessarily match program_or_track from the import.
+        // ETEEAP keeps its existing program definitions.
+        if ($collegeCode === 'IPACE') {
+            $ipaceNames = $applicants->where('level', 'ipace')
+                ->pluck('program_or_track')->map(fn ($name) => trim((string) $name))
+                ->filter()->unique()->sort()->values();
+            $ipacePrograms = [];
+            foreach ($ipaceNames as $index => $name) {
+                $ipacePrograms['I-' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT)] = [
+                    'unit' => 'iPACE', 'name' => $name, 'match' => [$name],
+                ];
+            }
+            $unassigned = $applicants->where('level', 'ipace')->contains(fn ($a) => blank($a->program_or_track));
+            if ($unassigned) {
+                $ipacePrograms['I-OTHER'] = ['unit' => 'iPACE', 'name' => 'Unspecified program'];
+            }
+            $programs = $ipacePrograms + array_filter($programs, fn ($p) => ($p['unit'] ?? null) === 'ETEEAP');
+        }
 
         // CEAS is the one college kept showing its authored four-year numbers (see COLLEGES
         // above) instead of real ones, on purpose: a demo of what the dashboard/analytics
@@ -369,6 +390,36 @@ class CollegeController extends Controller
         return array_values(array_unique(array_column(self::college()['programs'], 'name')));
     }
 
+    /**
+     * Counts-only iPACE learner profile, based on fields actually captured by the import.
+     * Employer and work history are not part of the current import schema and are not inferred.
+     */
+    private static function realIpaceProfile(): array
+    {
+        $applicants = \App\Models\Applicant::where('level', 'ipace')
+            ->whereNull('archived_at')->get();
+        $count = fn ($predicate) => $applicants->filter($predicate)->count();
+        $modalities = [
+            'Online' => $count(fn ($a) => str_contains(strtoupper((string) $a->learning_modalities), 'ONLINE')),
+            'Blended' => $count(fn ($a) => str_contains(strtoupper((string) $a->learning_modalities), 'BLENDED')),
+            'Face to face' => $count(fn ($a) => str_contains(strtoupper((string) $a->learning_modalities), 'FACE')),
+            'Not recorded' => $count(fn ($a) => blank($a->learning_modalities)),
+        ];
+
+        return ['Learner profile', [
+            ['Learning modality', array_map(fn ($label, $value) => [$label, $value], array_keys($modalities), array_values($modalities))],
+            ['Gender', [
+                ['Male', $count(fn ($a) => $a->gender === 'male')],
+                ['Female', $count(fn ($a) => $a->gender === 'female')],
+                ['Not recorded', $count(fn ($a) => blank($a->gender))],
+            ]],
+            ['Scholarship', [
+                ['Applying', $count(fn ($a) => (bool) $a->applying_for_scholarship)],
+                ['Not applying', $count(fn ($a) => ! $a->applying_for_scholarship)],
+            ]],
+        ], 'Counts are based on imported iPACE applicant records. Employer and work-history details are not collected by the current import template.'];
+    }
+
     // What the pages share: the programs in scope, the years, and who is looking.
     // A dean sees every program in their college; a program chair only their own (BS Computer Science for now).
     private function common(): array
@@ -386,8 +437,10 @@ class CollegeController extends Controller
             'whole' => $college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college'),
             // What "For Exam" is called ("For Exam / Interview" in the Graduate Programs)
             'middle' => $college['middle'] ?? 'For Exam',
-            // The Learner profile on the Briefing (iPACE Director only)
-            'profiles' => $college['profiles'] ?? [],
+            // iPACE profile counts come from imported applicants. ETEEAP remains unchanged.
+            'profiles' => $college['code'] === 'IPACE'
+                ? array_merge($college['profiles'] ?? [], ['iPACE' => self::realIpaceProfile()])
+                : ($college['profiles'] ?? []),
             // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
             'base' => self::base(),
             'programs' => $isChair
