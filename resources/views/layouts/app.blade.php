@@ -7,6 +7,7 @@
     <link href="{{ asset('css/app-shell.css') }}" rel="stylesheet">
     @stack('styles')
     <link href="{{ asset('css/sidebar.css') }}" rel="stylesheet">
+    <script src="{{ asset('js/sidebar-viewport.js') }}" defer></script>
     @if (auth()->user()->role === 'iato_staff')
         <link href="{{ asset('css/staff.css') }}" rel="stylesheet">
     @endif

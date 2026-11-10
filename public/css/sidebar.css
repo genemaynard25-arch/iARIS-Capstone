@@ -38,3 +38,19 @@
 .app-shell > .sidebar .signed-in-role { font-size: 9px; overflow-wrap: anywhere; }
 .app-shell > .sidebar .nav-count { font-size: 9px; padding: 3px 5px; }
 .app-shell > .sidebar .nav-dot { width: 6px; height: 6px; }
+
+/* The menu scrolls; the brand and logout footer remain in the available viewport. */
+.iaris-workspace .app-shell > .sidebar .offcanvas-body { min-height: 0; overflow: hidden; }
+.iaris-workspace .app-shell > .sidebar .offcanvas-body > div:first-child,
+.iaris-workspace .app-shell > .sidebar .offcanvas-body > .nav { flex-shrink: 0; }
+.iaris-workspace .app-shell > .sidebar .offcanvas-body > .flex-grow-1 { min-height: 0; }
+@media (min-width: 992px) {
+    .iaris-workspace .app-shell > .sidebar {
+        height: calc(100vh - var(--sidebar-header-offset, 34px)) !important;
+        height: calc(100dvh - var(--sidebar-header-offset, 34px)) !important;
+        align-self: flex-start;
+    }
+}
+@media (max-width: 991.98px) {
+    .iaris-workspace .app-shell > .sidebar { height: 100dvh !important; }
+}
