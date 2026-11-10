@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CachedInsight;
+use App\Support\ApplicantRecords;
 
 class ExecutiveController extends Controller
 {
@@ -29,7 +29,7 @@ class ExecutiveController extends Controller
     public function dashboard()
     {
         return view('executive.dashboard', [
-            'academicYear' => '2025–2026',
+            'academicYear' => ApplicantRecords::academicYear(),
             'years' => self::YEARS,
             'units' => self::units(),
             // Paid reservations, all units, one per entry in YEARS (the last two match the units' paidPrevious / paid)
@@ -64,18 +64,18 @@ class ExecutiveController extends Controller
         $me = fn ($at, $text) => ['from' => 'me', 'at' => $at, 'text' => $text];
 
         return [
-                ['id' => 'MSG-0108', 'topic' => 'Question about the data', 'subject' => 'Why did conversion drop this year?', 'status' => 'answered', 'messages' => [
-                    $me('Jun 11, 2026 · 9:15 AM', 'The Briefing says applied-to-enrolled conversion slipped to 25.6%. Which units are driving that?'),
-                    $iato('Jun 11, 2026 · 2:40 PM', 'Mostly College and iPACE: their applicants grew faster than enrollment. The biggest loss is passers who have not paid yet. We will add a unit breakdown to the June report.'),
-                ]],
-                ['id' => 'MSG-0105', 'topic' => 'Request a report', 'subject' => 'Applicants by unit for the Board meeting', 'status' => 'waiting', 'messages' => [
-                    $me('Jun 12, 2026 · 8:20 AM', 'Please prepare applicants by unit, this AY against last AY, for the Board meeting on Jun 18.'),
-                ]],
-                ['id' => 'MSG-0101', 'topic' => 'Something looks wrong', 'subject' => 'ETEEAP numbers in the May report', 'status' => 'resolved', 'messages' => [
-                    $me('May 31, 2026 · 10:05 AM', 'The May report shows 91 ETEEAP applicants, but the Briefing showed 94. Which is right?'),
-                    $iato('May 31, 2026 · 11:30 AM', 'The report was a May 30 snapshot (91). Three more applied on May 31, so 94 is the current count.'),
-                    $me('May 31, 2026 · 11:45 AM', 'Thank you, that explains it.'),
-                ]],
+            ['id' => 'MSG-0108', 'topic' => 'Question about the data', 'subject' => 'Why did conversion drop this year?', 'status' => 'answered', 'messages' => [
+                $me('Jun 11, 2026 · 9:15 AM', 'The Briefing says applied-to-enrolled conversion slipped to 25.6%. Which units are driving that?'),
+                $iato('Jun 11, 2026 · 2:40 PM', 'Mostly College and iPACE: their applicants grew faster than enrollment. The biggest loss is passers who have not paid yet. We will add a unit breakdown to the June report.'),
+            ]],
+            ['id' => 'MSG-0105', 'topic' => 'Request a report', 'subject' => 'Applicants by unit for the Board meeting', 'status' => 'waiting', 'messages' => [
+                $me('Jun 12, 2026 · 8:20 AM', 'Please prepare applicants by unit, this AY against last AY, for the Board meeting on Jun 18.'),
+            ]],
+            ['id' => 'MSG-0101', 'topic' => 'Something looks wrong', 'subject' => 'ETEEAP numbers in the May report', 'status' => 'resolved', 'messages' => [
+                $me('May 31, 2026 · 10:05 AM', 'The May report shows 91 ETEEAP applicants, but the Briefing showed 94. Which is right?'),
+                $iato('May 31, 2026 · 11:30 AM', 'The report was a May 30 snapshot (91). Three more applied on May 31, so 94 is the current count.'),
+                $me('May 31, 2026 · 11:45 AM', 'Thank you, that explains it.'),
+            ]],
         ];
     }
 
@@ -91,7 +91,7 @@ class ExecutiveController extends Controller
     public function analytics()
     {
         return view('executive.analytics', [
-            'academicYear' => '2025–2026',
+            'academicYear' => ApplicantRecords::academicYear(),
             'years' => self::YEARS,
 
             'units' => self::units(),
@@ -123,7 +123,7 @@ class ExecutiveController extends Controller
                 // Vice Presidents and Vice Chancellors read reports but don't generate them
                 'canGenerate' => ! auth()->user()->isVice(),
                 'unit' => 'Unit', 'all' => 'All Units', 'total' => 'All units', 'wide' => 'institution-wide',
-                'role' => auth()->user()->roleInfo()[0], 'scope' => ['All ' . count(self::units()) . ' units', 'Institution-wide'],
+                'role' => auth()->user()->roleInfo()[0], 'scope' => ['All '.count(self::units()).' units', 'Institution-wide'],
                 'sharedTitle' => 'Shared with the Executive Office', 'locked' => null,
             ],
             // Replies now live in Messages, so a report is just unread or read

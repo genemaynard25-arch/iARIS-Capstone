@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Applicant;
+use App\Support\ApplicantRecords;
+use App\Support\LampRequests;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -50,13 +53,13 @@ class ScholarController extends Controller
         $user = auth()->user();
 
         return view('scholars.index', [
-            'academicYear' => '2025–2026',
+            'academicYear' => ApplicantRecords::academicYear(),
             // Add / Edit / Remove (front end only): roles with the 'edit' permission
             'canEdit' => $user->canAccess('edit'),
             'scholars' => self::sample(),
 
             // Conversations with the LAMP Office about mismatched records (front end only)
-            'lampThreads' => \App\Support\LampRequests::byScholar(),
+            'lampThreads' => LampRequests::byScholar(),
             // Only IATO (admins and staff) can ask LAMP or reply; others can read the conversation
             'canMessageLamp' => $user->isAdmin() || $user->role === 'iato_staff',
             // How your messages are signed, e.g. "Cruz, Jasmine · IATO Staff"
@@ -84,7 +87,7 @@ class ScholarController extends Controller
         $parts = preg_split('/\s+/', trim($name));
         $last = array_pop($parts);
 
-        return $parts ? $last . ', ' . implode(' ', $parts) : $last;
+        return $parts ? $last.', '.implode(' ', $parts) : $last;
     }
 
     // Real scholars: applicants who checked "Yes" to Applying for Scholarship on the
@@ -105,11 +108,11 @@ class ScholarController extends Controller
             'completed' => 'Enrolled',
         ];
 
-        return \App\Models\Applicant::where('applying_for_scholarship', true)
+        return Applicant::where('applying_for_scholarship', true)
             ->get()
-            ->map(function (\App\Models\Applicant $a) use ($date, $statusLabels) {
+            ->map(function (Applicant $a) use ($date, $statusLabels) {
                 $unit = match ($a->level) {
-                    'is' => 'Integrated School · ' . (\App\Support\ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? ucfirst($a->sub_level ?? '')),
+                    'is' => 'Integrated School · '.(ApplicantRecords::IS_SUB_LEVELS[$a->sub_level] ?? ucfirst($a->sub_level ?? '')),
                     'college' => $a->college ?? $a->program_or_track,
                     'graduate_school' => 'Graduate Programs',
                     'eteeap' => 'ETEEAP',
@@ -119,7 +122,7 @@ class ScholarController extends Controller
                 return [
                     'id' => $a->reference_number,
                     'name' => "{$a->last_name}, {$a->first_name}",
-                    'initials' => mb_substr($a->first_name, 0, 1) . mb_substr($a->last_name, 0, 1),
+                    'initials' => mb_substr($a->first_name, 0, 1).mb_substr($a->last_name, 0, 1),
                     'unit' => $unit,
                     'program' => $a->program_or_track,
                     'type' => $a->scholarship_type,

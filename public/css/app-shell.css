@@ -47,7 +47,7 @@
 .iaris-workspace .app-topbar > .d-flex:first-child > div { min-width: 0; overflow-wrap: anywhere; }
 .iaris-workspace .app-topbar > .d-flex:first-child > button { flex-shrink: 0; }
 
-/* Large applicant lists keep their pagination inside the table card. */
-.iaris-workspace nav[aria-label="Applicant pages"] { min-width: 0; max-width: 100%; }
-.iaris-workspace nav[aria-label="Applicant pages"] .pagination { flex-wrap: wrap; row-gap: 6px; }
-.iaris-workspace:has(#aiWidget:not(.d-none)) nav[aria-label="Applicant pages"] { padding-inline-end: 64px; }
+/* Table and modal pagination wraps within its container and clears the floating AI button. */
+.iaris-workspace [aria-label$="pages"] { min-width: 0; max-width: 100%; }
+.iaris-workspace .pagination { flex-wrap: wrap; row-gap: 6px; max-width: 100%; }
+.iaris-workspace:has(#aiWidget:not(.d-none)) [aria-label$="pages"] { padding-inline-end: 64px; }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApplicantRecords;
 use Illuminate\Support\Carbon;
 
 class ShsController extends Controller
@@ -33,7 +34,7 @@ class ShsController extends Controller
             ->all();
 
         return view('shs.dashboard', [
-            'academicYear' => '2025–2026',
+            'academicYear' => ApplicantRecords::academicYear(),
             'periodLabel' => 'Week of June 8–14, 2026',
 
             'stats' => [
