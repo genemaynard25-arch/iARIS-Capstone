@@ -90,8 +90,8 @@
                 <div class="alert alert-danger small mt-3 mb-0 d-none" id="readError" role="alert"></div>
 
                 <div class="mt-4">
-                    <label for="school_year" class="form-label small fw-bold text-uppercase text-body-secondary">School Year — which AY is this batch for?</label>
-                    <input type="text" class="form-control" id="school_year" name="school_year" value="{{ old('school_year', $currentSchoolYear) }}" pattern="\d{4}-\d{4}" placeholder="2026-2027" required style="max-width: 200px;">
+                    <label for="school_yearChoice" class="form-label small fw-bold text-uppercase text-body-secondary">School Year — which AY is this batch for?</label>
+                    @include('partials.school-year-picker', ['id' => 'school_year', 'label' => 'School year for this batch', 'value' => old('school_year', $currentSchoolYear)])
                     <div class="form-text">Every applicant is assigned to this school year. A year explicitly declared in the filename or workbook is prefilled and checked before import.</div>
                     <div class="form-text fw-semibold" id="declaredSchoolYearNotice" role="status"></div>
                 </div>
@@ -250,6 +250,7 @@
             importButton.innerHTML = initialImportLabel;
             hide(document.getElementById('sampleNotice'));
             document.getElementById('school_year').value = schoolYear;
+            document.getElementById('school_year').dispatchEvent(new Event('school-year:set'));
             [fileRow, readError, previewCard].forEach(hide);
             const banner = document.getElementById('reviewBanner');   // IATO Staff only
             if (banner) hide(banner);
@@ -305,7 +306,10 @@
                     });
                     if (declaredYears.size > 1) throw new Error('Conflicting school-year declarations');
                     const declared = [...declaredYears][0];
-                    if (declared) document.getElementById('school_year').value = declared;
+                    if (declared) {
+                        document.getElementById('school_year').value = declared;
+                        document.getElementById('school_year').dispatchEvent(new Event('school-year:set'));
+                    }
                     document.getElementById('declaredSchoolYearNotice').textContent = declared ? `File declares SY ${declared}. These applicants will be imported into ${declared}.` : 'Check the school year above before importing; this file has no explicit school-year declaration.';
                     render(file, rows);
                 } catch (err) {

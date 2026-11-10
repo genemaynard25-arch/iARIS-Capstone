@@ -18,8 +18,8 @@
                 @csrf
                 <input type="hidden" name="from_school_year" value="{{ $assignedYears[0] }}">
                 <input type="hidden" name="expected_count" value="{{ $applicants->count() }}">
-                <div><label class="form-label" for="correctSchoolYear">Correct school year</label>
-                <input class="form-control" id="correctSchoolYear" name="school_year" value="{{ old('school_year', $declaredYear ?? $assignedYears[0]) }}" pattern="[0-9]{4}-[0-9]{4}" required></div>
+                <div><label class="form-label" for="correctSchoolYearChoice">Correct school year</label>
+                @include('partials.school-year-picker', ['id' => 'correctSchoolYear', 'label' => 'Correct school year', 'value' => old('school_year', $declaredYear ?? $assignedYears[0])])</div>
                 <button class="btn btn-warning" type="submit">Correct school year for {{ number_format($applicants->count()) }} applicants</button>
             </form>
             <p class="small text-body-secondary mt-2 mb-0">Moves the existing batch to the selected school year. Applicant IDs, reference numbers, scholarship decisions and payments are preserved. The correction is audited.</p>
