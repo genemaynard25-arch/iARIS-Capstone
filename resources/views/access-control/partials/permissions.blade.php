@@ -549,7 +549,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                                     $level = $permissionLevel($role, $module);
                                 @endphp
                                 <div class="ac-module-row" data-permission-row data-row-role="{{ $role['key'] }}" data-row-module="{{ $module['key'] }}">
-                                    <div class="ac-module-text"><strong>{{ $module['name'] }} @if ($preview)<span class="ac-preview-badge">Preview</span>@endif</strong><small>{{ $module['description'] }}</small></div>
+                                    <div class="ac-module-text"><strong>{{ $module['name'] }} @if ($preview && ! in_array($module['key'], ['ai_chatbot', 'law', 'review_queue', 'graduate', 'eteeap'], true))<span class="ac-preview-badge">Preview</span>@endif</strong><small>{{ $module['description'] }}</small></div>
                                     @if ($locked)
                                         <span class="ac-locked"><i class="bi bi-lock-fill" aria-hidden="true"></i> {{ $level > 0 ? ($isAdmin ? 'Full access' : 'View only') : (! empty($module['adminOnly']) ? 'Super Admin only' : 'No access') }}</span>
                                     @else
@@ -579,7 +579,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
                     @foreach ($modules as $section => $sectionModules)
                         <tr class="ac-matrix-section"><th scope="rowgroup">{{ $section }}</th><td colspan="{{ count($roles) }}"></td></tr>
                         @foreach ($sectionModules as $module)
-                            <tr><th scope="row"><strong>{{ $module['name'] }}</strong>@if (! empty($module['preview']))<span class="ac-preview-badge">Preview</span>@endif<small>{{ $module['description'] }}</small></th>
+                            <tr><th scope="row"><strong>{{ $module['name'] }}</strong>@if (! empty($module['preview']) && ! in_array($module['key'], ['ai_chatbot', 'law', 'review_queue', 'graduate', 'eteeap'], true))<span class="ac-preview-badge">Preview</span>@endif<small>{{ $module['description'] }}</small></th>
                                 @foreach ($roles as $role)
                                     @php
                                         $isAdmin = $role['key'] === 'admin';
