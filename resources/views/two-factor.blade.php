@@ -53,6 +53,13 @@
                 </span>
             </div>
 
+            @if (session('mfaRequired') && ! $confirmed)
+                <div class="alert alert-primary small d-flex gap-2 mb-3">
+                    <i class="bi bi-shield-lock mt-1"></i>
+                    <div>Multi-factor authentication is required for every iARIS account. You'll need to finish this setup before you can continue.</div>
+                </div>
+            @endif
+
             <div class="card border-0 shadow rounded-4 overflow-hidden">
                 {{-- Progress: one dot per step. The script colours them. --}}
                 <ol class="list-unstyled d-flex align-items-start px-4 pt-4 mb-0" id="progress" aria-label="Setup progress">

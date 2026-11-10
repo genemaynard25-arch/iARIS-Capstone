@@ -57,7 +57,6 @@
     @unless (auth()->user()->isLamp() || auth()->user()->role === 'registrar' || auth()->user()->isToic())
         @include('partials.ai-widget')
     @endunless
-    @include('partials.mfa-reminder')
     {{-- "Report a problem" (everyone except TOIC) --}}
     @unless (auth()->user()->isToic())
         @include('partials.report-problem')
