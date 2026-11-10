@@ -21,6 +21,7 @@ use App\Http\Controllers\SuccessionController;
 use App\Http\Controllers\ScholarController;
 use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\LampController;
+use App\Http\Controllers\LampCheckController;
 use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\SubmissionsController;
 use App\Http\Controllers\ShsController;
@@ -140,6 +141,8 @@ Route::get('/shs', [ShsController::class, 'dashboard'])->middleware(['auth', 'ro
 Route::get('/messages', [IatoMessagesController::class, 'index'])->middleware('auth')->name('messages');
 
 // Messages with IATO for the LAMP Office, the Registrars and the SHS Principal (one page, three addresses)
+Route::post('/lamp/checks/{applicant}', [LampCheckController::class, 'update'])->middleware(['auth', 'role:isLamp'])->name('lamp.checks.update');
+Route::post('/iato/lamp-checks/{applicant}/confirm', [LampCheckController::class, 'confirm'])->middleware('auth')->name('iato.lamp-checks.confirm');
 Route::get('/lamp/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:isLamp'])->name('lamp.messages');
 Route::get('/registrar/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:registrar'])->name('registrar.messages');
 Route::get('/shs/messages', [MessagesController::class, 'index'])->middleware(['auth', 'role:isShsPrincipal'])->name('shs.messages');
