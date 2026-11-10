@@ -3,7 +3,7 @@
 {{--
     LAMP Office Dashboard (LampController::dashboard): the scholarship applicants IATO shares (they answered Yes on
     the application), four numbers, the applicants waiting for LAMP's check, and updates from IATO.
-    The applicants are real; LAMP's checks are kept in this browser for now (partials/check-script).
+    Applicants and saved LAMP checks are loaded from the database.
 --}}
 
 @php
