@@ -89,9 +89,10 @@ class CollegeController extends Controller
                 'funnel' => [10, 8, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
         ]],
         // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
-        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Kindergarten to Grade 12',
-            'office' => 'Integrated School · Kindergarten to Grade 12', 'word' => 'level', 'programs' => [
-            'K' => ['name' => 'Kindergarten', 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
+        'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Preschool to Grade 12',
+            'office' => 'Integrated School · Preschool to Grade 12', 'word' => 'level', 'programs' => [
+            // 'match': what the applicants table calls this level (the import says Kindergarten)
+            'K' => ['name' => 'Preschool', 'match' => ['Kindergarten', 'Preschool'], 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
                 'funnel' => [58, 46, 39, 18, 14], 'status' => [10, 30, 18], 'paidLastYear' => 17],
             'GS' => ['name' => 'Grade School', 'applicants' => [194, 199, 204, 214], 'enrolled' => [49, 52, 54, 55],
                 'funnel' => [214, 173, 146, 74, 55], 'status' => [32, 108, 74], 'paidLastYear' => 72],
@@ -211,7 +212,7 @@ class CollegeController extends Controller
 
         $result = [];
         foreach ($programs as $code => $p) {
-            $matched = $applicants->where('program_or_track', $p['name']);
+            $matched = $applicants->whereIn('program_or_track', (array) ($p['match'] ?? $p['name']));
             $submitted = $matched->count();
             $tookExam = $matched->where('admission_test_status', '!=', 'not_taken')->count();
             $passed = $matched->where('admission_test_status', 'passed')->count();
@@ -241,7 +242,7 @@ class CollegeController extends Controller
     private static function realApplicantsIn(array $scope, string $collegeCode): array
     {
         $level = self::levelFor($collegeCode);
-        $byName = collect($scope)->mapWithKeys(fn ($p, $code) => [$p['name'] => $code]);
+        $byName = collect($scope)->flatMap(fn ($p, $code) => collect((array) ($p['match'] ?? $p['name']))->mapWithKeys(fn ($n) => [$n => $code]));
         $statusLabel = fn ($s) => match ($s) {
             'submitted' => 'For Exam',
             'completed' => 'Paid',
@@ -368,7 +369,7 @@ class CollegeController extends Controller
      */
     private static function fieldCounts(array $common): array
     {
-        $names = collect($common['programs'])->pluck('name')->all();
+        $names = collect($common['programs'])->flatMap(fn ($p) => (array) ($p['match'] ?? $p['name']))->all();
         $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))
             ->whereIn('program_or_track', $names)->get();
         $ids = $applicants->pluck('id');
