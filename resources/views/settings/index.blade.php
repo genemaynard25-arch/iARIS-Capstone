@@ -11,7 +11,7 @@
         'notifications' => ['Notifications', 'bi-bell'],
         'briefing' => ['Briefing', 'bi-compass'],
         'reports' => ['Report Preferences', 'bi-file-earmark-text'],
-        'ai' => ['AI Assistant', 'bi-stars'],
+        'ai' => ['AI Chatbot', 'bi-stars'],
         'display' => ['Display', 'bi-sliders'],
         // Super Admin only (see settings/partials/system.blade.php)
         'year' => ['Academic Year', 'bi-calendar3'],
@@ -218,18 +218,18 @@
                     </div>
                 @endif
 
-                {{-- ========== AI ASSISTANT ========== --}}
+                {{-- ========== AI CHATBOT ========== --}}
                 @if (in_array('ai', $sections))
                     <div class="tab-pane fade {{ $openSection === 'ai' ? 'show active' : '' }}" id="section-ai" role="tabpanel">
                         <form class="card border-0 shadow-sm rounded-4" data-preferences="ai">
                             <div class="card-body p-4">
-                                <h2 class="fs-6 fw-bold mb-0">AI Assistant</h2>
-                                <p class="small text-body-secondary">The assistant helps you read enrollment figures in plain language.</p>
+                                <h2 class="fs-6 fw-bold mb-0">AI Chatbot</h2>
+                                <p class="small text-body-secondary">The chatbot helps you read enrollment figures in plain language.</p>
                                 @include('settings.partials.switch', ['name' => 'button', 'label' => 'Show the AI button on every page', 'description' => 'The round button at the bottom-right of your pages. Turn it off to hide it.', 'checked' => true])
                                 @include('settings.partials.switch', ['name' => 'takeaways', 'label' => 'Show AI-written takeaways', 'description' => 'AI summaries on your pages, such as Key Takeaways on the Dashboard and AI Insights on Analytics.', 'checked' => true])
                                 <div class="small text-body-secondary bg-body-tertiary rounded-3 p-3 mt-3 d-flex gap-2">
                                     <i class="bi bi-info-circle" aria-hidden="true"></i>
-                                    <span>The assistant only reads the figures on the page you are viewing. It never changes data, and each page starts a new chat. AI answers can contain mistakes, so verify important figures.</span>
+                                    <span>The chatbot only reads the figures on the page you are viewing. It never changes data, and each page starts a new chat. AI answers can contain mistakes, so verify important figures.</span>
                                 </div>
                             </div>
                             @include('settings.partials.save-footer')

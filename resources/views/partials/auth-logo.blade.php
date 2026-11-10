@@ -1,4 +1,4 @@
-{{-- The v2 authentication mark; the dashboard logo remains independent. --}}
+{{-- The current iARIS mark, shared by authentication screens and every sidebar. --}}
 <span class="auth-logo d-inline-flex {{ ($variant ?? '') === 'glass' ? 'auth-logo--glass' : '' }}" style="--logo-size: {{ $size ?? 58 }}px;" aria-hidden="true">
     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" focusable="false">
         <rect x="88" y="88" width="24" height="72" rx="8" fill="#fff"/>

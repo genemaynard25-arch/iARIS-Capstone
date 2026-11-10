@@ -97,7 +97,7 @@
                 @hasSection('sidebar-brand')
                     @yield('sidebar-brand')
                 @else
-                    @include('partials.logo-mark', ['size' => 40])
+                    @include('partials.auth-logo', ['size' => 44, 'variant' => 'glass'])
                 @endif
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>

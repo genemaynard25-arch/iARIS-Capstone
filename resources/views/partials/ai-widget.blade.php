@@ -10,7 +10,7 @@
 @endphp
 
 <div id="aiWidget">
-    <button id="aiWidgetToggle" class="btn btn-primary rounded-circle shadow" type="button" aria-label="Open AI Assistant"
+    <button id="aiWidgetToggle" class="btn btn-primary rounded-circle shadow" type="button" aria-label="Open AI Chatbot"
         style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 2000;">
         <i class="bi bi-stars fs-5"></i>
     </button>
@@ -30,7 +30,7 @@
         <div class="bg-iaris text-white d-flex align-items-center justify-content-between px-3 py-2">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-stars"></i>
-                <span class="fw-bold small">AI Assistant</span>
+                <span class="fw-bold small">AI Chatbot</span>
             </div>
             <button id="aiWidgetClose" type="button" class="btn-close btn-close-white btn-sm" aria-label="Close"></button>
         </div>
@@ -357,7 +357,7 @@
             thinking.parentElement.style.textAlign = 'left';
             if (chartSpec) addChart(chartSpec);
         } catch (err) {
-            thinking.textContent = 'Sorry, something went wrong reaching the AI assistant.';
+            thinking.textContent = 'Sorry, something went wrong reaching the AI chatbot.';
         }
     });
 })();

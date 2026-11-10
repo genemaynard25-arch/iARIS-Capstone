@@ -47,8 +47,8 @@ class SettingsController extends Controller
         $roles = [
             'admin' => ['IATO Admin', 'IATO Admin', 'Institutional Admissions and Testing Office', 'All modules'],
             'iato_staff' => ['IATO Staff', 'IATO Staff', 'Institutional Admissions and Testing Office', 'Dashboard, Applicants, Analytics & Reports, all records, Import Data, My Submissions, Audit Logs (view)'],
-            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
-            'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant'],
+            'dean' => ['Dean', 'Dean', '—', 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot'],
+            'program_chair' => ['Program Chair, BSCS', 'Program Chair, BSCS', 'BS Computer Science · CITE', 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot'],
             'principal' => ['SHS Principal', 'Principal', 'Senior High School', 'Dashboard, Applicants'],
             'registrar' => ['Registrar', 'Registrar', 'Registrar\'s Office', 'Dashboard, Ready for Enrollment, Reports, Messages, records (view only)'],
             'toic' => ['TOIC', 'TOIC Support', 'System Support', 'System Overview, Issues, Security, Documentation, Budget & Maintenance, Reports'],
@@ -72,7 +72,7 @@ class SettingsController extends Controller
                 default => 'Dean, ',
             } . ($college['title'] ?? $college['code']);
             $office = $college['office'] ?? $college['name'];
-            $modules = 'Briefing, Applicants (view only), Analytics, Reports, AI Assistant';
+            $modules = 'Briefing, Applicants (view only), Analytics, Reports, AI Chatbot';
         }
         // Registrars: "College Registrar" or "IS Registrar"
         if ($user->role === 'registrar') {
