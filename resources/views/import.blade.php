@@ -5,7 +5,7 @@
 @section('page-subtitle', 'Upload the admissions portal export to batch-import applicant records into iARIS')
 
 @php
-    // IATO Staff (not a Temporary Admin): imports go to the Review Queue (front end only for now, see the script)
+    // IATO Staff (not a Temporary Admin): imports go to the Review Queue
     $staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin();
     $steps = ['Upload applicant list', 'Check rows', $staffReview ? 'Submit for Review' : 'Import'];
     $currentSchoolYear = now()->month >= 6 ? now()->year . '-' . (now()->year + 1) : (now()->year - 1) . '-' . now()->year;
@@ -72,6 +72,8 @@
                     <span class="btn btn-primary fw-semibold px-4">Browse Files</span>
                 </label>
                 <input type="file" name="file" id="file" class="d-none" accept=".xlsx,.csv" required>
+                <button type="button" class="btn btn-light border fw-semibold mt-3" id="trySample"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i> Try it with a sample list</button>
+                <div class="alert alert-info small mt-3 mb-0 d-none" id="sampleNotice" role="status">Sample preview only. Choose your own applicant list to import records.</div>
 
                 {{-- Selected file --}}
                 <div class="d-none align-items-center gap-3 rounded-3 border bg-body-tertiary p-3 mt-3" id="fileRow">
@@ -123,21 +125,36 @@
     </div>
 
     <div class="col-12 col-xl-4 d-flex flex-column gap-4">
-        {{-- Template: a sample file in the exact shape the real portal exports --}}
-        <div class="card border-0 shadow-sm rounded-4">
+        <section class="card border-0 shadow-sm rounded-4" aria-labelledby="importFormatTitle">
             <div class="card-body p-4">
-                <h2 class="fs-6 fw-bold mb-1">Sample File</h2>
-                <p class="small text-body-secondary mb-3">One file, every level — the portal's own export layout, with a section header per department/grade/program</p>
-                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-0 border-0" id="downloadSample">
-                    <span class="icon-circle rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
-                    <span class="flex-grow-1 text-start">
-                        <span class="d-block small fw-bold">Download Sample Template</span>
-                        <span class="d-block small text-body-secondary">Shows the expected columns and a section header example</span>
-                    </span>
-                    <i class="bi bi-download text-body-secondary" aria-hidden="true"></i>
-                </button>
+                <h2 class="fs-6 fw-bold mb-1" id="importFormatTitle">The applicant list format</h2>
+                <p class="small text-body-secondary mb-3">30 columns in the portal's export order, with a section header per department, grade, or program.</p>
+                @foreach ([
+                    'Applicant' => ['APP. NO.', 'APP. DATE', 'FULL NAME', 'EMAIL', 'MOBILE NO.', 'ADDRESS', 'AGE', 'SEX', 'NATIONALITY'],
+                    'Program' => ['PROGRAM CODE', 'STRAND / MAJOR', 'YEAR LEVEL', 'TYPE', 'LEARNING MODALITIES'],
+                    'Exam and admission' => ['PERMIT NO.', 'TESTING DATE', 'TEST STATUS', 'TEST RESULT', 'WITH NOA', 'STATUS', 'GWA'],
+                    'Yes / No' => ['PAID EXAM', 'PAID RESERVATION', 'APPLYING FOR SCHOLARSHIP', 'SSEN', 'PWD'],
+                    'Last school' => ['SCHOOL LAST ATTENDED', 'SCHOOL ADDRESS', 'SCHOOL CLASSIFICATION'],
+                ] as $group => $columns)
+                    <div class="mb-3">
+                        <div class="small fw-bold text-uppercase text-body-secondary mb-2">{{ $group }}</div>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach ($columns as $column)
+                                <span class="badge text-wrap text-start border {{ $group === 'Yes / No' ? 'bg-primary-subtle text-primary-emphasis' : 'bg-body-tertiary text-body-secondary' }}">{{ $column }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+                <h3 class="small fw-bold text-uppercase text-body-secondary">How iARIS reads it</h3>
+                <ul class="small text-body-secondary ps-3 mb-0">
+                    <li>Section headings identify the department or level. Empty numbered rows are skipped.</li>
+                    <li>Values beginning with Y count as Yes, including “Yes-”.</li>
+                    <li>SEX accepts M / F or Male / Female.</li>
+                    <li>TEST RESULT accepts In-Progress, Pass / Fail, Waitlisted, or Reconsidered.</li>
+                    <li>Payment fields record Yes / No only; amounts and receipt numbers are not imported.</li>
+                </ul>
             </div>
-        </div>
+        </section>
 
     </div>
     </div>
@@ -200,6 +217,8 @@
 
         const formatSize = bytes => bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1) + ' KB' : (bytes / 1024 / 1024).toFixed(1) + ' MB';
         const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        const initialImportLabel = importButton.innerHTML;
+        let samplePreview = false;
         let rowCount = 0;   // data rows in the chosen file (for the staff "Submit for review" button)
         const show = (el, display = 'block') => { el.classList.remove('d-none'); el.classList.add('d-' + display); };
         const hide = el => { el.classList.add('d-none'); el.classList.remove('d-flex', 'd-block'); };
@@ -224,6 +243,11 @@
         function reset() {
             const schoolYear = document.getElementById('school_year').value;
             form.reset();
+            samplePreview = false;
+            rowCount = 0;
+            importButton.disabled = false;
+            importButton.innerHTML = initialImportLabel;
+            hide(document.getElementById('sampleNotice'));
             document.getElementById('school_year').value = schoolYear;
             [fileRow, readError, previewCard].forEach(hide);
             const banner = document.getElementById('reviewBanner');   // IATO Staff only
@@ -247,6 +271,10 @@
         setStep(1);
 
         function handleFile(file) {
+            samplePreview = false;
+            importButton.disabled = false;
+            importButton.innerHTML = initialImportLabel;
+            hide(document.getElementById('sampleNotice'));
             hide(readError);
             if (!/\.(xlsx|csv)$/i.test(file.name)) {
                 return fail(`"${file.name}" isn't an .xlsx or .csv file.`);
@@ -345,7 +373,8 @@
         const STAFF_REVIEW = @json($staffReview);
 
         // Show progress while the server imports/validates (the page reloads when it's done)
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', event => {
+            if (samplePreview) { event.preventDefault(); return; }
             setStep(3);
             importButton.disabled = true;
             importButton.innerHTML = STAFF_REVIEW
@@ -353,10 +382,10 @@
                 : '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Importing…';
         });
 
-        // A minimal sample: the header row, one section header, and one filled example row —
-        // matches the shape of the real portal export (see the "Sample File" card).
-        document.getElementById('downloadSample').addEventListener('click', () => {
-            const quote = v => /[",]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+        // Preview the portal layout in the browser; no file is downloaded or submitted.
+        document.getElementById('trySample').addEventListener('click', () => {
+            reset();
+            samplePreview = true;
             const rows = [
                 EXPECTED_HEADERS,
                 ['COLLEGE OF INFORMATION TECHNOLOGY AND ENGINEERING  (1)'],
@@ -365,12 +394,16 @@
                  'Yes', 'No', 'No', 'No', 'In-Progress', 'No', 'In-Process', 'Lipa City Senior High School',
                  'Lipa City, Batangas', 'Public', '', 'In-Process', 'FACE TO FACE LEARNING', 'No', 'Filipino'],
             ];
-            const csv = rows.map(r => r.map(quote).join(',')).join('\n');
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-            link.download = 'iaris_sample_import.csv';
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const sample = { name: 'list-of-applicants_sample.csv', size: 0 };
+            hide(dropzone);
+            show(fileRow, 'flex');
+            document.getElementById('fileName').textContent = sample.name;
+            render(sample, rows);
+            document.getElementById('fileMeta').textContent = 'Sample in the applicant list format · preview only';
+            show(document.getElementById('sampleNotice'));
+            importButton.disabled = true;
+            importButton.textContent = 'Choose your file to import';
+
         });
     </script>
 @endsection
