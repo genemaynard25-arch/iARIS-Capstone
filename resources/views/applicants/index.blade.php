@@ -21,11 +21,10 @@
       examStep / finalStep   other titles for the exam and last timeline steps
 --}}
 @php
-    // College, IS and Graduate Records read the database (see App\Support\ApplicantRecords), which knows these statuses.
-    // ("Enrolled" isn't in the database yet.)
+    // Record divisions read the database through App\Support\ApplicantRecords.
     $databaseStatuses = ['Pending', 'For Exam', 'Passed', 'Not Qualified', 'Paid'];
     // Pages that read the database: they get an "imported" empty message
-    $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap']);
+    $fromDatabase = in_array($scope, ['college', 'is', 'graduate', 'eteeap', 'law', 'ipace']);
     // Add / Edit / Remove: only roles with the 'edit' permission (Access Control).
     // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
     $isRegistrar = auth()->user()->role === 'registrar';
