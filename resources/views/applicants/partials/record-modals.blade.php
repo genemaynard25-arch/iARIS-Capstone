@@ -95,7 +95,7 @@
                         </div>
                     @endisset
                     <div class="col-sm-6">
-                        <label for="recYear" class="form-label small fw-bold text-uppercase">Year level <span class="text-danger">*</span></label>
+                        <label for="recYear" class="form-label small fw-bold text-uppercase"><span id="recYearLabel">{{ ($scope ?? null) === 'is' ? 'Grade' : 'Year level' }}</span> <span class="text-danger">*</span></label>
                         <select class="form-select" id="recYear" required></select>
                         <div class="invalid-feedback">Choose a year or grade level.</div>
                         <div class="form-text" id="recYearHint">2nd Year and up for transferees.</div>
@@ -284,7 +284,7 @@
             select.closest('.col-sm-6').classList.toggle('d-none', !!noStrand);
             select.required = !noStrand;
             $('recProgramLabel').textContent = school ? 'Strand' : R.labels().program;
-            $('recProgramHint').textContent = group ? '' : 'Choose a college or unit first.';
+            $('recProgramHint').textContent = group ? '' : (school ? 'Choose a level first.' : 'Choose a college or unit first.');
             const choices = noStrand ? ['General Curriculum'] : (IarisAdmissionCatalog.programs(R.scope, group) || []);
             // Preserve legacy imported values on edit without offering unrelated programs on new records.
             const values = [...new Set([...choices, ...(existing ? [existing] : [])])];
@@ -296,6 +296,14 @@
         const schoolGroup = () => $('recGroup').value.replace('Integrated School · ', '');
         function fillYears(existing = '') {
             const grades = {Preschool: ['Nursery 1', 'Nursery 2', 'Kinder'], 'Grade School': Array.from({length: 6}, (_, i) => `Grade ${i + 1}`), 'Junior High': Array.from({length: 4}, (_, i) => `Grade ${i + 7}`), 'Senior High': ['Grade 11', 'Grade 12']};
+            const school = R.scope === 'is' || $('recGroup').value.startsWith('Integrated School · ');
+            $('recYearLabel').textContent = school ? 'Grade' : 'Year level';
+            $('recYear').disabled = school && !$('recGroup').value;
+            if ($('recYear').disabled) {
+                $('recYear').replaceChildren(new Option('Choose a level first', ''));
+                $('recYearHint').textContent = 'Choose a level first.';
+                return;
+            }
             const values = [...new Set([...(grades[schoolGroup()] || ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year']), ...(existing && existing !== '—' ? [existing] : [])])];
             $('recYear').replaceChildren(new Option('Select', ''), ...values.map(v => new Option(v, v)));
             if (existing && existing !== '—') $('recYear').value = existing;
