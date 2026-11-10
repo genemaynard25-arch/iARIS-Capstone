@@ -24,7 +24,7 @@
 
 @section('content')
     @unless ($isEteeap)
-        <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>iPACE preview records · Applicant imports are not connected for this unit yet.</p>
+        <p class="admin-preview-note mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>iPACE applicant records are loaded from imported admissions data. Employment details appear only when available.</p>
     @endunless
 
     {{-- iPACE or ETEEAP --}}
