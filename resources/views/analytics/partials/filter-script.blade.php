@@ -38,13 +38,17 @@
             });
             document.querySelectorAll('[data-field-name]').forEach((card, i) => {
                 const count = current[countFields[i]];
+                const percent = rate(count, current.applicants).toFixed(1);
                 card.dataset.fieldValue = count;
+                card.dataset.fieldPercent = percent;
                 card.querySelector('strong').textContent = format(count);
-                card.querySelector('small').textContent = 'Selected scope';
+                card.querySelector('small').textContent = `${percent}% of applicants`;
                 const tableCell = document.querySelectorAll('#fieldCountTable tbody tr')[i]?.querySelector('td');
                 if (tableCell) tableCell.textContent = format(count);
+                const percentCell = document.querySelectorAll('#fieldCountTable tbody tr')[i]?.querySelector('[data-field-percent]');
+                if (percentCell) percentCell.textContent = `${percent}%`;
             });
-            const fieldHeading = document.querySelector('#fieldCountTable thead th:last-child');
+            const fieldHeading = document.querySelector('#fieldCountTable thead th:nth-child(2)');
             if (fieldHeading) fieldHeading.textContent = 'Selected scope';
             const departments = scope.department === 'All Departments'
                 ? [...new Set(FILTER_DATA.rows.map(row => row.department))].sort() : [scope.department];
