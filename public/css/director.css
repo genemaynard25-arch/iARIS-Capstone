@@ -4,7 +4,7 @@
 .director-page .app-topbar-actions .badge { background: #eaf5f0 !important; color: #00674f !important; border-color: #c5e4d8 !important; padding: 8px 14px !important; font-size: 12px; }
 .director-page .director-report-heading { display: grid !important; grid-template-columns: auto minmax(0,1fr); }
 .director-page .director-report-heading > span { text-align: right; font-size: 12px; }
-.director-page .director-comparison-chart { position: relative; height: 300px; }
+.director-page .director-comparison-chart { position: relative; height: 240px; }
 .director-page .director-comparison-chart canvas { max-width: 100%; }
 .director-page .card .rounded-4 { border-radius: 12px !important; }
 .director-applicants-page .table { min-width: 1100px; }
@@ -25,3 +25,7 @@
     .director-page .app-topbar-actions .btn { font-size: 11px; padding: 8px 10px; }
     .director-page .app-topbar-actions .badge { font-size: 11px; padding: 7px 10px !important; }
 }
+
+.director-page .director-comparison-heading { padding: 16px 20px; border-bottom: 1px solid #edf2f0; }
+.director-page .director-comparison-heading > span { font-size: 12px; }
+.director-page .director-comparison-body { padding: 14px 20px; }

@@ -446,10 +446,16 @@ class CollegeController extends Controller
         if (auth()->user()->isDirector()) {
             $current = \App\Support\AdmissionStats::currentSchoolYear();
             $previous = \App\Support\AdmissionStats::previousSchoolYear();
-            $counts = fn ($year) => $year ? array_map(fn ($level) => \App\Models\Applicant::where('school_year', $year)->where('level', $level)->whereNull('archived_at')->count(), ['ipace', 'eteeap']) : [null, null];
+            $counts = function ($year) {
+                if (! $year) return [null, null, null];
+                $applicants = \App\Models\Applicant::where('school_year', $year)
+                    ->whereIn('level', ['ipace', 'eteeap'])->whereNull('archived_at')->get();
+                $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
+                return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
+            };
             $data['schoolYearComparison'] = [
-                'currentLabel' => $current ? 'Current SY ' . $current : 'Current SY (no import)',
-                'previousLabel' => $previous ? 'Previous SY ' . $previous : 'Previous SY (unavailable)',
+                'currentLabel' => $current ? 'AY ' . $current : 'Current SY (no import)',
+                'previousLabel' => $previous ? 'AY ' . $previous : 'Previous SY (unavailable)',
                 'current' => $counts($current), 'previous' => $counts($previous),
             ];
         }

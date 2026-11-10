@@ -107,10 +107,12 @@
         </div>
             @if (auth()->user()->isDirector())
             <section class="card border-0 shadow-sm rounded-4 mt-4" aria-labelledby="directorComparisonTitle">
-                <div class="card-body p-4">
-                    <h2 class="fs-6 fw-bold" id="directorComparisonTitle">Current vs previous school year</h2>
-                    <p class="small text-body-secondary">Imported applicant counts for iPACE and ETEEAP. Missing prior-year data is shown as unavailable.</p>
-                    <div class="director-comparison-chart"><canvas id="directorYearComparison" role="img" aria-label="Current versus previous school year applicant counts"></canvas></div>
+                <div class="director-comparison-heading d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h2 class="fs-6 fw-bold mb-0" id="directorComparisonTitle">Current vs previous SY</h2>
+                    <span class="small text-body-secondary">{{ $schoolYearComparison['currentLabel'] }} against {{ $schoolYearComparison['previousLabel'] }}</span>
+                </div>
+                <div class="director-comparison-body" id="cvp">
+                    <div class="director-comparison-chart"><canvas id="directorYearComparison" role="img" aria-label="Current versus previous school year: Applicants, Reservation paid, and Enrolled"></canvas></div>
                 </div>
             </section>
         @endif
@@ -122,13 +124,44 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <script>
             const yearComparison = @json($schoolYearComparison);
+            const comparisonMetrics = ['Applicants', 'Reservation paid', 'Enrolled'];
+            const comparisonLabels = comparisonMetrics.map((label, i) => {
+                const previous = yearComparison.previous[i], current = yearComparison.current[i];
+                if (previous === null || current === null || (previous === 0 && current > 0)) return [label, '(comparison unavailable)'];
+                const change = previous > 0 ? (current - previous) / previous * 100 : 0;
+                return `${label} (${change >= 0 ? '+' : ''}${change.toFixed(1)}%)`;
+            });
             new Chart(document.getElementById('directorYearComparison'), {
                 type: 'bar',
-                data: { labels: ['iPACE', 'ETEEAP'], datasets: [
-                    { label: yearComparison.currentLabel, data: yearComparison.current, backgroundColor: '#00674f', borderRadius: 5 },
-                    { label: yearComparison.previousLabel, data: yearComparison.previous, backgroundColor: '#a8d5c5', borderRadius: 5 },
+                data: { labels: comparisonLabels, datasets: [
+                    { label: yearComparison.previousLabel, data: yearComparison.previous, backgroundColor: '#A8D5C5', borderRadius: 4, maxBarThickness: 30 },
+                    { label: yearComparison.currentLabel, data: yearComparison.current, backgroundColor: '#00674F', borderRadius: 4, maxBarThickness: 30 },
                 ] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+                plugins: [{
+                    id: 'comparisonValues',
+                    afterDatasetsDraw(chart) {
+                        const { ctx } = chart;
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        chart.data.datasets.forEach((dataset, index) => {
+                            if (!chart.isDatasetVisible(index)) return;
+                            ctx.fillStyle = index === 0 ? '#6B7C77' : '#1A2B26';
+                            ctx.font = `${index === 0 ? '400' : '700'} 11px Inter, sans-serif`;
+                            chart.getDatasetMeta(index).data.forEach((bar, i) => {
+                                if (dataset.data[i] !== null) ctx.fillText(dataset.data[i].toLocaleString('en-US'), bar.x, bar.y - 6);
+                            });
+                        });
+                        ctx.restore();
+                    },
+                }],
+                options: {
+                    responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } },
+                    plugins: { legend: { position: 'bottom', align: 'start', labels: { boxWidth: 9, boxHeight: 9, color: '#6B7C77', padding: 18 } } },
+                    scales: {
+                        x: { grid: { display: false }, border: { color: '#DDE7E4' }, ticks: { color: '#4A5B56', font: { size: 12 }, autoSkip: false, maxRotation: 0 } },
+                        y: { beginAtZero: true, grace: '15%', display: false },
+                    },
+                },
             });
         </script>
     @endif
