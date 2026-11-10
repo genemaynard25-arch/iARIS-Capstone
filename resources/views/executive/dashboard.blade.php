@@ -26,11 +26,25 @@
 @section('page-title', "{$greeting}, {$honorific}{$firstName}")
 @section('page-subtitle', "{$role} · Admissions briefing for AY {$academicYear}")
 
-@section('content')
+@if (auth()->user()->role === 'president')
+    @include('partials.president-workspace', ['presidentPage' => 'briefing', 'presidentLabel' => 'Briefing'])
+    @section('page-actions')
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
         <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
         <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>
     </div>
+
+    @endsection
+@endif
+
+@section('content')
+    @unless (auth()->user()->role === 'president')
+    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
+        <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
+        <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>
+    </div>
+
+    @endunless
 
     {{-- This week's summary --}}
     <section class="card border-0 shadow-sm rounded-4 bg-iaris text-white mb-4" aria-label="Summary">

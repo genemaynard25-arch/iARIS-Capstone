@@ -1,0 +1,25 @@
+.president-page .app-topbar-actions .form-select { font-size: 12px; max-width: 165px; }
+.president-page .app-topbar-actions { justify-content: flex-end; }
+.president-briefing-page .app-topbar-actions > div { margin: 0 !important; }
+.president-analytics-page #unitPills { padding: 14px 20px !important; }
+.president-analytics-page #unitPills .btn { font-size: 12px; padding: 7px 14px; }
+.president-analytics-page #analyticsTabs { padding: 5px; gap: 6px !important; background: #fff; border-radius: 12px; box-shadow: var(--admin-shadow); }
+.president-analytics-page #analyticsTabs .nav-link { color: #6b7c77; padding: 10px 18px; font-size: 13px; border-radius: 8px; }
+.president-analytics-page #analyticsTabs .nav-link.active { color: #fff; background: #00674f; }
+.president-analytics-page .admin-stat-card { border-top-color: #00674f !important; }
+.president-analytics-page .admin-stat-card .card-body { padding: 16px 18px !important; }
+.president-analytics-page .admin-stat-card .tracking-wide { font-size: 11px !important; letter-spacing: 1px; }
+.president-analytics-page .admin-stat-card [data-stat] { font-size: 28px !important; }
+.president-analytics-page .chart-box { height: 260px; }
+.president-analytics-page .card-body > .d-flex.justify-content-between { margin: -4px -2px 14px; padding-bottom: 14px; border-bottom: 1px solid #e2ecea; }
+.president-analytics-page .card-body > .d-flex.justify-content-between .btn { font-size: 11px; padding: 6px 9px; }
+.president-analytics-page .card .small { font-size: 12px; }
+.president-page .table-responsive { max-width: 100%; }
+@media (max-width: 575.98px) {
+    .president-page .app-topbar-actions { justify-content: flex-start; }
+    .president-page .app-topbar-actions .form-select { max-width: 140px; padding: 7px 28px 7px 9px; }
+    .president-analytics-page #analyticsTabs { flex-wrap: nowrap; overflow-x: auto; }
+    .president-analytics-page #analyticsTabs .nav-link { white-space: nowrap; padding: 9px 12px; }
+    .president-page .director-report-heading { grid-template-columns: 1fr; }
+    .president-page .director-report-heading > span { text-align: left; }
+}
