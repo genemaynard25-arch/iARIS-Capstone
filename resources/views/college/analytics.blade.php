@@ -13,7 +13,7 @@
 @section('title', 'iARIS — Analytics')
 @section('page-title', 'Analytics')
 @section('page-subtitle', "{$label} admissions and enrollment, with AI-generated insights")
-@unless ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+@unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
 @section('body-class', 'analytics-page')
 @endunless
 @push('styles')
@@ -22,13 +22,13 @@
 
 {{-- Like the admin page's "Generate from this view": the one action, top right --}}
 @section('page-actions')
-    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
         <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-3 py-2"><i class="bi bi-eye me-1"></i> Read-only view</span>
     @endif
     <button type="button" class="ar-generate-view btn btn-primary fw-semibold no-print" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i> Export PDF</button>
 @endsection
 
-@if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
     @include('partials.director-workspace', ['directorPage' => 'analytics', 'directorLabel' => 'Analytics'])
 @endif
 
@@ -42,7 +42,7 @@
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabYears" type="button" role="tab" data-hash="years"><i class="bi bi-calendar-range me-1"></i> Compare years</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tabInsights" type="button" role="tab" data-hash="insights"><i class="bi bi-stars me-1"></i> AI insights</button></li>
         </ul>
-        @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+        @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
         <span class="ar-scope-chip badge rounded-pill text-wrap text-start"><i class="bi bi-funnel me-1"></i> Showing: <span class="text-body">{{ $label }} · AY {{ \App\Support\ApplicantRecords::academicYear() }} · View only</span></span>
         @endunless
         </div>
@@ -107,7 +107,7 @@
                 <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Generated automatically from iARIS data for {{ $label }}. They describe past patterns and are not guarantees.</p>
             </div>
         </div>
-            @if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+            @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
             <section class="card border-0 shadow-sm rounded-4 mt-4" aria-labelledby="directorComparisonTitle">
                 <div class="director-comparison-heading d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <h2 class="fs-6 fw-bold mb-0" id="directorComparisonTitle">Current vs previous SY</h2>
@@ -122,7 +122,7 @@
 @endsection
 
 @section('scripts')
-    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
+    @if ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <script>
             const yearComparison = @json($schoolYearComparison);

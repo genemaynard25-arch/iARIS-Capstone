@@ -418,6 +418,14 @@ class CollegeController extends Controller
             return app(GraduateRecordController::class)->index();
         }
 
+        if (auth()->user()->role === 'dean') {
+            return match (self::college()['code']) {
+                'LAW' => app(LawRecordController::class)->index(),
+                'GRAD' => app(GraduateRecordController::class)->index(),
+                default => app(CollegeRecordController::class)->index(),
+            };
+        }
+
         $common = $this->common();
         if (auth()->user()->isDirector()) {
             $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';
@@ -447,14 +455,19 @@ class CollegeController extends Controller
     public function analytics()
     {
         $data = $this->common();
-        if (auth()->user()->isDirector() || auth()->user()->isGradChair()) {
+        if (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean') {
             $current = \App\Support\AdmissionStats::currentSchoolYear();
             $previous = \App\Support\AdmissionStats::previousSchoolYear();
             $levels = auth()->user()->isGradChair() ? ['graduate_school'] : ['ipace', 'eteeap'];
-            $counts = function ($year) use ($levels) {
+            $deanCollege = auth()->user()->role === 'dean' ? self::college()['code'] : null;
+            if ($deanCollege) $levels = [self::levelFor($deanCollege)];
+            $counts = function ($year) use ($levels, $deanCollege) {
                 if (! $year) return [null, null, null];
                 $applicants = \App\Models\Applicant::where('school_year', $year)
-                    ->whereIn('level', $levels)->whereNull('archived_at')->get();
+                    ->whereIn('level', $levels)->whereNull('archived_at')->get()
+                    ->when($deanCollege && $levels === ['college'], fn ($rows) => $rows->filter(
+                        fn ($a) => ($a->college ?: \App\Support\ApplicantRecords::collegeFor($a->program_or_track ?? '')) === $deanCollege
+                    ));
                 $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
                 return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
             };
