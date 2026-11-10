@@ -64,7 +64,7 @@ class IatoMessagesController extends Controller
 
         return match ($u->role) {
             'toic' => 'toic',
-            'principal' => 'principal',
+            'principal', 'assistant_principal' => 'principal',
             'director' => 'director',
             'dean' => 'dean',
             'program_chair' => 'chair',

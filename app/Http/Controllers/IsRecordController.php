@@ -20,6 +20,16 @@ class IsRecordController extends Controller
     public function index()
     {
         $subLevels = ['Preschool', 'Grade School', 'Junior High', 'Senior High'];
+        // An Assistant Principal only sees their own levels
+        $mine = match (auth()->user()->assistantLevel()) {
+            'Grade School' => ['Preschool', 'Grade School'],
+            'Junior High' => ['Junior High'],
+            'Senior High' => ['Senior High'],
+            default => null,
+        };
+        if ($mine) {
+            $subLevels = $mine;
+        }
 
         // Integrated School applicants from the database (Import Data); see ApplicantRecords
         $students = collect(ApplicantRecords::forLevel('is'))
@@ -33,6 +43,7 @@ class IsRecordController extends Controller
             })
             // Role-based filtering: the SHS principal only sees Senior High students
             ->when(auth()->user()->isShsPrincipal(), fn ($rows) => $rows->where('sub_level', 'Senior High'))
+            ->when($mine, fn ($rows) => $rows->whereIn('sub_level', $mine))
             ->values()
             ->all();
 

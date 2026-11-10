@@ -8,7 +8,7 @@
                 // Offices say where they are: "Dean · CITE", "Director · iPACE"
                 $crumbUser = auth()->user();
                 $crumbRoot = $crumbUser->isToic() ? 'TOIC' : ($crumbUser->role === 'iato_staff' ? 'Staff' : $crumbUser->roleInfo()[0]);
-                if ($crumbUser->isDeanOrChair() || $crumbUser->isPrincipal() || $crumbUser->isDirector()) {
+                if ($crumbUser->isDeanOrChair() || $crumbUser->isPrincipalOffice() || $crumbUser->isDirector()) {
                     $crumbRoot .= ' · ' . $crumbUser->roleInfo()[1];
                 }
             @endphp

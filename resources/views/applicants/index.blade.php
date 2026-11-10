@@ -30,7 +30,8 @@
     // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
     $isRegistrar = auth()->user()->role === 'registrar';
     // The IS Principal sees this page too (CollegeController::applicants), view only, at /principal/applicants
-    $isPrincipal = auth()->user()->isPrincipal();
+    $isPrincipal = auth()->user()->isPrincipalOffice();
+    $office = auth()->user()->roleInfo();
     // The Principal's table: coloured Level chips, the scholarship tag under the number, counts on the pills
     $levelChips = ['Preschool' => ['#F1E7FF', '#7C3AED'], 'Grade School' => ['#E6EEFF', '#2558D9'], 'Junior High' => ['#FFF1DC', '#B96000'], 'Senior High' => ['#E3F4EC', '#00674F']];
     $canEdit = ! $isRegistrar && ! $isPrincipal && match ($scope) {
@@ -159,7 +160,7 @@
 
 @section('title', 'iARIS — ' . $page['title'])
 @section('page-title', $isPrincipal ? 'Applicants' : $page['title'])
-@section('page-subtitle', $isPrincipal ? "Integrated School applicants for AY {$academicYear} · View only" : $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
+@section('page-subtitle', $isPrincipal ? (auth()->user()->isAssistantPrincipal() ? $office[1] : 'Integrated School') . " applicants for AY {$academicYear} · View only" : $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -228,7 +229,7 @@
 
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => $isPrincipal ? 'Principal · Integrated School' : ($isRegistrar ? (auth()->user()->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar') : (auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin')), 'workspaceLabel' => $isPrincipal ? 'Applicants' : 'Records · ' . str_replace(' Records', '', $page['title'])])
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => $isPrincipal ? $office[0] . ' · ' . $office[1] : ($isRegistrar ? (auth()->user()->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar') : (auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin')), 'workspaceLabel' => $isPrincipal ? 'Applicants' : 'Records · ' . str_replace(' Records', '', $page['title'])])
 
 @push('styles')
     <link href="{{ asset('css/records.css') }}" rel="stylesheet">

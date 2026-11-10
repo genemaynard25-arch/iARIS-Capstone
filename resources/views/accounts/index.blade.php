@@ -8,6 +8,7 @@
     $roles = array_replace($roles, [
         'admin' => ['name' => 'Super Admin', 'tone' => 'primary'],
         'principal' => ['name' => 'Integrated School Principal', 'tone' => 'secondary'],
+        'assistant_principal' => ['name' => 'Assistant Principal', 'tone' => 'secondary'],
         'program_chair' => ['name' => 'Program Chair, Graduate Programs', 'tone' => 'info'],
         'director' => ['name' => 'iPACE Director', 'tone' => 'warning'],
         'toic' => ['name' => 'TOIC (System Support)', 'tone' => 'dark'],
@@ -223,10 +224,10 @@
                                 <option value="">Select role</option>
                                 {{-- IATO Admin isn't offered: there is one permanent admin, and temporary admins are set on Access Control --}}
                                 @foreach ($roles as $key => $role)
-                                    @continue($key === 'admin')
+                                    @continue(in_array($key, ['admin', 'assistant_principal']))
                                     <option value="{{ $key }}">{{ $role['name'] }}</option>
                                 @endforeach
-                                <option disabled>Assistant Principal — preview role (not available for live accounts yet)</option>
+                                <option disabled>Assistant Principal — set up by IATO for now (one each for Grade School, Junior High, Senior High)</option>
                             </select>
                             <div class="invalid-feedback">Choose a role.</div>
                         </div>

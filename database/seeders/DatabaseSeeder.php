@@ -132,6 +132,25 @@ class DatabaseSeeder extends Seeder
         'assigned_level' => 'is',
     ]);
 
+    // Assistant Principals: the Principal's pages for their own levels, at /principal. Named as in the mockup.
+    // Grade School = Preschool and Grades 1-6, Junior High = Grades 7-10, Senior High = Grades 11-12 (by strand).
+    foreach ([
+        ['apgs@gmail.com', 'Lerma Castro', 'grade_school'],
+        ['apjhs@gmail.com', 'Eufrocina Yabut', 'jhs'],
+        ['apshs@gmail.com', 'Minerva Fanoga', 'shs'],
+    ] as [$email, $name, $subLevel]) {
+        \App\Models\User::updateOrCreate(['email' => $email], [
+            'name' => $name,
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'assistant_principal',
+            'access_type' => 'viewer',
+            'assigned_level' => 'is',
+            'assigned_sub_level' => $subLevel,
+        ]);
+    }
+    // /home sends them to /principal, so they need the dashboard permission
+    \App\Models\RolePermission::updateOrCreate(['role' => 'assistant_principal', 'module' => 'dashboard'], ['enabled' => true]);
+
     // Program Chair of the Graduate Programs: the Dean pages for every graduate program, at /college. Named as in the mockup.
     // (A program_chair assigned to graduate_school; one assigned to 'college' would be locked to one program, e.g. BSCS.)
     // updateOrCreate, so running the seeder again turns the old BSCS placeholder into this account.

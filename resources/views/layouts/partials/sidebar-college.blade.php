@@ -1,7 +1,7 @@
 {{-- Sidebar for Deans, Program Chairs, the IS Principal and the iPACE Director. Same look as the Executive sidebar, read-only links. --}}
 @php
     $isChair = auth()->user()->isProgramChair();
-    $isPrincipal = auth()->user()->isPrincipal();
+    $isPrincipal = auth()->user()->isPrincipalOffice();
     $isDirector = auth()->user()->isDirector();
     $college = \App\Http\Controllers\CollegeController::college();
     $code = $college['label'] ?? $college['code'];
@@ -17,7 +17,7 @@
                 @include('partials.logo-mark', ['size' => 40])
                 <div>
                     <div class="fw-bold fs-5 font-brand" id="sidebarLabel">iARIS</div>
-                    <div class="small text-white-50">{{ $isChair || auth()->user()->isGradChair() ? 'Program Chair View' : ($isPrincipal ? 'Principal View' : ($isDirector ? 'Director View' : 'Dean View')) }}</div>
+                    <div class="small text-white-50">{{ $isChair || auth()->user()->isGradChair() ? 'Program Chair View' : ($isPrincipal ? (auth()->user()->isAssistantPrincipal() ? 'Assistant Principal View' : 'Principal View') : ($isDirector ? 'Director View' : 'Dean View')) }}</div>
                 </div>
             </div>
             <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>

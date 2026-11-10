@@ -101,6 +101,31 @@ class CollegeController extends Controller
             'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
                 'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
         ]],
+        // The Assistant Principals: the Principal's pages for their own levels. Each group says which applicants it holds
+        // (see inGroup): 'subs' = sub-levels, 'grades' = grade numbers, 'strand' = Senior High strand.
+        // The numbers come from the applicants table (realPrograms), so a group needs only its name and what it holds.
+        'IS_GS' => ['name' => 'Integrated School', 'title' => 'Grade School', 'label' => 'Grade School', 'subtitle' => 'Preschool to Grade 6',
+            'office' => 'Integrated School · Grade School', 'word' => 'level', 'programs' => [
+            // Preschool = Nursery 1, Nursery 2 and Kinder
+            'PS' => ['name' => 'Preschool', 'subs' => ['kindergarten']],
+            'G13' => ['name' => 'Grades 1–3', 'subs' => ['grade_school'], 'grades' => [1, 2, 3]],
+            'G46' => ['name' => 'Grades 4–6', 'subs' => ['grade_school'], 'grades' => [4, 5, 6]],
+        ]],
+        'IS_JHS' => ['name' => 'Integrated School', 'title' => 'Junior High', 'label' => 'Junior High', 'subtitle' => 'Grades 7 to 10',
+            'office' => 'Integrated School · Junior High', 'word' => 'level', 'programs' => [
+            'G7' => ['name' => 'Grade 7', 'subs' => ['jhs'], 'grades' => [7]],
+            'G8' => ['name' => 'Grade 8', 'subs' => ['jhs'], 'grades' => [8]],
+            'G9' => ['name' => 'Grade 9', 'subs' => ['jhs'], 'grades' => [9]],
+            'G10' => ['name' => 'Grade 10', 'subs' => ['jhs'], 'grades' => [10]],
+        ]],
+        'IS_SHS' => ['name' => 'Integrated School', 'title' => 'Senior High', 'label' => 'Senior High', 'subtitle' => 'Grades 11 and 12, by strand',
+            'office' => 'Integrated School · Senior High', 'word' => 'strand', 'programs' => [
+            'STEM' => ['name' => 'STEM', 'strand' => 'STEM'],
+            'ABM' => ['name' => 'ABM', 'strand' => 'ABM'],
+            'HUMSS' => ['name' => 'HUMSS', 'strand' => 'HUMSS'],
+            'GAS' => ['name' => 'GAS', 'strand' => 'GAS'],
+            'TVL' => ['name' => 'TVL', 'strand' => 'TVL'],
+        ]],
         // The Graduate Programs (under CBEAM), for their Program Chair. 'level': Master's or Doctoral.
         // 'middle': what "For Exam" is called here.
         'GRAD' => ['name' => 'Graduate Programs', 'title' => 'Graduate Programs', 'label' => 'Graduate Programs', 'subtitle' => 'Graduate Programs · under CBEAM',
@@ -170,6 +195,10 @@ class CollegeController extends Controller
     {
         $user = auth()->user();
         $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : null));
+        // An Assistant Principal: IS_GS, IS_JHS or IS_SHS, by the level they are assigned to
+        if ($user?->isAssistantPrincipal()) {
+            $code = ['jhs' => 'IS_JHS', 'shs' => 'IS_SHS'][$user->assigned_sub_level] ?? 'IS_GS';
+        }
         $code ??= strtoupper((string) ($user?->assigned_college ?? $user?->department ?? ''));
         // A college can also be stored by its full name ("College of Law")
         $code = isset(self::COLLEGES[$code]) ? $code
@@ -183,14 +212,14 @@ class CollegeController extends Controller
     {
         $user = auth()->user();
 
-        return url($user?->isPrincipal() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
+        return url($user?->isPrincipalOffice() ? '/principal' : ($user?->isDirector() ? '/director' : '/college'));
     }
 
     // The applicants.level value a college code's records actually live under.
     private static function levelFor(string $collegeCode): string
     {
         return match ($collegeCode) {
-            'IS' => 'is',
+            'IS', 'IS_GS', 'IS_JHS', 'IS_SHS' => 'is',
             'GRAD' => 'graduate_school',
             'IPACE' => 'ipace',
             'LAW' => 'law',
@@ -212,7 +241,7 @@ class CollegeController extends Controller
 
         $result = [];
         foreach ($programs as $code => $p) {
-            $matched = $applicants->whereIn('program_or_track', (array) ($p['match'] ?? $p['name']));
+            $matched = $applicants->filter(fn ($a) => self::inGroup($a, $p));
             $submitted = $matched->count();
             $tookExam = $matched->where('admission_test_status', '!=', 'not_taken')->count();
             $passed = $matched->where('admission_test_status', 'passed')->count();
@@ -235,6 +264,57 @@ class CollegeController extends Controller
     }
 
     /**
+     * Is this applicant in this group of programs / levels? A group says what it holds:
+     *   'subs' (+ 'grades')  Integrated School sub-levels (kindergarten, grade_school, jhs, shs), and grade numbers
+     *   'strand'             a Senior High strand (program_or_track)
+     *   otherwise            program_or_track equals its name (or one of its 'match' names)
+     */
+    private static function inGroup(\App\Models\Applicant $a, array $p): bool
+    {
+        if (isset($p['strand'])) {
+            return self::subLevelOf($a) === 'shs' && strtoupper((string) $a->program_or_track) === $p['strand'];
+        }
+        if (isset($p['subs'])) {
+            if (! in_array(self::subLevelOf($a), $p['subs'], true)) {
+                return false;
+            }
+            if (isset($p['grades'])) {
+                preg_match('/\d+/', (string) $a->year_level, $m);
+
+                return isset($m[0]) && in_array((int) $m[0], $p['grades'], true);
+            }
+
+            return true;
+        }
+
+        return in_array($a->program_or_track, (array) ($p['match'] ?? $p['name']), true);
+    }
+
+    // An Integrated School applicant's sub-level; older rows without one are read from the program column
+    private static function subLevelOf(\App\Models\Applicant $a): ?string
+    {
+        return $a->sub_level ?: match (true) {
+            $a->program_or_track === 'Kindergarten' => 'kindergarten',
+            $a->program_or_track === 'Grade School' => 'grade_school',
+            $a->program_or_track === 'Junior High School' => 'jhs',
+            in_array(strtoupper((string) $a->program_or_track), ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'ICT', 'HE', 'AFA'], true) => 'shs',
+            default => null,
+        };
+    }
+
+    // The code of the group an applicant is in (null when none)
+    private static function groupOf(\App\Models\Applicant $a, array $scope): ?string
+    {
+        foreach ($scope as $code => $p) {
+            if (self::inGroup($a, $p)) {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Real applicant rows for the given programs/level, matched the same way as realPrograms().
      * email/phone/address/dob/exam/paid are null: the regular import doesn't fill those in
      * (only the Add/Edit Applicant form does), so they're honestly blank, not fabricated.
@@ -242,7 +322,6 @@ class CollegeController extends Controller
     private static function realApplicantsIn(array $scope, string $collegeCode): array
     {
         $level = self::levelFor($collegeCode);
-        $byName = collect($scope)->flatMap(fn ($p, $code) => collect((array) ($p['match'] ?? $p['name']))->mapWithKeys(fn ($n) => [$n => $code]));
         $statusLabel = fn ($s) => match ($s) {
             'submitted' => 'For Exam',
             'completed' => 'Paid',
@@ -251,11 +330,11 @@ class CollegeController extends Controller
 
         return \App\Models\Applicant::where('level', $level)
             ->get()
-            ->filter(fn ($a) => $byName->has($a->program_or_track))
+            ->filter(fn ($a) => self::groupOf($a, $scope) !== null)
             ->map(fn ($a) => [
                 'id' => $a->reference_number,
                 'name' => "{$a->last_name}, {$a->first_name}",
-                'program' => $byName[$a->program_or_track],
+                'program' => self::groupOf($a, $scope),
                 'status' => $statusLabel($a->application_status),
                 // Yes on the scholarship question (the type stays with LAMP)
                 'scholar' => (bool) $a->applying_for_scholarship,
@@ -295,7 +374,7 @@ class CollegeController extends Controller
             'college' => ['code' => $college['code'], 'name' => $college['name'], 'subtitle' => $college['subtitle'] ?? $college['name']],
             // What the groups are called ("program" or "level") and what you see ("your college", "your school", "iPACE and ETEEAP")
             'word' => $college['word'] ?? 'program',
-            'whole' => $college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college'),
+            'whole' => $college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college'),
             // What "For Exam" is called ("For Exam / Interview" in the Graduate Programs)
             'middle' => $college['middle'] ?? 'For Exam',
             // The Learner profile on the Briefing (iPACE Director only)
@@ -330,7 +409,7 @@ class CollegeController extends Controller
     public function applicants(Request $request)
     {
         // The IS Principal sees the same page as the admin's Integrated School Records, view only
-        if (auth()->user()->isPrincipal()) {
+        if (auth()->user()->isPrincipalOffice()) {
             return app(IsRecordController::class)->index();
         }
 
@@ -369,9 +448,8 @@ class CollegeController extends Controller
      */
     private static function fieldCounts(array $common): array
     {
-        $names = collect($common['programs'])->flatMap(fn ($p) => (array) ($p['match'] ?? $p['name']))->all();
-        $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))
-            ->whereIn('program_or_track', $names)->get();
+        $applicants = \App\Models\Applicant::where('level', self::levelFor($common['college']['code']))->get()
+            ->filter(fn ($a) => self::groupOf($a, $common['programs']) !== null);
         $ids = $applicants->pluck('id');
         $paid = fn ($fee) => $ids->intersect(array_keys(\App\Support\ApplicantRecords::paidFees($fee)))->count();
 
@@ -447,7 +525,7 @@ class CollegeController extends Controller
                 'message' => 'Attached is the list of paid reservations as of May 30.'],
             ['title' => "{$name} Enrollment Trends — AY 2024–25", 'kind' => 'trend', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
                 'at' => 'Jun 14, 2025 · 8:30 AM', 'status' => 'read',
-                'message' => 'Year-end enrollment trends for ' . ($college['scope'] ?? ($college['code'] === 'IS' ? 'your school' : 'your college')) . '.'],
+                'message' => 'Year-end enrollment trends for ' . ($college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college')) . '.'],
         ];
     }
 

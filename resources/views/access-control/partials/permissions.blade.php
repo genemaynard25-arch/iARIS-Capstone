@@ -61,7 +61,7 @@
             "tone": "secondary",
             "scope": "Own levels only",
             "description": "One each for Grade School (Preschool and Grades 1–6), Junior High (Grades 7–10), and Senior High (Grades 11–12). Views those applicants and reports.",
-            "preview": true
+            "preview": false
         },
         {
             "key": "registrar",
