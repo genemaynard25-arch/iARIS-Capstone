@@ -24,7 +24,7 @@
 
     <div class="app-topbar-actions d-flex align-items-center gap-3">
         @yield('page-actions')
-        @unless (auth()->user()->isToic() || (auth()->user()->isDirector() && request()->is('director', 'director/analytics', 'director/messages')))
+        @unless (auth()->user()->isToic() || ((auth()->user()->isDirector() || auth()->user()->isGradChair()) && request()->is('director', 'director/analytics', 'director/messages', 'college', 'college/analytics', 'college/messages')))
         <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis px-3 py-2 d-none d-sm-inline-flex align-items-center gap-2">
             <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> System online
         </span>

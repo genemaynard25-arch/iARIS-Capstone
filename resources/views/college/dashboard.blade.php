@@ -24,11 +24,11 @@
 @section('page-title', "{$greeting}, {$greetName}")
 @section('page-subtitle', ($isChair ? "{$label} · " : '') . $college['subtitle'] . ' · AY ' . \App\Support\ApplicantRecords::academicYear())
 
-@if (auth()->user()->isDirector())
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
     @include('partials.director-workspace', ['directorPage' => 'dashboard', 'directorLabel' => 'Briefing'])
 @endif
 
-@if (auth()->user()->isDirector())
+@if ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
 @section('page-actions')
     <div class="d-flex flex-wrap justify-content-end gap-2 no-print">
         <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
@@ -38,7 +38,7 @@
 @endif
 
 @section('content')
-    @unless (auth()->user()->isDirector())
+    @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair()))
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
         <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
         <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print briefing</button>

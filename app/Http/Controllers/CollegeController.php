@@ -414,6 +414,10 @@ class CollegeController extends Controller
             return app(IsRecordController::class)->index();
         }
 
+        if (auth()->user()->isGradChair()) {
+            return app(GraduateRecordController::class)->index();
+        }
+
         $common = $this->common();
         if (auth()->user()->isDirector()) {
             $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';
@@ -443,13 +447,14 @@ class CollegeController extends Controller
     public function analytics()
     {
         $data = $this->common();
-        if (auth()->user()->isDirector()) {
+        if (auth()->user()->isDirector() || auth()->user()->isGradChair()) {
             $current = \App\Support\AdmissionStats::currentSchoolYear();
             $previous = \App\Support\AdmissionStats::previousSchoolYear();
-            $counts = function ($year) {
+            $levels = auth()->user()->isGradChair() ? ['graduate_school'] : ['ipace', 'eteeap'];
+            $counts = function ($year) use ($levels) {
                 if (! $year) return [null, null, null];
                 $applicants = \App\Models\Applicant::where('school_year', $year)
-                    ->whereIn('level', ['ipace', 'eteeap'])->whereNull('archived_at')->get();
+                    ->whereIn('level', $levels)->whereNull('archived_at')->get();
                 $reserved = $applicants->pluck('id')->intersect(array_keys(\App\Support\ApplicantRecords::paidFees('reservation_fee')))->count();
                 return [$applicants->count(), $reserved, $applicants->where('application_status', 'completed')->count()];
             };
