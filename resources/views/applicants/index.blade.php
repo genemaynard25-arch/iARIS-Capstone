@@ -567,6 +567,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
         const APPLICANTS = @json($rows->values());
         const PAGE_SIZE = 10;
@@ -664,13 +665,22 @@
                 btn.type = 'button';
                 btn.className = 'page-link';
                 btn.innerHTML = label;
-                if (aria) btn.setAttribute('aria-label', aria);
+                btn.disabled = disabled;
+                if (active) btn.setAttribute('aria-current', 'page');
+                btn.setAttribute('aria-label', aria || `Page ${page}`);
                 btn.addEventListener('click', () => { state.page = page; render(); });
                 li.appendChild(btn);
                 ul.appendChild(li);
             };
             item('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' });
-            for (let p = 1; p <= pages; p++) item(p, p, { active: p === state.page });
+            IARIS_PAGINATION.pages(state.page, pages).forEach(p => {
+                if (p !== null) return item(p, p, { active: p === state.page });
+                const gap = document.createElement('li');
+                gap.className = 'page-item disabled';
+                gap.setAttribute('aria-hidden', 'true');
+                gap.innerHTML = '<span class="page-link">…</span>';
+                ul.append(gap);
+            });
             item('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 

@@ -277,6 +277,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
         const APPLICANTS = @json($applicants);
         const DIVISIONS = @json($divisions);
@@ -409,9 +410,11 @@
                 : 'No applicants';
 
             const pageButton = (label, page, { disabled = false, active = false, aria = '' } = {}) =>
-                `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}"><button type="button" class="page-link" data-page="${page}" ${aria ? `aria-label="${aria}"` : ''} ${active ? 'aria-current="page"' : ''}>${label}</button></li>`;
+                `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}"><button type="button" class="page-link" data-page="${page}" ${disabled ? 'disabled' : ''} ${aria ? `aria-label="${aria}"` : ''} ${active ? 'aria-current="page"' : ''}>${label}</button></li>`;
             $('pagination').innerHTML = pageButton('<i class="bi bi-chevron-left" aria-hidden="true"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Previous page' })
-                + Array.from({ length: pages }, (_, i) => pageButton(i + 1, i + 1, { active: i + 1 === state.page })).join('')
+                + IARIS_PAGINATION.pages(state.page, pages).map(p => p === null
+                    ? '<li class="page-item disabled" aria-hidden="true"><span class="page-link">…</span></li>'
+                    : pageButton(p, p, { active: p === state.page, aria: `Page ${p}` })).join('')
                 + pageButton('<i class="bi bi-chevron-right" aria-hidden="true"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Next page' });
         }
 
