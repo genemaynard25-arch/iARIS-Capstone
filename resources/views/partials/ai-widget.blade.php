@@ -55,7 +55,6 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 (function () {
     const toggle = document.getElementById('aiWidgetToggle');
@@ -202,7 +201,20 @@
         return bubble;
     }
 
-    function addChart(spec) {
+    let chartLibrary;
+    async function addChart(spec) {
+        // Reuse the page's Chart.js instance so existing charts keep their registry.
+        if (!window.Chart) {
+            chartLibrary ??= new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                script.onload = resolve;
+                script.onerror = () => { chartLibrary = null; reject(new Error('Unable to load charts')); };
+                document.head.appendChild(script);
+            });
+            await chartLibrary;
+        }
+
         const wrap = document.createElement('div');
         wrap.className = 'mb-2';
         wrap.style.background = '#fff';
@@ -355,7 +367,7 @@
 
             thinking.innerHTML = formatAiText(reply);
             thinking.parentElement.style.textAlign = 'left';
-            if (chartSpec) addChart(chartSpec);
+            if (chartSpec) await addChart(chartSpec);
         } catch (err) {
             thinking.textContent = 'Sorry, something went wrong reaching the AI chatbot.';
         }

@@ -41,3 +41,8 @@
 
 .toic-workspace .app-topbar { flex-wrap: wrap; }
 .toic-workspace .app-topbar-actions { flex-shrink: 0; }
+
+/* Let long office headings fit alongside the menu and profile on narrow screens. */
+.iaris-workspace .app-topbar > .d-flex:first-child { min-width: 0; }
+.iaris-workspace .app-topbar > .d-flex:first-child > div { min-width: 0; overflow-wrap: anywhere; }
+.iaris-workspace .app-topbar > .d-flex:first-child > button { flex-shrink: 0; }
