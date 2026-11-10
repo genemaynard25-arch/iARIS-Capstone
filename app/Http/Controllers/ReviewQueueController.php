@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Imports\ApplicantsImport;
 use App\Models\AuditLog;
 use App\Models\ImportBatch;
+use App\Models\LampScholarRecord;
 use App\Models\ReviewQueueItem;
 use App\Support\ApplicantEditFlow;
 use Illuminate\Http\Request;
@@ -84,6 +85,7 @@ class ReviewQueueController extends Controller
             'restore' => $item->applicant && ApplicantEditFlow::applyRestore($item->applicant),
             'exam_status' => $item->applicant && ApplicantEditFlow::applyExamStatus($item->applicant, $payload['validated']['admission_test_status']),
             'commit_import' => $this->commitImport($payload),
+            'lamp_check' => $this->applyLampCheck($item, $payload, $request),
             default => null,
         };
 
@@ -110,6 +112,42 @@ class ReviewQueueController extends Controller
         AuditLog::record('edit', $item->unit, 'Review Queue Item Sent Back', "Sent back **{$item->rq_number}**: {$item->title} — {$item->subject}. Reason: {$validated['reason']}");
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Apply a LAMP decision only after Super Admin approval.
+     * The expected-before check prevents stale approvals from overwriting a later decision.
+     */
+    private function applyLampCheck(ReviewQueueItem $item, array $payload, Request $request): void
+    {
+        $applicant = $item->applicant;
+        abort_unless($applicant, 422, 'Applicant no longer exists.');
+        abort_unless($applicant->applying_for_scholarship && is_null($applicant->archived_at)
+            && in_array($applicant->admission_test_status, ['passed', 'reconsidered', 'qualified_other_degree'], true),
+            422, 'Applicant is no longer eligible for a LAMP check.');
+
+        $record = LampScholarRecord::firstOrNew(['applicant_id' => $applicant->id]);
+        $before = $record->decision ?? 'wait';
+        abort_unless($before === ($payload['expected_before'] ?? null), 409, 'LAMP decision changed since submission.');
+        abort_if($record->exists && $record->decision && $record->iato_status === 'confirmed', 409, 'IATO has already confirmed this check.');
+        $decision = $payload['decision'] ?? null;
+        abort_unless(in_array($decision, ['yes', 'no', 'undo'], true), 422, 'Invalid LAMP decision.');
+
+        if ($decision === 'undo') {
+            abort_unless($record->exists && $record->decision, 422, 'There is no check to undo.');
+            $record->update(['decision' => null, 'checked_by' => null, 'checked_at' => null]);
+            return;
+        }
+
+        $record->fill([
+            'decision' => $decision,
+            'checked_by' => $item->submitted_by,
+            'checked_at' => $item->submitted_at,
+            'iato_status' => 'pending',
+            'confirmed_by' => null,
+            'confirmed_at' => null,
+        ]);
+        $record->save();
     }
 
     /** Replays a staged import's validated rows (ApplicantsImport::commitRow(), same code the live path uses). */
