@@ -328,6 +328,11 @@ class CollegeController extends Controller
     // The iPACE Director gets their own page: iPACE or ETEEAP (?unit=eteeap), each with its own columns.
     public function applicants(Request $request)
     {
+        // The IS Principal sees the same page as the admin's Integrated School Records, view only
+        if (auth()->user()->isPrincipal()) {
+            return app(IsRecordController::class)->index();
+        }
+
         $common = $this->common();
         if (auth()->user()->isDirector()) {
             $unit = $request->query('unit') === 'eteeap' ? 'ETEEAP' : 'iPACE';

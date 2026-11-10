@@ -29,7 +29,11 @@
     // Add / Edit / Remove: only roles with the 'edit' permission (Access Control).
     // Registrars can view records but not change them (subtitle says so; Ask IATO in the drawer)
     $isRegistrar = auth()->user()->role === 'registrar';
-    $canEdit = ! $isRegistrar && match ($scope) {
+    // The IS Principal sees this page too (CollegeController::applicants), view only, at /principal/applicants
+    $isPrincipal = auth()->user()->isPrincipal();
+    // The Principal's table: coloured Level chips, the scholarship tag under the number, counts on the pills
+    $levelChips = ['Preschool' => ['#F1E7FF', '#7C3AED'], 'Grade School' => ['#E6EEFF', '#2558D9'], 'Junior High' => ['#FFF1DC', '#B96000'], 'Senior High' => ['#E3F4EC', '#00674F']];
+    $canEdit = ! $isRegistrar && ! $isPrincipal && match ($scope) {
         'college', 'is', 'scholars' => auth()->user()->canEdit($scope),
         default => auth()->user()->canAccess('edit'),
     };
@@ -154,8 +158,8 @@
 @endphp
 
 @section('title', 'iARIS — ' . $page['title'])
-@section('page-title', $page['title'])
-@section('page-subtitle', $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
+@section('page-title', $isPrincipal ? 'Applicants' : $page['title'])
+@section('page-subtitle', $isPrincipal ? "Integrated School applicants for AY {$academicYear} · View only" : $page['subtitle'] . ($isRegistrar ? ' · View only' : ''))
 
 @php
     // Bootstrap colour for each status (used for badges, stat cards and pills)
@@ -224,7 +228,7 @@
 
 @endphp
 
-@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => $isRegistrar ? (auth()->user()->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar') : (auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin'), 'workspaceLabel' => 'Records · ' . str_replace(' Records', '', $page['title'])])
+@include('partials.admin-workspace', ['workspacePage' => 'records-page records-' . $scope, 'workspaceGroup' => $isPrincipal ? 'Principal · Integrated School' : ($isRegistrar ? (auth()->user()->assigned_level === 'is' ? 'IS Registrar' : 'College Registrar') : (auth()->user()->role === 'iato_staff' ? 'Staff' : 'Admin')), 'workspaceLabel' => $isPrincipal ? 'Applicants' : 'Records · ' . str_replace(' Records', '', $page['title'])])
 
 @push('styles')
     <link href="{{ asset('css/records.css') }}" rel="stylesheet">
@@ -302,17 +306,17 @@
 
         {{-- Status pills --}}
         <div class="d-flex flex-wrap gap-2 px-4 py-3 border-bottom" id="statusPills">
-            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All</button>
+            <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-primary" data-status="All" aria-pressed="true">All @if ($isPrincipal)<span class="ms-1 opacity-75">{{ $rows->count() }}</span>@endif</button>
             @foreach ($examResults as $result => [$label, $tone])
                 @continue(in_array($result, ['took_test', 'qualified_other_degree', 'unknown']) && ! $rows->contains('exam_result', $result))
-                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }}</button>
+                <button type="button" class="btn btn-sm rounded-pill px-3 fw-semibold btn-outline-secondary" data-status="{{ $result }}" aria-pressed="false">{{ $label }} @if ($isPrincipal)<span class="ms-1 opacity-75">{{ $rows->where('exam_result', $result)->count() }}</span>@endif</button>
             @endforeach
         </div>
         <div class="records-category-pills d-flex flex-wrap align-items-center gap-2 border-bottom" id="categoryPills" aria-label="Filter by {{ strtolower($categoryLabel) }}">
             <span class="small fw-semibold text-body-secondary me-1">{{ $categoryLabel }}:</span>
             <button type="button" class="btn btn-sm btn-primary" data-category="" aria-pressed="true">All</button>
             @foreach ($categoryOptions as $category)
-                <button type="button" class="btn btn-sm btn-light border" data-category="{{ $category }}" aria-pressed="false">{{ $category }}</button>
+                <button type="button" class="btn btn-sm btn-light border" data-category="{{ $category }}" aria-pressed="false">{{ $category }} @if ($isPrincipal)<span class="ms-1 opacity-75">{{ $rows->where($categoryField, $category)->count() }}</span>@endif</button>
             @endforeach
         </div>
 
@@ -342,10 +346,13 @@
                                 <input type="checkbox" class="visually-hidden form-check-input row-check" aria-label="Select {{ $a['name'] }}">
                                 <div class="fw-semibold text-nowrap">{{ $a['name'] }}</div>
                                 <div class="small text-body-secondary">{{ $a['id'] }}</div>
+                                @if ($isPrincipal && ($a['scholarship'] ?? 'No') === 'Yes')<span class="badge bg-primary-subtle text-primary-emphasis mt-1">Scholarship</span>@endif
                             </td>
                             @foreach ($recordColumns as $key => $label)
                                 <td>
-                                    @if ($key === 'group' && $page['groupBadge'])
+                                    @if ($isPrincipal && $key === 'group' && isset($levelChips[$a[$key] ?? '']))
+                                        <span class="badge fw-semibold" style="background: {{ $levelChips[$a[$key]][0] }}; color: {{ $levelChips[$a[$key]][1] }};">{{ $a[$key] }}</span>
+                                    @elseif ($key === 'group' && $page['groupBadge'])
                                         <span class="badge bg-dark-subtle text-dark-emphasis">{{ $a[$key] ?? '—' }}</span>
                                     @elseif ($key === 'program' && ($badge = $page['programBadges'][$a['program']] ?? null))
                                         <span class="badge bg-{{ $badge[0] }}-subtle text-{{ $badge[0] }}-emphasis">{{ $a[$key] }}</span>
@@ -355,10 +362,18 @@
                                 </td>
                             @endforeach
                             @unless ($isRegistrar)
+                            @if ($isPrincipal)
+                                <td class="small fw-semibold">@if ($a['exam_paid'] ?? false)<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>@else<span class="text-body-secondary fw-normal">Not yet paid</span>@endif</td>
+                            @else
                             <td><span class="records-payment badge bg-{{ $a['exam_fee_tone'] }}-subtle text-{{ $a['exam_fee_tone'] }}-emphasis">{{ $a['exam_fee_label'] }}</span></td>
+                            @endif
                             @endunless
                             <td><span class="badge bg-{{ $a['exam_result_tone'] }}-subtle text-{{ $a['exam_result_tone'] }}-emphasis">{{ $a['exam_result_label'] }}</span></td>
+                            @if ($isPrincipal)
+                                <td class="small fw-semibold">@if ($a['reserved'])<span class="text-primary"><i class="bi bi-circle-fill me-1" style="font-size: .55rem;"></i>Paid</span>@if ($a['paid_label'])<small class="d-block text-body-secondary fw-normal mt-1">{{ $a['paid_label'] }}</small>@endif @else<span class="text-body-tertiary">—</span>@endif</td>
+                            @else
                             <td><span class="records-payment badge bg-{{ $a['reservation_tone'] }}-subtle text-{{ $a['reservation_tone'] }}-emphasis">{{ $a['reservation_label'] }}</span>@if ($a['paid_label'])<small class="d-block text-body-secondary mt-1">{{ $a['paid_label'] }}</small>@endif</td>
+                            @endif
                             <td class="small text-body-secondary text-nowrap">{{ $scope === 'eteeap' ? $a['updated_label'] : $a['applied_label'] }}</td>
                             <td class="pe-4 text-end text-nowrap">
                                 @if ($canEdit)
