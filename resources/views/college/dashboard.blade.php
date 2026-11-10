@@ -53,7 +53,7 @@
                 <div class="small fw-bold text-uppercase tracking-wide text-iaris-pale mb-2"><i class="bi bi-stars me-1"></i> This week's briefing · {{ $label }} · {{ $weekLabel }}</div>
                 <h2 class="fs-5 fw-bold mb-3" id="briefHeadline"></h2>
                 <div class="d-flex flex-wrap gap-2 mb-3" id="briefPoints"></div>
-                <div class="small text-white-50">Placeholder data until the numbers come from iARIS. You see {{ $isChair ? 'your program' : $whole }} only. Summaries describe the data; decisions stay with you.</div>
+                <div class="small text-white-50">Counts reflect imported applicant records where available. You see {{ $isChair ? 'your program' : $whole }} only. Summaries describe the data; decisions stay with you.</div>
             </div>
             <div class="text-md-center px-md-3 flex-shrink-0">
                 <div class="display-5 fw-bold font-brand" id="briefBig"></div>
