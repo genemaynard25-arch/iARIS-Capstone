@@ -63,18 +63,26 @@
 
     function generatedMessage(name, format, recipient) {
         const sent = recipient && recipient !== 'Keep for myself' ? ` · "sent" to ${recipient}` : '';
-        return `"${name}" added to the history as a sample${sent}. Real ${format === 'Print' ? 'printing' : format + ' files'} will come once the backend is connected.`;
+        return `"${name}" added to the history${sent}. Real ${format === 'Print' ? 'printing' : format + ' files'} will come once the backend is connected.`;
     }
 
-    // Front end only: reports aren't really generated yet. Add a row to the history and say so.
-    // TODO: send period + format to a backend route that builds the file.
+    // PDF downloads a real file (ReportController::pdf). XLSX/Print aren't built yet - still a
+    // history row + toast saying so, same as before.
     document.getElementById('generateButton').addEventListener('click', () => {
         const report = REPORTS[currentKey];
         const format = document.querySelector('input[name="reportFormat"]:checked').value;
-        addHistory({ key: currentKey, name: report.title, meta: 'Sample only — not saved', recipient: report.recipient,
-            period: document.getElementById('reportPeriod').value, format });
+        const period = document.getElementById('reportPeriod').value;
+
+        addHistory({ key: currentKey, name: report.title, meta: format === 'PDF' ? 'Downloaded just now' : 'Sample only — not saved',
+            recipient: report.recipient, period, format });
         reportModal.hide();
-        showToast(generatedMessage(report.title, format));
+
+        if (format === 'PDF') {
+            window.location = `{{ url('/analytics/reports') }}/${currentKey}/pdf`;
+            showToast(`"${report.title}" downloading as a PDF now.`);
+        } else {
+            showToast(generatedMessage(report.title, format));
+        }
     });
 
     // Recipient filter for the history table

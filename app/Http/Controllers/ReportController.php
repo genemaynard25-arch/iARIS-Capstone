@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Support\AdmissionStats;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
@@ -11,6 +13,25 @@ class ReportController extends Controller
     public function index()
     {
         return redirect('/analytics?tab=reports');
+    }
+
+    // Real PDF, built from the same data() below - one of the Admissions/Institutional Reports
+    // templates, not the Analytics tab's free-form report builder (still front end only; see
+    // resources/views/analytics/partials/reports-script.blade.php).
+    public function pdf(string $key)
+    {
+        $report = collect($this->data()['sections'])
+            ->pluck('reports')->flatten(1)->firstWhere('key', $key);
+
+        abort_unless($report, 404);
+
+        $pdf = Pdf::loadView('reports.pdf', [
+            'report' => $report,
+            'schoolYear' => AdmissionStats::currentSchoolYear(),
+            'generatedBy' => auth()->user()->name,
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download(Str::slug($report['title']) . '.pdf');
     }
 
     // The report templates, history and periods. AnalyticsController passes these to the Reports tab.

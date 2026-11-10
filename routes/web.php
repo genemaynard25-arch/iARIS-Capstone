@@ -61,6 +61,7 @@ Route::get('/reports', [ReportController::class, 'index'])->middleware('auth')->
 // Analytics & Reports: one page with tabs. The controller checks the 'analytics' / 'reports' permissions per tab.
 Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('auth')->name('analytics');
 Route::post('/analytics/reanalyze', [AnalyticsController::class, 'reanalyze'])->middleware('auth');
+Route::get('/analytics/reports/{key}/pdf', [ReportController::class, 'pdf'])->middleware(['auth', 'module:reports'])->name('reports.pdf');
 Route::get('/access-control', [AccessControlController::class, 'index'])->middleware('auth', 'admin')->name('access-control');
 Route::post('/access-control/temp-admin', [AccessControlController::class, 'assignTempAdmin'])->middleware(['auth', 'admin']);
 Route::post('/access-control/temp-admin/revoke', [AccessControlController::class, 'revokeTempAdmin'])->middleware(['auth', 'admin']);
