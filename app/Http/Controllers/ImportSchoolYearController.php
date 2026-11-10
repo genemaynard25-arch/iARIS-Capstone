@@ -7,6 +7,8 @@ use App\Support\ImportSchoolYear;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ImportSchoolYearController extends Controller
 {
@@ -15,13 +17,23 @@ class ImportSchoolYearController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate([
             'from_school_year' => ['required', 'regex:/^\d{4}-\d{4}$/'],
-            'school_year' => ['required', 'regex:/^\d{4}-\d{4}$/'],
+            'school_year' => ['required', 'regex:/^\d{4}-\d{4}$/', 'different:from_school_year'],
             'expected_count' => 'required|integer|min:1',
-        ]);
+        ], ['school_year.different' => 'No change was made: this batch is already assigned to the selected school year.']);
         foreach (['from_school_year', 'school_year'] as $field) {
-            abort_unless((int) substr($data[$field], 5) === (int) substr($data[$field], 0, 4) + 1, 422, 'School years must cover consecutive years.');
+            if ((int) substr($data[$field], 5) !== (int) substr($data[$field], 0, 4) + 1) {
+                throw ValidationException::withMessages([$field => 'School years must cover consecutive years, for example 2025-2026.']);
+            }
         }
-        $count = ImportSchoolYear::correct($batch, $data['from_school_year'], $data['school_year'], (int) $data['expected_count']);
+        try {
+            $count = ImportSchoolYear::correct($batch, $data['from_school_year'], $data['school_year'], (int) $data['expected_count']);
+        } catch (HttpExceptionInterface $exception) {
+            if ($request->expectsJson() || ! in_array($exception->getStatusCode(), [409, 422], true)) {
+                throw $exception;
+            }
+
+            return redirect('/import/'.$batch->id)->withErrors(['school_year' => $exception->getMessage()])->withInput(['school_year' => $data['school_year']]);
+        }
 
         return $request->expectsJson()
             ? response()->json(['ok' => true, 'moved' => $count, 'school_year' => $data['school_year']])

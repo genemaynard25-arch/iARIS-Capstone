@@ -98,4 +98,27 @@ class ImportSchoolYearTest extends OfficeTestCase
             AuditLog::clearBootedModels();
         }
     }
+
+    public function test_same_year_and_invalid_year_form_posts_return_field_errors_without_changing_records(): void
+    {
+        $batch = $this->batch();
+        $applicant = $this->applicant(['imported_batch_id' => $batch->id, 'school_year' => '2026-2027']);
+        foreach (['2026-2027', '2026-2026', '2027-2026'] as $target) {
+            $payload = ['from_school_year' => '2026-2027', 'school_year' => $target, 'expected_count' => 1];
+            $this->from('/import/'.$batch->id)->post('/import/'.$batch->id.'/school-year', $payload)
+                ->assertRedirect('/import/'.$batch->id)->assertSessionHasErrors('school_year');
+            $this->postJson('/import/'.$batch->id.'/school-year', $payload)->assertUnprocessable()->assertJsonValidationErrors('school_year');
+            $this->assertSame('2026-2027', $applicant->fresh()->school_year);
+        }
+        $this->assertDatabaseMissing('audit_logs', ['title' => 'Import School Year Corrected']);
+    }
+
+    public function test_stale_batch_form_post_returns_to_results_with_a_readable_error(): void
+    {
+        $batch = $this->batch();
+        $applicant = $this->applicant(['imported_batch_id' => $batch->id, 'school_year' => '2026-2027']);
+        $this->post('/import/'.$batch->id.'/school-year', ['from_school_year' => '2026-2027', 'school_year' => '2025-2026', 'expected_count' => 2])
+            ->assertRedirect('/import/'.$batch->id)->assertSessionHasErrors(['school_year' => 'The batch changed. Refresh its results before correcting the school year.']);
+        $this->assertSame('2026-2027', $applicant->fresh()->school_year);
+    }
 }

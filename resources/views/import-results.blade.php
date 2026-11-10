@@ -22,6 +22,7 @@
                 @include('partials.school-year-picker', ['id' => 'correctSchoolYear', 'label' => 'Correct school year', 'value' => old('school_year', $declaredYear ?? $assignedYears[0])])</div>
                 <button class="btn btn-warning" type="submit">Correct school year for {{ number_format($applicants->count()) }} applicants</button>
             </form>
+            <p class="small mt-2 mb-1" id="schoolYearCorrectionStatus" role="status" aria-live="polite"></p>
             <p class="small text-body-secondary mt-2 mb-0">Moves the existing batch to the selected school year. Applicant IDs, reference numbers, scholarship decisions and payments are preserved. The correction is audited.</p>
         @endif
     </div>
@@ -118,4 +119,37 @@
             @endif
         </div>
     </div>
+@endsection
+
+@section('scripts')
+<script>
+    const correctionForm = document.getElementById('correctSchoolYearForm');
+    if (correctionForm) {
+        const targetYear = correctionForm.elements.school_year;
+        const sourceYear = correctionForm.elements.from_school_year.value;
+        const correctionButton = correctionForm.querySelector('button[type="submit"]');
+        const correctionStatus = document.getElementById('schoolYearCorrectionStatus');
+        const applicantCount = Number(correctionForm.elements.expected_count.value).toLocaleString('en-US');
+        function updateCorrectionStatus() {
+            const match = /^(\d{4})-(\d{4})$/.exec(targetYear.value);
+            const valid = match && Number(match[2]) === Number(match[1]) + 1;
+            const unchanged = targetYear.value === sourceYear;
+            correctionButton.disabled = !valid || unchanged;
+            correctionStatus.classList.toggle('text-danger', !valid);
+            correctionStatus.textContent = !valid
+                ? 'Enter a valid consecutive school year, for example 2025-2026.'
+                : unchanged
+                    ? `This batch is already assigned to SY ${sourceYear}. No change is needed.`
+                    : `Move ${applicantCount} applicants from SY ${sourceYear} to SY ${targetYear.value}.`;
+        }
+        correctionForm.addEventListener('input', updateCorrectionStatus);
+        correctionForm.addEventListener('change', updateCorrectionStatus);
+        correctionForm.addEventListener('submit', event => {
+            updateCorrectionStatus();
+            if (correctionButton.disabled) event.preventDefault();
+            else correctionButton.disabled = true;
+        });
+        updateCorrectionStatus();
+    }
+</script>
 @endsection
