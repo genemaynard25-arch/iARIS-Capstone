@@ -72,7 +72,7 @@
             </div>
             <select class="form-select w-auto" id="unitFilter" aria-label="Filter by unit">
                 <option value="">All units</option>
-                @foreach ($scholars->pluck('unit')->unique()->sort() as $unit)
+                @foreach (collect(['CBEAM', 'CEAS', 'CIHTM', 'CITE', 'CON', 'CCJE', 'Integrated School · Preschool', 'Integrated School · Grade School', 'Integrated School · Junior High', 'Integrated School · Senior High', 'Graduate Programs', 'College of Law', 'iPACE', 'ETEEAP'])->merge($scholars->pluck('unit'))->unique()->sort() as $unit)
                     <option>{{ $unit }}</option>
                 @endforeach
             </select>
@@ -100,12 +100,12 @@
                 <option value="az">Sort: Name A–Z</option>
                 <option value="review">Sort: Discrepancies First</option>
             </select>
-            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
-                <i class="bi bi-download me-1" aria-hidden="true"></i> Download list
-            </button>
             @if ($canEdit)
                 <button type="button" class="btn btn-primary fw-semibold ms-lg-auto" data-record-form="add"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Add Scholar</button>
             @endif
+            <button type="button" class="btn btn-light border fw-semibold" id="exportButton" title="Download the filtered list as CSV">
+                <i class="bi bi-download me-1" aria-hidden="true"></i> Export
+            </button>
         </div>
 
         {{-- Admission status pills --}}
@@ -208,7 +208,6 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Full Name</div><div class="fw-semibold" data-field="name"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">App Number</div><div class="fw-semibold" data-field="id"></div></div>
-                    <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Date of Birth</div><div class="fw-semibold" data-field="dob_label"></div></div>
                     <div class="col-6"><div class="small fw-bold text-uppercase text-body-secondary">Gender</div><div class="fw-semibold" data-field="gender"></div></div>
                 </div>
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Contact Details</div>

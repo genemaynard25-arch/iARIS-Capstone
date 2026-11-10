@@ -180,7 +180,6 @@
                 <dl class="row g-3 mb-0 small">
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Full Name</dt><dd class="fw-bold mb-0" data-field="name"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Applicant No.</dt><dd class="fw-bold mb-0 font-monospace" data-field="id"></dd></div>
-                    <div class="col-6"><dt class="text-body-secondary fw-semibold">Date of Birth</dt><dd class="fw-bold mb-0" data-field="dob"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold">Gender</dt><dd class="fw-bold mb-0" data-field="gender"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold" id="emailLabel">Email</dt><dd class="fw-bold mb-0 text-break" data-field="email"></dd></div>
                     <div class="col-6"><dt class="text-body-secondary fw-semibold" id="contactLabel">Contact No.</dt><dd class="fw-bold mb-0" data-field="contact"></dd></div>
@@ -483,13 +482,11 @@
             $('drawerBadge').className = `badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis`;
             $('drawerBadge').textContent = statusLabel(a);
 
-            // Integrated School applicants are children: their contact details are the guardian's
-            $('emailLabel').textContent = isSchool ? 'Guardian Email' : 'Email';
-            $('contactLabel').textContent = isSchool ? 'Guardian Contact' : 'Contact No.';
+            $('emailLabel').textContent = 'Email';
+            $('contactLabel').textContent = 'Contact No.';
             $('deptLabel').textContent = DIVISIONS[a.division].dept;
             $('examLabel').textContent = examLabel(a);
             ['name', 'id', 'gender', 'email', 'contact', 'address', 'division', 'dept_label', 'program', 'pwd', 'ssen'].forEach(f => set(f, a[f]));
-            set('dob', formatDate(a.dob, true));
             set('applied', formatDate(a.applied));
             set('scholarship', a.scholarship || 'None');
             set('exam', a.exam || 'Not yet scheduled');

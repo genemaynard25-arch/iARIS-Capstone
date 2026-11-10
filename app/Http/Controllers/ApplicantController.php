@@ -56,6 +56,7 @@ class ApplicantController extends Controller
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
+            ...\App\Support\ApplicantEditFlow::detailRules($request->input('exam_result')),
         ]);
 
         $module = \App\Support\ApplicantEditFlow::moduleFor($level);
@@ -95,6 +96,7 @@ class ApplicantController extends Controller
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
+            ...\App\Support\ApplicantEditFlow::detailRules($request->input('exam_result')),
         ]);
 
         $module = \App\Support\ApplicantEditFlow::moduleFor($applicant->level);
@@ -112,7 +114,7 @@ class ApplicantController extends Controller
             'edit',
             $module,
             'Record Edited',
-            "Edited record of **{$name}** — status changed to **{$validated['status']}**",
+            "Updated applicant details for **{$name}**",
             null,
             array_map(fn ($c) => ['field' => $c[0], 'before' => $c[1], 'after' => $c[2]], $diff) ?: null,
         );
