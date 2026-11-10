@@ -255,7 +255,7 @@ class CollegeController extends Controller
             }
             $unassigned = $applicants->where('level', 'ipace')->contains(fn ($a) => blank($a->program_or_track));
             if ($unassigned) {
-                $ipacePrograms['I-OTHER'] = ['unit' => 'iPACE', 'name' => 'Unspecified program'];
+                $ipacePrograms['I-OTHER'] = ['unit' => 'iPACE', 'name' => 'Unspecified program', 'match' => [null, '']];
             }
             $programs = $ipacePrograms + array_filter($programs, fn ($p) => ($p['unit'] ?? null) === 'ETEEAP');
         }
