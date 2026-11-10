@@ -194,7 +194,7 @@ class CollegeController extends Controller
     public static function college(): array
     {
         $user = auth()->user();
-        $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : ($user?->isLawChair() ? 'LAW' : null)));
+        $code = $user?->isPrincipal() ? 'IS' : ($user?->isDirector() ? 'IPACE' : ($user?->isGradChair() ? 'GRAD' : null));
         // An Assistant Principal: IS_GS, IS_JHS or IS_SHS, by the level they are assigned to
         if ($user?->isAssistantPrincipal()) {
             $code = ['jhs' => 'IS_JHS', 'shs' => 'IS_SHS'][$user->assigned_sub_level] ?? 'IS_GS';
@@ -426,10 +426,6 @@ class CollegeController extends Controller
             return app(GraduateRecordController::class)->index();
         }
 
-        if (auth()->user()->isLawChair()) {
-            return app(LawRecordController::class)->index();
-        }
-
         if (auth()->user()->role === 'dean') {
             return match (self::college()['code']) {
                 'LAW' => app(LawRecordController::class)->index(),
@@ -467,11 +463,11 @@ class CollegeController extends Controller
     public function analytics()
     {
         $data = $this->common();
-        if (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->isLawChair() || auth()->user()->role === 'dean') {
+        if (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean') {
             $current = \App\Support\AdmissionStats::currentSchoolYear();
             $previous = \App\Support\AdmissionStats::previousSchoolYear();
             $levels = auth()->user()->isGradChair() ? ['graduate_school'] : ['ipace', 'eteeap'];
-            $deanCollege = (auth()->user()->role === 'dean' || auth()->user()->isLawChair()) ? self::college()['code'] : null;
+            $deanCollege = auth()->user()->role === 'dean' ? self::college()['code'] : null;
             if ($deanCollege) $levels = [self::levelFor($deanCollege)];
 
             if ($deanCollege === 'CEAS') {
