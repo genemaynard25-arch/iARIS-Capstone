@@ -17,12 +17,14 @@ class LampScholarRecord extends Model
         'confirmed_by',
         'confirmed_at',
         'notes',
+        'decision', 'checked_by', 'checked_at', 'iato_status',
     ];
 
     protected function casts(): array
     {
         return [
             'confirmed_at' => 'datetime',
+            'checked_at' => 'datetime',
         ];
     }
 
