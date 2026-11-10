@@ -42,6 +42,12 @@
 @endsection
 
 @section('content')
+    @foreach($importYearWarnings as $warning)
+        <div class="alert alert-warning" role="alert">
+            <strong>Check this import's school year:</strong> {{ $warning['file'] }} declares SY {{ $warning['declared'] }}, but its {{ number_format($warning['count']) }} records are assigned to {{ $warning['assigned'] }}.
+            <a class="alert-link" href="{{ url('/import/'.$warning['batch']) }}">Review and correct this batch</a>
+        </div>
+    @endforeach
     @if ($hasAnalytics)
     {{-- Filters: one row above everything they scope --}}
     <div class="ar-filter-card card border-0 shadow-sm rounded-4 mb-4">

@@ -92,7 +92,8 @@
                 <div class="mt-4">
                     <label for="school_year" class="form-label small fw-bold text-uppercase text-body-secondary">School Year — which AY is this batch for?</label>
                     <input type="text" class="form-control" id="school_year" name="school_year" value="{{ old('school_year', $currentSchoolYear) }}" pattern="\d{4}-\d{4}" placeholder="2026-2027" required style="max-width: 200px;">
-                    <div class="form-text">The portal export doesn't include a school year column, so every applicant in this file is recorded under the year you enter here.</div>
+                    <div class="form-text">Every applicant is assigned to this school year. A year explicitly declared in the filename or workbook is prefilled and checked before import.</div>
+                    <div class="form-text fw-semibold" id="declaredSchoolYearNotice" role="status"></div>
                 </div>
             </div>
         </div>
@@ -291,6 +292,21 @@
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+                    const declaredYears = new Set();
+                    const readYear = text => {
+                        const match = String(text || '').match(/(?:^|[^a-z0-9])(?:SY|AY|SCHOOL[ _]YEAR)[\s_:–-]*(\d{4})\s*[-_–]\s*(\d{4})/i);
+                        if (match && Number(match[2]) === Number(match[1]) + 1) declaredYears.add(`${match[1]}-${match[2]}`);
+                    };
+                    readYear(file.name);
+                    workbook.SheetNames.forEach(name => {
+                        const metadata = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header:1,defval:'',raw:false}).slice(0,12);
+                        readYear(metadata[0]?.[0]);
+                        metadata.forEach(row => {if (/^school[ _]year\b/i.test(String(row[0]))) readYear('SY ' + row[1]);});
+                    });
+                    if (declaredYears.size > 1) throw new Error('Conflicting school-year declarations');
+                    const declared = [...declaredYears][0];
+                    if (declared) document.getElementById('school_year').value = declared;
+                    document.getElementById('declaredSchoolYearNotice').textContent = declared ? `File declares SY ${declared}. These applicants will be imported into ${declared}.` : 'Check the school year above before importing; this file has no explicit school-year declaration.';
                     render(file, rows);
                 } catch (err) {
                     fail(`Couldn't read "${file.name}". Make sure it's a valid Excel or CSV file.`);

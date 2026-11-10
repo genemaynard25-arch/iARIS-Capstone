@@ -15,6 +15,7 @@ use App\Http\Controllers\GraduateRecordController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IatoMessagesController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\ImportSchoolYearController;
 use App\Http\Controllers\IpaceRecordController;
 use App\Http\Controllers\IsRecordController;
 use App\Http\Controllers\LampCheckController;
@@ -214,3 +215,5 @@ Route::post('/analytics/reports/generate', [ReportExportController::class, 'gene
 Route::get('/analytics/reports/generated/{report}', [ReportExportController::class, 'download'])->middleware(['auth', 'module:reports'])->name('reports.generated.download');
 
 Route::get('/analytics/reports/{key}/preview', [ReportExportController::class, 'preview'])->middleware(['auth', 'module:reports'])->name('reports.preview');
+
+Route::post('/import/{batch}/school-year', [ImportSchoolYearController::class, 'update'])->middleware(['auth', 'admin'])->name('imports.school-year.update');

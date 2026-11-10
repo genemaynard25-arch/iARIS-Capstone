@@ -8,6 +8,7 @@ use App\Services\AiAssistant;
 use App\Support\AddressClassifier;
 use App\Support\AdmissionStats;
 use App\Support\AnalyticsFilterData;
+use App\Support\ImportSchoolYear;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
@@ -121,6 +122,7 @@ class AnalyticsController extends Controller
             // Reports" section, so that tab must NOT be readable by the widget — same leak
             // this session already fixed once for the Applicants pipeline.
             'aggregateOnlyPage' => $tab !== 'reports',
+            'importYearWarnings' => $user->isAdmin() ? ImportSchoolYear::warnings() : [],
             'tabs' => $tabs,
             'tab' => $tab,
             'reportData' => (new ReportController)->data('Current School Year', $request->query('year')),

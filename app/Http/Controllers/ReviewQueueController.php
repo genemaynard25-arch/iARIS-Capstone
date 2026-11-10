@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Imports\ApplicantsImport;
 use App\Models\Applicant;
 use App\Models\AuditLog;
+use App\Models\CachedInsight;
 use App\Models\ImportBatch;
 use App\Models\LampScholarRecord;
 use App\Models\ReviewQueueItem;
@@ -181,5 +182,6 @@ class ReviewQueueController extends Controller
         }
 
         $batch->update(['status' => 'completed', 'row_count' => count($payload['rows'])]);
+        CachedInsight::where('key', 'analytics')->delete();
     }
 }

@@ -159,7 +159,7 @@
                 const lower = title.toLowerCase(); let columns, rows;
                 if (lower.includes('project')) {
                     columns=['Department','Selected AY enrolled','Previous AY enrolled','Projected next AY (estimate)'];
-                    rows=grouped('department').map(([department])=>{const current=selected.filter(r=>r.department===department).reduce((n,r)=>n+r.enrolled,0);const before=engine.previousYearTotals(FILTER_DATA,{...scope,department})?.enrolled || 0;return [department,String(current),String(before),before>0?String(Math.round(current*current/before)):'Prior-year enrollment unavailable'];});
+                    rows=grouped('department').map(([department])=>{const current=selected.filter(r=>r.department===department).reduce((n,r)=>n+r.enrolled,0);const before=engine.previousYearTotals(FILTER_DATA,{...scope,department})?.enrolled || 0;return [department,String(current),String(before),before>0?String(Math.max(0,current+current-before)):'Prior-year enrollment unavailable'];});
                 } else if (lower.includes('insight')) {
                     columns=['Insight','Content']; rows=[['Scope','Cached institution-wide insights; not filtered to the selected department.'], ...[...document.querySelectorAll('.ar-insight-card')].map(card=>[card.querySelector('h3')?.textContent.trim() || 'Insight', card.querySelector('p')?.textContent.trim() || ''])];
                 } else if (lower.includes('field count')) {

@@ -7,6 +7,24 @@
 @php($levels = ['is' => 'Integrated School', 'college' => 'College', 'graduate_school' => 'Graduate School', 'eteeap' => 'ETEEAP'])
 
 @section('content')
+    @if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
+    @if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
+    <div class="card card-body mb-4">
+        <h2 class="h5">School year for this import</h2>
+        <p>Assigned school year: <strong>{{ implode(', ', $assignedYears) ?: 'No saved applicants' }}</strong>
+        @if($declaredYear) · Filename declares <strong>{{ $declaredYear }}</strong>@endif</p>
+        @if(auth()->user()->isAdmin() && count($assignedYears) === 1 && $batch->status === 'completed')
+            <form method="POST" action="{{ route('imports.school-year.update', $batch) }}" id="correctSchoolYearForm" class="d-flex flex-wrap align-items-end gap-3">
+                @csrf
+                <input type="hidden" name="from_school_year" value="{{ $assignedYears[0] }}">
+                <input type="hidden" name="expected_count" value="{{ $applicants->count() }}">
+                <div><label class="form-label" for="correctSchoolYear">Correct school year</label>
+                <input class="form-control" id="correctSchoolYear" name="school_year" value="{{ old('school_year', $declaredYear ?? $assignedYears[0]) }}" pattern="[0-9]{4}-[0-9]{4}" required></div>
+                <button class="btn btn-warning" type="submit">Correct school year for {{ number_format($applicants->count()) }} applicants</button>
+            </form>
+            <p class="small text-body-secondary mt-2 mb-0">Moves the existing batch to the selected school year. Applicant IDs, reference numbers, scholarship decisions and payments are preserved. The correction is audited.</p>
+        @endif
+    </div>
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4 d-flex flex-wrap align-items-center gap-3">
             <div class="icon-circle rounded-circle bg-primary text-white fs-5 d-flex align-items-center justify-content-center">

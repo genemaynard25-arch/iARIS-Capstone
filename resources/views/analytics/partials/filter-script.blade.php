@@ -4,10 +4,11 @@
         function applyAnalyticsFilters() {
             const scope = currentView();
             const years = [...FILTER_DATA.years].reverse();
-            const previousYear = years[years.indexOf(scope.year) - 1];
+            const priorCandidate = `${Number(scope.year.slice(0,4))-1}-${Number(scope.year.slice(5))-1}`;
+            const previousYear = years.includes(priorCandidate) ? priorCandidate : null;
             const selected = filterEngine.select(FILTER_DATA, scope);
             const current = filterEngine.totals(selected);
-            const previous = filterEngine.totals(filterEngine.select(FILTER_DATA, scope, previousYear || ''));
+            const previous = filterEngine.previousYearTotals(FILTER_DATA, scope) || filterEngine.totals([]);
             const rate = (value, total) => total ? value / total * 100 : 0;
             const values = [format(current.applicants), rate(current.passed, current.took).toFixed(1) + '%', rate(current.reserved, current.applicants).toFixed(1) + '%', format(current.enrolled)];
             const changes = [
@@ -90,8 +91,9 @@
             else if (selectedYears.length < 2) document.getElementById('comparisonResult').classList.add('d-none');
             const projection = document.getElementById('filteredProjection');
             projection.replaceChildren(...departments.map(department => {
-                const totalFor = year => filterEngine.totals(filterEngine.select(FILTER_DATA, { ...scope, department }, year || '')).enrolled;
-                const now = totalFor(scope.year), before = totalFor(previousYear);
+                const departmentScope = {...scope, department};
+                const now = filterEngine.totals(filterEngine.select(FILTER_DATA, departmentScope)).enrolled;
+                const before = filterEngine.previousYearTotals(FILTER_DATA, departmentScope)?.enrolled || 0;
                 const projected = before ? Math.max(0, now + now - before) : null;
                 const column = document.createElement('div'); column.className = 'col';
                 const card = document.createElement('div'); card.className = 'rounded-3 bg-body-tertiary border-top border-3 border-primary p-3 h-100';

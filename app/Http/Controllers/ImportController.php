@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Imports\ApplicantsImport;
 use App\Models\Applicant;
 use App\Models\AuditLog;
+use App\Models\CachedInsight;
 use App\Models\ImportBatch;
 use App\Models\ReviewQueueItem;
+use App\Support\ImportSchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -41,6 +43,21 @@ class ImportController extends Controller
             'school_year' => 'required|regex:/^\d{4}-\d{4}$/',
         ]);
 
+        if ((int) substr($validated['school_year'], 5) !== (int) substr($validated['school_year'], 0, 4) + 1) {
+            throw ValidationException::withMessages(['school_year' => 'Enter consecutive years, for example 2025-2026.']);
+        }
+        try {
+            $declaredYear = ImportSchoolYear::declaredYear($request->file('file'));
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            report($exception);
+            throw ValidationException::withMessages(['file' => 'Unable to read the workbook. Check that it is a valid Excel file.']);
+        }
+        if ($declaredYear && $declaredYear !== $validated['school_year']) {
+            throw ValidationException::withMessages(['school_year' => "This file declares SY {$declaredYear}, but the form selects {$validated['school_year']}. Set School Year to {$declaredYear} before importing."]);
+        }
+
         $batch = ImportBatch::create([
             'uploaded_by' => $request->user()->id,
             'original_filename' => $request->file('file')->getClientOriginalName(),
@@ -68,6 +85,8 @@ class ImportController extends Controller
                     'error_count' => $errorCount,
                     'errors' => $import->errors ?: null,
                 ]);
+
+                CachedInsight::where('key', 'analytics')->delete();
 
                 AuditLog::record(
                     'import',
@@ -131,6 +150,8 @@ class ImportController extends Controller
         return view('import-results', [
             'batch' => $batch,
             'applicants' => $applicants,
+            'assignedYears' => $applicants->pluck('school_year')->unique()->values()->all(),
+            'declaredYear' => ImportSchoolYear::fromText($batch->original_filename),
         ]);
     }
 }
