@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Http\Controllers\IpaceRecordController;
 use Illuminate\Support\Carbon;
 
 /**
@@ -11,8 +10,7 @@ use Illuminate\Support\Carbon;
  * Two kinds of Registrar, by the user's assigned_level ("scope"):
  *   College Registrar ('college'): College, Graduate Programs, College of Law, iPACE and ETEEAP.
  *     College, Graduate Programs, College of Law and ETEEAP come from the applicants table
- *     (ApplicantRecords). iPACE is still placeholder data (IpaceRecordController::sample()),
- *     because the applicants table has no level for it yet.
+ *     (ApplicantRecords). iPACE records are loaded from the applicants table by level.
  *   IS Registrar ('is'): the Integrated School only, from the applicants table, by level.
  *
  * Each row: id, name, unit, dept, program, status, applied, paid, url (opens the record). No
@@ -74,12 +72,11 @@ class RegistrarData
         $rows = [];
         foreach (self::units($scope) as $unit => [$source, $url]) {
             $list = match ($source) {
-                'ipace' => IpaceRecordController::sample(),
                 default => ApplicantRecords::forLevel($source),
             };
             foreach ($list as $a) {
-                $preview = in_array($source, ['ipace']);
-                // Only the unconnected sample divisions infer a sample result from their sample status.
+                $preview = false;
+                // Database-backed units use only recorded exam results.
                 $examStatus = self::recordExamStatus($a, $preview);
                 $passed = in_array($examStatus, ['passed', 'qualified_other_degree', 'reconsidered']);
                 $reserved = self::hasReservation($a);
