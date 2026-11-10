@@ -48,11 +48,6 @@
                         <div class="invalid-feedback">Choose a sex.</div>
                     </div>
                     <div class="col-sm-6">
-                        <label for="recDob" class="form-label small fw-bold text-uppercase">Date of birth <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="recDob" required max="{{ now()->format('Y-m-d') }}">
-                        <div class="invalid-feedback">Enter a valid date of birth.</div>
-                    </div>
-                    <div class="col-sm-6">
                         <label for="recEmail" class="form-label small fw-bold text-uppercase">Email <span class="text-danger">*</span></label>
                         <input type="email" class="form-control" id="recEmail" required placeholder="name@example.com">
                         <div class="invalid-feedback">Enter a valid email.</div>
@@ -328,7 +323,7 @@
                 set('recLast', f.last); set('recFirst', f.first); set('recMi', f.mi);
                 set('recGender', f.gender); set('recEmail', f.email); set('recContact', f.contact);
                 set('recAddress', f.address); set('recGroup', f.group); fillPrograms(f.program); set('recProgram', f.program);
-                set('recStatus', f.status); set('recApplied', f.applied); set('recDob', f.dob);
+                set('recStatus', f.status); set('recApplied', f.applied);
                 fillYears(f.year_level || f.year || f.level);
                 set('recExamResult', f.exam_status); set('recExamDate', f.exam_date); set('recExamTime', f.exam_time);
                 $('recExamPaid').value = f.exam_paid ? '1' : '0';
@@ -391,7 +386,6 @@
                 program: $('recProgram').value,
                 status: $('recStatus').value,
                 applied: $('recApplied').value,
-                date_of_birth: $('recDob').value,
                 year_level: $('recYear').value,
                 exam_date: $('recExamDate').value || null,
                 exam_time: $('recExamTime').value || null,

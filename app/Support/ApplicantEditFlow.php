@@ -40,7 +40,6 @@ class ApplicantEditFlow
     public static function detailRules(?string $examResult = null): array
     {
         return [
-            'date_of_birth' => 'sometimes|nullable|date|before_or_equal:today',
             'year_level' => 'sometimes|nullable|string|max:30',
             'exam_date' => 'nullable|required_with:exam_time|date_format:Y-m-d',
             'exam_time' => 'nullable|required_with:exam_date|date_format:H:i',
@@ -66,7 +65,7 @@ class ApplicantEditFlow
     }
 
     private const DETAIL_FIELDS = [
-        'date_of_birth', 'year_level', 'applying_for_scholarship', 'pwd', 'ssen',
+        'year_level', 'applying_for_scholarship', 'pwd', 'ssen',
         'feeder_school', 'school_address', 'school_classification', 'nationality',
         'permit_no', 'gwa', 'student_type', 'learning_modalities',
     ];
@@ -77,9 +76,6 @@ class ApplicantEditFlow
         if (array_key_exists('exam_date', $validated)) {
             $details['exam_scheduled_at'] = empty($validated['exam_date']) ? null
                 : $validated['exam_date'].' '.($validated['exam_time'] ?? '00:00');
-        }
-        if (! empty($validated['date_of_birth'])) {
-            $details['age'] = (int) \Illuminate\Support\Carbon::parse($validated['date_of_birth'])->age;
         }
         if ($details) {
             $applicant->update($details);
@@ -160,7 +156,7 @@ class ApplicantEditFlow
             if (! array_key_exists($field, $validated)) {
                 continue;
             }
-            $beforeValue = $field === 'date_of_birth' ? $applicant->date_of_birth?->format('Y-m-d') : $applicant->$field;
+            $beforeValue = $applicant->$field;
             $afterValue = $validated[$field];
             if ((string) $beforeValue !== (string) $afterValue) {
                 $diff[] = [ucwords(str_replace('_', ' ', $field)), $beforeValue ?? '—', $afterValue ?? '—'];
