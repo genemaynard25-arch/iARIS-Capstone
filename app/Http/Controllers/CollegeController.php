@@ -162,8 +162,8 @@ class CollegeController extends Controller
 
     /**
      * The signed-in dean's college: ['code' => 'CITE', 'name' => …, 'programs' => […]]. The IS Principal gets 'IS'.
-     * TODO: read users.assigned_college once the backend adds it. Until then the college code is kept
-     * in users.department (see the seeder). Anyone without one (e.g. the Program Chair) is CITE.
+     * Reads users.assigned_college, falling back to users.department for older rows that predate
+     * that column. Anyone without either (e.g. the Program Chair) is CITE.
      */
     public static function college(): array
     {

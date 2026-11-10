@@ -100,7 +100,7 @@
                                 <div class="small text-body-secondary">{{ $a['unit'] }} · {{ $a['program'] }}</div>
                             </div>
                             <div class="text-end small text-nowrap">
-                                <div class="fw-bold text-info-emphasis">{{ $a['amount'] }}</div>
+                                <div class="fw-bold text-info-emphasis">Paid</div>
                                 <div class="text-body-secondary">{{ $a['paid_label'] }}</div>
                             </div>
                         </a>

@@ -117,8 +117,8 @@ class ApplicantRecords
             'contact' => $a->contact_number,
             'address' => $a->address,
             'exam' => $a->exam_scheduled_at ? $a->exam_scheduled_at->format('M j, Y') . ' · ' . $a->exam_scheduled_at->format('g:i A') : null,
+            // No peso amount: IATO doesn't need it, only whether the fee was paid (see 'status' above).
             'paid' => $payment && $payment[1] ? Carbon::parse($payment[1])->format('Y-m-d') : null,
-            'amount' => $payment[0] ?? null,
         ];
 
         // array_merge: the level's own values replace the shared ones (e.g. 'program' on Graduate and ETEEAP)

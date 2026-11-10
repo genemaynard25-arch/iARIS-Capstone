@@ -308,7 +308,6 @@ class ApplicantController extends Controller
             'address' => $a['address'],
             'exam' => $a['exam'],
             'paid' => $a['paid'],
-            'amount' => $a['amount'],
         ];
 
         $isNames = ['Preschool' => 'Preschool', 'Grade School' => 'GS', 'Junior High' => 'JHS', 'Senior High' => 'SHS'];

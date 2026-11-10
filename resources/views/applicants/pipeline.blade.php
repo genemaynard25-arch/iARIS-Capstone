@@ -216,7 +216,6 @@
                 </dl>
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Payment &amp; Status</div>
                 <div class="rounded-3 bg-body-tertiary p-3 d-grid gap-2 small">
-                    <div class="d-flex justify-content-between"><span class="text-body-secondary fw-semibold">Reservation Payment</span><span class="fw-bold" data-field="amount"></span></div>
                     <div class="d-flex justify-content-between"><span class="text-body-secondary fw-semibold">Date of Payment</span><span class="fw-bold" data-field="paid"></span></div>
                     <div class="d-flex justify-content-between"><span class="text-body-secondary fw-semibold">Payment Status</span><span class="fw-bold" data-field="payStatus"></span></div>
                 </div>
@@ -290,7 +289,6 @@
         const formatDate = (value, long = false) => value
             ? new Date(value + 'T00:00').toLocaleDateString('en-US', { month: long ? 'long' : 'short', day: 'numeric', year: 'numeric' })
             : null;
-        const money = n => n ? '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 }) : null;
 
         // What each division calls things
         const statusLabel = a => a.status === 'For Exam'
@@ -493,7 +491,6 @@
             $('examResultEdit').classList.toggle('d-none', !canEditThis);
             if (canEditThis) $('examResultSelect').value = a.exam_status;
 
-            set('amount', money(a.amount));
             set('paid', formatDate(a.paid));
             set('payStatus', a.paid ? 'Confirmed' : 'Pending');
 
@@ -504,7 +501,7 @@
                 ['bi-file-earmark-plus', 'Application Submitted', formatDate(a.applied), true, 'secondary'],
                 ['bi-calendar-check', examLabel(a), a.exam || 'Not yet scheduled', examDone, 'warning'],
                 [failed ? 'bi-x-circle' : 'bi-patch-check', 'Result', failed ? 'Not qualified' : resultIn ? 'Passed' : 'Waiting for the result', resultIn, failed ? 'secondary' : 'primary'],
-                ['bi-cash-coin', 'Reservation Payment', paid ? `${formatDate(a.paid)} · ${money(a.amount)}` : 'Not yet paid', paid, 'info'],
+                ['bi-cash-coin', 'Reservation Payment', paid ? formatDate(a.paid) : 'Not yet paid', paid, 'info'],
                 ['bi-check-circle', 'Reservation Confirmed', paid ? formatDate(a.paid) : 'Waiting for payment', paid, 'primary'],
             ];
             $('timeline').innerHTML = steps.map(([icon, title, date, done, color]) => `<li class="d-flex gap-3 pb-3">

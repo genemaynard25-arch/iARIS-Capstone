@@ -67,9 +67,9 @@ class RegistrarData
                     'status' => $a['status'],
                     'applied' => $a['applied'],
                     'applied_label' => $a['applied'] ? Carbon::parse($a['applied'])->format('M j, Y') : '—',
+                    // No OR/amount: that's the cashier's record, not the Registrar's.
                     'paid' => $a['paid'],
                     'paid_label' => $a['paid'] ? Carbon::parse($a['paid'])->format('M j, Y') : '—',
-                    'amount' => $a['amount'] ? '₱' . number_format($a['amount'], 2) : '—',
                     'url' => url($url) . '?open=' . urlencode($a['id']),
                 ];
             }

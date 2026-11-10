@@ -173,7 +173,6 @@
         'updated_label' => \Illuminate\Support\Carbon::parse($a['updated'])->format('M j, g:i A'),
         'dob_label' => $a['dob'] ? \Illuminate\Support\Carbon::parse($a['dob'])->format('F j, Y') : null,
         'paid_label' => $a['paid'] ? \Illuminate\Support\Carbon::parse($a['paid'])->format('M j, Y') : null,
-        'amount_label' => $a['amount'] ? '₱' . number_format($a['amount'], 2) : null,
         'tone' => $statusTones[$a['status']],
         'status_label' => $page['statusLabels'][$a['status']] ?? $a['status'],
         'program_label' => $a['program'],
@@ -445,7 +444,6 @@
                 </div>
                 <div class="small fw-bold text-uppercase tracking-wide text-body-secondary border-bottom pb-2 mb-3">Payment &amp; Status</div>
                 <div class="rounded-3 border bg-body-tertiary p-3">
-                    <div class="d-flex justify-content-between small mb-2"><span class="text-body-secondary fw-semibold">Reservation Payment</span><span class="fw-bold" data-field="amount_label"></span></div>
                     <div class="d-flex justify-content-between small mb-2"><span class="text-body-secondary fw-semibold">Date of Payment</span><span class="fw-bold" data-field="paid_label"></span></div>
                     <div class="d-flex justify-content-between small"><span class="text-body-secondary fw-semibold">Payment Status</span><span class="fw-bold" id="drawerPayStatus"></span></div>
                 </div>
@@ -675,7 +673,7 @@
                 { title: 'Application Submitted', date: a.applied_label, icon: 'bi-file-earmark-plus', tone: 'secondary', done: true },
                 { title: 'Entrance Exam Scheduled', date: a.exam ?? 'Not yet scheduled', icon: 'bi-calendar-check', tone: 'warning', done: reached >= 1, note: a.exam ? 'Venue: DLSL Main Campus — Testing Center' : null },
                 { title: 'Exam Result', date: reached >= 2 ? (a.test && a.test !== '—' ? a.test : 'Passed') : 'Waiting for the exam', icon: failed ? 'bi-x-circle' : 'bi-patch-check', tone: failed ? 'secondary' : 'primary', done: reached >= 2 },
-                { title: 'Reservation Payment', date: a.paid ? `${a.paid_label} · ${a.amount_label}` : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 3 },
+                { title: 'Reservation Payment', date: a.paid ? a.paid_label : 'Not yet paid', icon: 'bi-cash-coin', tone: 'info', done: reached >= 3 },
                 { title: 'Enrolled', date: reached >= 4 ? a.updated_label : 'Not yet enrolled', icon: 'bi-check-circle', tone: 'primary', done: reached >= 4 },
             ];
             // Page-specific changes (Law and iPACE): other titles and one more step
