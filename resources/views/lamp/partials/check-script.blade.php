@@ -5,7 +5,7 @@
     LAMP.open(x)         the drawer (needs partials/check on the page)
     LAMP.onChange(fn)    run fn after LAMP confirms or declines someone
     LAMP.label(x), LAMP.result(x), LAMP.nameCell(x), LAMP.esc(s), LAMP.LB
-    FRONT END ONLY: a check is kept in this browser (localStorage "iaris.lampChecks") until the backend saves it.
+    Checks are saved to lamp_scholar_records through authenticated Laravel routes.
 --}}
 <script>
     const LAMP = (() => {
@@ -23,21 +23,12 @@
         const RC = { Pass: 'success', Reconsidered: 'info', Waitlisted: 'warning', Fail: 'danger', 'Not yet taken': 'secondary' };
         const listeners = [];
 
-        // LAMP's saved checks (only for applicants who still pass)
-        let saved = {};
-        try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
-        people.forEach(x => { const v = saved[x.id]; if (v && x.lamp === 'wait') { x.lamp = v.lamp; x.at = v.at; } });
-        const save = () => {
-            const o = {};
-            people.forEach(x => { if (x.at) o[x.id] = { lamp: x.lamp, at: x.at }; });
-            try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
-        };
-        const now = () => { const d = new Date(); return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`; };
-
+        // LAMP decisions are supplied by the server and persisted through an authenticated endpoint.
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || @json(csrf_token());
         const label = x => {
             const [text, tone, icon] = LB[x.lamp];
             return `<span class="badge rounded-pill bg-${tone}-subtle text-${tone}-emphasis text-nowrap"><i class="bi ${icon} me-1"></i>${text}</span>`
-                + (x.at ? '<div class="small text-body-secondary mt-1">IATO has not confirmed yet</div>' : '');
+                + (x.at ? '<div class="small text-body-secondary mt-1">' + (x.iato_status === 'confirmed' ? 'Confirmed by IATO' : 'Awaiting IATO confirmation') + '</div>' : '');
         };
         const result = x => `<span class="badge rounded-pill bg-${RC[x.result] || 'secondary'}-subtle text-${RC[x.result] || 'secondary'}-emphasis text-nowrap">${esc(x.result)}</span>`;
         const nameCell = x => `<div class="fw-semibold text-nowrap">${esc(x.name)}</div><div class="small text-body-secondary text-nowrap">${esc(x.id)}</div><div class="small text-body-secondary">${esc(x.sex)}${x.pwd ? ' · PWD / SEN' : ''}</div>`;
@@ -49,16 +40,29 @@
             no: people.filter(x => x.lamp === 'no').length,
         });
 
-        function act(x, a) {
-            if (a === 'yes' || a === 'no') {
-                x.lamp = a; x.at = now();
-                toast(`${x.name} marked as ${a === 'yes' ? 'a confirmed scholar' : 'not a scholar'}. IATO will confirm the change. (Demo only — saved in this browser.)`);
+        async function act(x, a) {
+            const buttons = document.querySelectorAll('#checkButtons [data-a]');
+            buttons.forEach(b => b.disabled = true);
+            try {
+                const response = await fetch(@json(url('/lamp/checks')) + '/' + encodeURIComponent(x.applicant_id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ action: a }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Could not save the LAMP check.');
+                x.lamp = data.lamp;
+                x.at = data.at;
+                x.iato_status = data.iato_status;
+                toast(a === 'undo' ? 'LAMP check undone and saved.' : 'LAMP check saved. Awaiting IATO confirmation.');
+                const el = document.getElementById('checkDrawer');
+                if (el) bootstrap.Offcanvas.getOrCreateInstance(el).hide();
+                listeners.forEach(fn => fn());
+            } catch (error) {
+                toast(error.message || 'Could not save the check. Please try again.');
+            } finally {
+                buttons.forEach(b => b.disabled = false);
             }
-            if (a === 'undo') { x.lamp = 'wait'; x.at = ''; toast(`${x.name} is back to Waiting for LAMP. (Demo only — saved in this browser.)`); }
-            save();
-            const el = document.getElementById('checkDrawer');
-            if (el) bootstrap.Offcanvas.getOrCreateInstance(el).hide();
-            listeners.forEach(fn => fn());
         }
 
         function open(x) {
@@ -84,7 +88,7 @@
             const btn = (cls, icon, text, a) => `<button type="button" class="btn ${cls} fw-semibold" data-a="${a}"><i class="bi ${icon} me-1"></i>${text}</button>`;
             b.innerHTML = x.lamp === 'wait'
                 ? btn('btn-light border', 'bi-dash-circle', 'Not a scholar', 'no') + btn('btn-primary', 'bi-check-lg', 'Confirm scholar', 'yes')
-                : (x.at ? btn('btn-light border', 'bi-arrow-counterclockwise', 'Undo my change', 'undo') : '') + btn('btn-light border', 'bi-x-lg', 'Close', 'close');
+                : (x.at && x.iato_status !== 'confirmed' ? btn('btn-light border', 'bi-arrow-counterclockwise', 'Undo my change', 'undo') : '') + btn('btn-light border', 'bi-x-lg', 'Close', 'close');
             b.querySelectorAll('[data-a]').forEach(bt => bt.addEventListener('click', () => bt.dataset.a === 'close' ? bootstrap.Offcanvas.getOrCreateInstance(el).hide() : act(x, bt.dataset.a)));
             bootstrap.Offcanvas.getOrCreateInstance(el).show();
         }
