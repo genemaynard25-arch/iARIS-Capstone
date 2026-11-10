@@ -31,7 +31,7 @@ class SettingsController extends Controller
         // (Vice Presidents and Vice Chancellors are view only, so no Report Preferences.)
         // Deans, Program Chairs and the IS Principal have the same Briefing, Reports and Analytics, so the same preferences.
         $collegeView = $user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector();
-        $officeHead = $user->role === 'dean' || $user->isPrincipalOffice() || $user->isDirector() || $user->isGradChair();
+        $officeHead = $user->role === 'dean' || $user->isPrincipalOffice() || $user->isDirector() || $user->isGradChair() || $user->isLawChair();
         if ($user->isExecutive() || $collegeView) {
             array_splice($sections, 3, 0, $user->isVice() ? ['briefing'] : ['briefing', 'reports']);
             $sections[] = 'display';
@@ -69,6 +69,7 @@ class SettingsController extends Controller
                 $user->isPrincipal() => 'Principal, ',
                 $user->isDirector() => 'Director, ',
                 $user->isGradChair() => 'Program Chair, ',
+                $user->isLawChair() => 'Program Chair, ',
                 default => 'Dean, ',
             } . ($college['title'] ?? $college['code']);
             $office = $college['office'] ?? $college['name'];
@@ -126,6 +127,7 @@ class SettingsController extends Controller
                     $user->isPrincipal() => 'Integrated School only',
                     $user->isDirector() => 'iPACE + ETEEAP only',
                     $user->isGradChair() => 'Graduate Programs only',
+                    $user->isLawChair() => 'College of Law only',
                     $user->isProgramChair() => 'BS Computer Science only',
                     default => $scope,
                 },
@@ -147,7 +149,7 @@ class SettingsController extends Controller
             'unitWord' => $user->isPrincipalOffice() ? 'level' : ($collegeView ? 'program' : 'unit'),
             // "Send a copy to": the IATO and the rest of the Executive Office (not you)
             // The iPACE Director, Graduate Programs and College of Law send copies to IATO and the VC for Academics only
-            'recipients' => $user->isDirector() || $user->isGradChair() || ($user->role === 'dean' && CollegeController::college()['code'] === 'LAW') ? [
+            'recipients' => $user->isDirector() || $user->isGradChair() || $user->isLawChair() ? [
                 ['initials' => 'RR', 'name' => 'IATO · Renegado, Randolph'],
                 ['initials' => 'TP', 'name' => 'Dr. Tessie Palma (VC for Academics)'],
             ] : ($collegeView ? [

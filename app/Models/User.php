@@ -183,16 +183,24 @@ class User extends Authenticatable
     }
 
     // A college's Program Chair, locked to one program (BS Computer Science for now).
-    // The Graduate Programs chair is also a 'program_chair', but assigned to graduate_school: see isGradChair().
+    // The Graduate Programs and College of Law chairs are also 'program_chair', but assigned to
+    // graduate_school/law: see isGradChair() / isLawChair().
     public function isProgramChair(): bool
     {
-        return $this->role === "program_chair" && ! $this->isGradChair();
+        return $this->role === "program_chair" && ! $this->isGradChair() && ! $this->isLawChair();
     }
 
     // The Program Chair of the Graduate Programs: the Dean pages for every graduate program
     public function isGradChair(): bool
     {
         return $this->role === "program_chair" && $this->assigned_level === "graduate_school";
+    }
+
+    // The Program Chair of the College of Law: the Dean pages for Law. Law has no Dean -
+    // its head is a Program Chair, same idea as isGradChair() for Graduate Programs.
+    public function isLawChair(): bool
+    {
+        return $this->role === "program_chair" && $this->assigned_level === "law";
     }
 
     // Checked by assignment, not role, so this also catches a database still seeded from before

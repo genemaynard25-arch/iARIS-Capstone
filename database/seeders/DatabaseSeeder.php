@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
     // Deans: the Dean pages at /college, each for their own college. Named as in the mockups.
     // The college code goes in `department` (as in Account Management) until users.assigned_college exists.
     // updateOrCreate, so running the seeder again renames the old "Test Dean".
+    // College of Law has no Dean - its head is a Program Chair (see chairlaw@gmail.com below).
     foreach ([
         ['dean@gmail.com', 'Cherrie Villafuerte', 'CITE'],
         ['deancbeam@gmail.com', 'Jasmin De Silva', 'CBEAM'],
@@ -40,8 +41,6 @@ class DatabaseSeeder extends Seeder
         ['deancihtm@gmail.com', 'Evangeline Necio', 'CIHTM'],
         ['deanccje@gmail.com', 'Aristotle Balba', 'CCJE'],
         ['deancon@gmail.com', 'Margie Ebreo', 'CON'],
-        // Account Management's department name for the College of Law
-        ['deanlaw@gmail.com', 'Ma. Isabel Romero', 'College of Law'],
     ] as [$email, $name, $college]) {
         \App\Models\User::updateOrCreate(['email' => $email], [
             'name' => $name,
@@ -157,6 +156,16 @@ class DatabaseSeeder extends Seeder
         'role' => 'program_chair',
         'access_type' => 'viewer',
         'assigned_level' => 'graduate_school',
+    ]);
+
+    // College of Law Program Chair: the Dean pages for Law, at /college. Law has no Dean -
+    // this is its head. Same account that used to be seeded as "deanlaw@gmail.com".
+    \App\Models\User::updateOrCreate(['email' => 'chairlaw@gmail.com'], [
+        'name' => 'Ma. Isabel Romero',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'program_chair',
+        'access_type' => 'viewer',
+        'assigned_level' => 'law',
     ]);
 
     // College Registrar: Registrar pages at /registrar (records are view only)
