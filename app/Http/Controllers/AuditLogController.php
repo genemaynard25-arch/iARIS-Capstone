@@ -51,7 +51,7 @@ class AuditLogController extends Controller
             ],
             'modules' => [
                 'Applicants', 'College Records', 'Integrated School', 'Scholars', 'Graduate Programs', 'College of Law',
-                'iPACE', 'ETEEAP', 'Reports', 'Analytics', 'Access Control', 'User Accounts', 'Import Data', 'System',
+                'iPACE', 'ETEEAP', 'LAMP', 'Reports', 'Analytics', 'Access Control', 'User Accounts', 'Import Data', 'System',
             ],
             'stats' => [
                 ['key' => 'today', 'label' => 'Total Entries Today', 'sub' => 'All action types', 'tone' => 'primary'],
