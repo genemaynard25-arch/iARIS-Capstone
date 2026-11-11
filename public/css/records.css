@@ -58,7 +58,7 @@
 /* Add/Edit applicant: compact sections with a fixed, visible action footer. */
 .applicant-entry-modal { --bs-modal-width: 680px; }
 .applicant-entry-modal .modal-header { align-items: flex-start; }
-.applicant-entry-modal .modal-title { color: #1a2b26; }
+.applicant-entry-modal .modal-title { color: #fff; }
 .applicant-entry-modal .modal-body > .tracking-wide { color: #00674f !important; font-size: .7rem; letter-spacing: .08em; }
 .applicant-entry-modal .form-label { text-transform: none !important; font-size: .78rem !important; margin-bottom: .3rem; }
 .applicant-entry-modal .form-control, .applicant-entry-modal .form-select { font-size: .85rem; border-radius: .6rem; }
