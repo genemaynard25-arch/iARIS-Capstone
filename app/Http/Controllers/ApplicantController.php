@@ -45,7 +45,7 @@ class ApplicantController extends Controller
 
     public function store(Request $request)
     {
-        $scopeToLevel = ['college' => 'college', 'is' => 'is'];
+        $scopeToLevel = ['college' => 'college', 'is' => 'is', 'graduate' => 'graduate_school', 'law' => 'law', 'ipace' => 'ipace', 'eteeap' => 'eteeap'];
         $level = $scopeToLevel[$request->input('scope')] ?? null;
 
         if (! $level || ! $request->user()->canEdit($level)) {

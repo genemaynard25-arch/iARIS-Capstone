@@ -26,5 +26,9 @@ window.IarisAdmissionCatalog = (() => {
         if (scope === 'eteeap') return ['Pending', 'Submitted', 'Cleared', 'Not Cleared'];
         return (scope === 'college' ? college : scope === 'is' ? school : units)[group] || [];
     };
-    return {groups, programs, units};
+    const recordDivisions = {graduate: 'Graduate Programs', law: 'College of Law', ipace: 'iPACE', eteeap: 'ETEEAP'};
+    const recordForm = (scope, applicant) => recordDivisions[scope]
+        ? {...applicant, group: recordDivisions[scope], program: applicant.program_label === '—' ? '' : applicant.program_label}
+        : applicant;
+    return {groups, programs, units, recordDivisions, recordForm};
 })();

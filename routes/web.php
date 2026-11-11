@@ -71,7 +71,7 @@ Route::get('/loading', function () {
 })->middleware('auth')->name('splash');
 Route::get('/home', [HomeController::class, 'index'])->middleware(['auth', 'module:dashboard'])->name('home');
 Route::get('/applicants', [ApplicantController::class, 'index'])->middleware(['auth', 'module:applicants'])->name('applicants');
-Route::post('/applicants', [ApplicantController::class, 'store'])->middleware(['auth', 'module:college']);
+Route::post('/applicants', [ApplicantController::class, 'store'])->middleware(['auth', 'module:edit']);
 Route::put('/applicants/{applicant:reference_number}', [ApplicantController::class, 'update'])->middleware(['auth', 'module:edit']);
 Route::delete('/applicants/{applicant:reference_number}', [ApplicantController::class, 'destroy'])->middleware(['auth', 'module:edit']);
 Route::post('/applicants/{applicant:reference_number}/restore', [ApplicantController::class, 'restore'])->middleware(['auth', 'module:edit']);

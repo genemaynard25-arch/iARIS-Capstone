@@ -1,6 +1,6 @@
 {{--
     Add / Edit / Remove an applicant on the Records pages (only for roles with the 'edit' permission).
-    College and Integrated School forms use the applicant endpoints. IATO Staff changes are
+    Database-backed division forms use the applicant endpoints. IATO Staff changes are
     staged in the Review Queue; unsupported scopes display an explicit backend notice.
     The page tells the form where its things are with window.RECORD_FORM (set in the page's script):
       items (the people), rows (table rows), tbody (its id), render(), drawer, current() (the person in the drawer),
@@ -10,7 +10,7 @@
 
 {{-- Add / Edit form --}}
 @php($staffReview = auth()->user()->role === 'iato_staff' && ! auth()->user()->isAdmin())
-@php($realBackend = in_array($scope ?? null, ['college', 'is']))
+@php($realBackend = in_array($scope ?? null, ['college', 'is', 'graduate', 'law', 'ipace', 'eteeap']))
 <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg applicant-entry-modal">
         <form class="modal-content border-0 rounded-4 overflow-hidden" id="recordForm" novalidate>
@@ -73,13 +73,9 @@
                     </div>
                     <div class="col-sm-6">
                         <label for="recProgram" class="form-label small fw-bold text-uppercase"><span id="recProgramLabel">Program</span> <span class="text-danger">*</span></label>
-                        @if (($scope ?? null) === 'law')
-                            <input type="text" class="form-control" id="recProgram" required>
-                        @else
-                            <select class="form-select" id="recProgram" required></select>
-                        @endif
+                        <select class="form-select" id="recProgram" required></select>
                         <div class="form-text" id="recProgramHint">Choose a college or unit first.</div>
-                        <div class="invalid-feedback">{{ ($scope ?? null) === 'law' ? 'Enter the prior degree.' : 'Choose one.' }}</div>
+                        <div class="invalid-feedback">Choose one.</div>
                     </div>
                     @isset($scholarFields)
                         <div class="col-sm-6">
@@ -252,7 +248,8 @@
         // IATO Staff: the server stages the change in the Review Queue instead of applying it
         // (see ApplicantController::needsReview()) and says so in its response.
         const STAFF_REVIEW = @json($staffReview);
-        const REAL_BACKEND = ['college', 'is'].includes(R.scope);
+        const RECORD_DIVISION = IarisAdmissionCatalog.recordDivisions[R.scope];
+        const REAL_BACKEND = ['college', 'is', 'graduate', 'law', 'ipace', 'eteeap'].includes(R.scope);
         // Put a "waiting for review" tag under the person's name in their table row
         function tagRow(a, kind, rq) {
             const row = R.rows.find(r => Number(r.dataset.index) === R.items.indexOf(a));
@@ -270,10 +267,11 @@
 
         // Offer the complete admission catalog even on empty pages; keep imported groups available.
         function fillChoices() {
-            const labels = R.labels();
+            const labels = RECORD_DIVISION ? {group: 'Division', program: 'Program'} : R.labels();
             $('recGroupLabel').textContent = labels.group;
             $('recProgramLabel').textContent = labels.program;
-            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...IarisAdmissionCatalog.groups(R.scope), ...(R.groupOrder || []), ...R.items.map(a => R.toForm(a).group)]).map(v => new Option(v, v)));
+            $('recGroup').replaceChildren(new Option('Choose…', ''), ...unique([...(RECORD_DIVISION ? [RECORD_DIVISION] : [...IarisAdmissionCatalog.groups(R.scope), ...(R.groupOrder || [])]), ...R.items.map(a => R.toForm(a).group)]).map(v => new Option(v, v)));
+            if (RECORD_DIVISION) $('recGroup').value = RECORD_DIVISION;
             fillPrograms();
             $('recStatus').value = 'Pending';
             fillYears();
@@ -287,9 +285,9 @@
             const noStrand = school && group && !group.endsWith('Senior High');
             select.closest('.col-sm-6').classList.toggle('d-none', !!noStrand);
             select.required = !noStrand;
-            $('recProgramLabel').textContent = school ? 'Strand' : R.labels().program;
+            $('recProgramLabel').textContent = school ? 'Strand' : (RECORD_DIVISION ? 'Program' : R.labels().program);
             $('recProgramHint').textContent = group ? '' : (school ? 'Choose a level first.' : 'Choose a college or unit first.');
-            const choices = noStrand ? ['General Curriculum'] : (IarisAdmissionCatalog.programs(R.scope, group) || []);
+            const choices = noStrand ? ['General Curriculum'] : (RECORD_DIVISION ? IarisAdmissionCatalog.units[RECORD_DIVISION] : (IarisAdmissionCatalog.programs(R.scope, group) || []));
             // Preserve legacy imported values on edit without offering unrelated programs on new records.
             const values = [...new Set([...choices, ...(existing ? [existing] : [])])];
             select.replaceChildren(new Option('Choose…', ''), ...values.map(v => new Option(v, v)));
@@ -322,6 +320,7 @@
             const f = editing ? R.toForm(editing) : null;
             fillChoices();
             $('recordForm').reset();
+            if (RECORD_DIVISION) { $('recGroup').value = RECORD_DIVISION; fillPrograms(); }
             $('recordForm').classList.remove('was-validated');
             $('recExamDate').required = false; $('recExamTime').required = false;
             $('recordTitle').textContent = editing ? 'Edit applicant' : 'Add applicant';

@@ -36,7 +36,7 @@
     // The Principal's table: coloured Level chips, the scholarship tag under the number, counts on the pills
     $levelChips = ['Preschool' => ['#F1E7FF', '#7C3AED'], 'Grade School' => ['#E6EEFF', '#2558D9'], 'Junior High' => ['#FFF1DC', '#B96000'], 'Senior High' => ['#E3F4EC', '#00674F']];
     $canEdit = ! $isRegistrar && ! $isPrincipal && ! $isGradChair && ! $isDean && match ($scope) {
-        'college', 'is', 'scholars' => auth()->user()->canEdit($scope),
+        'college', 'is', 'graduate', 'law', 'ipace', 'eteeap', 'scholars' => auth()->user()->canEdit($scope),
         default => auth()->user()->canAccess('edit'),
     };
 
@@ -849,7 +849,9 @@
             items: APPLICANTS, rows, tbody: 'applicantRows', render, drawer, current: () => drawerApplicant,
             labels: currentLabels, groupOrder: GROUP_ORDER, statuses: PAGE.statuses, statusLabels: PAGE.statusLabels, noun: PAGE.noun,
             scope: @json($scope),
-            toForm: a => a,   // the rows already use the form's field names
+            // Display columns may contain a degree level, delivery mode or assessment status.
+            // The form edits the actual stored program instead.
+            toForm: a => IarisAdmissionCatalog.recordForm(@json($scope), a),
         };
 
         // ?open=APP-2026-0381 opens that person's drawer (the Applicants master list's "Open in records" links here)

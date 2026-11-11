@@ -24,6 +24,7 @@ class ApplicantEditFlow
             'graduate_school' => 'Graduate Programs',
             'eteeap' => 'ETEEAP',
             'law' => 'College of Law',
+            'ipace' => 'iPACE',
             default => 'Applicants',
         };
     }
@@ -169,7 +170,7 @@ class ApplicantEditFlow
         }
 
         $groupBefore = $applicant->level === 'college' ? $applicant->college : (ApplicantRecords::IS_SUB_LEVELS[$applicant->sub_level] ?? $applicant->sub_level);
-        if ($groupBefore !== $validated['group']) {
+        if (in_array($applicant->level, ['college', 'is'], true) && $groupBefore !== $validated['group']) {
             $diff[] = [$applicant->level === 'college' ? 'College' : 'Group', $groupBefore ?? '—', $validated['group']];
         }
 

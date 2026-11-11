@@ -77,6 +77,8 @@ class User extends Authenticatable
     // Whether the user can edit a module. Admins can edit everything; other users must have access_type 'editor' and a RolePermission with can_edit = true.
     public function canEdit(string $module): bool
     {
+        $module = $module === 'graduate_school' ? 'graduate' : $module;
+
         if ($this->isToic()) {
             return false;
         }
