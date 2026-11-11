@@ -163,6 +163,10 @@ Route::get('/chancellor/{page}', fn ($page) => redirect('/executive/'.$page))->w
 // Settings, for every role (sections depend on the role: see SettingsController)
 Route::get('/settings', [SettingsController::class, 'index'])->middleware('auth')->name('settings');
 
+Route::post('/office-reports', [CollegeController::class, 'generateOfficeReport'])->middleware('auth')->name('office.reports.generate');
+Route::get('/office-reports/preview/{key}', [CollegeController::class, 'previewOfficeReport'])->middleware('auth')->name('office.reports.preview');
+Route::get('/office-reports/{report}', [CollegeController::class, 'downloadOfficeReport'])->middleware('auth')->whereNumber('report')->name('office.reports.download');
+
 // College dashboard for Deans and Program Chairs (their own sidebar: see layouts/app.blade.php)
 Route::get('/college', [CollegeController::class, 'dashboard'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.dashboard');
 Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.applicants');

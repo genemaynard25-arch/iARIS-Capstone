@@ -22,6 +22,9 @@ class ApplicantController extends Controller
     public function index()
     {
         $user = auth()->user();
+        if ($user->isDeanOrChair() && ! $user->isAdmin()) {
+            return redirect()->route('college.applicants');
+        }
 
         return view('applicants.pipeline', [
             'academicYear' => ApplicantRecords::academicYear(),

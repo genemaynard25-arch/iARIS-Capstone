@@ -343,7 +343,7 @@
         // Chart colours (checked with the dataviz palette validator).
         const COLORS = {
             single: '#00674F',                                        // one-series charts
-            locations: @json(\App\Support\AddressClassifier::COLORS),
+            locations: @json(\App\Support\AddressClassifier::colors()),
             years: ['#7FC4AB', '#2E8A6E', '#00503D'],                 // ordered: oldest (light) → newest (dark)
             grid: '#E7ECEA',
             text: 'rgba(26, 43, 38, 0.6)',
@@ -420,7 +420,11 @@
 
         // ---- Locations (donut with its own legend, or one-colour bars) ----
         function drawLocations(type) {
-            const { labels, values } = CHARTS.locations;
+            const provinceOrder = @json(\App\Support\AddressClassifier::GROUPS);
+            const counts = Object.fromEntries(CHARTS.locations.labels.map((label, i) => [label, CHARTS.locations.values[i]]));
+            const labels = provinceOrder.filter(label => counts[label] > 0);
+            const values = labels.map(label => counts[label]);
+            CHARTS.locations = { labels, values };
             const total = values.reduce((a, b) => a + b, 0);
             document.getElementById('locationsDonutExtras').classList.toggle('d-none', type !== 'donut');
             document.getElementById('locationsBox').classList.toggle('province-chart-plot--bar', type !== 'donut');
@@ -440,7 +444,7 @@
                     li.children[1].textContent = label;
                     li.children[2].append(format(values[i]) + ' ');
                     const percentage = document.createElement('small');
-                    percentage.textContent = '(' + (total > 0 ? Number((values[i] / total * 100).toFixed(1)) : 0) + '%)';
+                    percentage.textContent = '(' + (total > 0 ? (values[i] / total * 100 < 0.1 ? '<0.1' : (values[i] / total * 100 > 99.9 && values[i] < total ? '>99.9' : Number((values[i] / total * 100).toFixed(1)))) : 0) + '%)';
                     li.children[2].append(percentage);
                     return li;
                 }));

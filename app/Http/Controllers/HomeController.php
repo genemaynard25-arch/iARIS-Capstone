@@ -116,7 +116,7 @@ class HomeController extends Controller
         $reserved = AdmissionStats::byLevel()->sum('reserved');
         $enrolled = $summary['enrolledCurrent'];
         $change = $total - $previous;
-        $pending = Applicant::whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
+        $pending = Applicant::where('school_year', AdmissionStats::currentSchoolYear())->whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
         $addedThisWeek = $this->weeklyApplicants()->count();
         $none = $total === 0;
 
@@ -189,7 +189,7 @@ class HomeController extends Controller
 
         $paid = ApplicantRecords::paidFees('reservation_fee');
 
-        return Applicant::whereNull('archived_at')->latest()->take(5)->get()
+        return Applicant::where('school_year', AdmissionStats::currentSchoolYear())->whereNull('archived_at')->latest()->take(5)->get()
             ->map(function (Applicant $a) use ($tones, $paid) {
                 $status = ApplicantRecords::status($a, isset($paid[$a->id]));
                 $program = $a->program_or_track ?: '—';

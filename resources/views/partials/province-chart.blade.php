@@ -16,9 +16,9 @@
     <ul class="province-chart-legend list-unstyled mb-0" id="{{ $provinceIds['legend'] }}">
         @foreach ($provinceCounts as $province => $count)
             <li>
-                <i style="background: {{ \App\Support\AddressClassifier::COLORS[$province] ?? '#859791' }}" aria-hidden="true"></i>
+                <i style="background: {{ \App\Support\AddressClassifier::colors()[$province] ?? '#859791' }}" aria-hidden="true"></i>
                 <span>{{ $province }}</span>
-                <strong>{{ number_format($count) }} <small>({{ round($count / $provinceTotal * 100, 1) }}%)</small></strong>
+                <strong>{{ number_format($count) }} <small>({{ $count / $provinceTotal * 100 < 0.1 ? '<0.1' : ($count / $provinceTotal * 100 > 99.9 && $count < $provinceTotal ? '>99.9' : round($count / $provinceTotal * 100, 1)) }}%)</small></strong>
             </li>
         @endforeach
     </ul>

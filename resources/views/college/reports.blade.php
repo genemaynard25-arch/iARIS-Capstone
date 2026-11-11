@@ -38,6 +38,7 @@
 @endif
 
 @section('content')
+    @if ($needsProgramAssignment ?? false)<div class="alert alert-info">No program is assigned to this account. Ask IATO to set its assigned college and program in User Accounts.</div>@endif
     {{-- From IATO --}}
     <div class="{{ (auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean') ? 'd-flex flex-wrap align-items-baseline gap-2 mb-2 director-report-heading' : 'ar-report-section mb-3' }}">
         <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-inbox text-primary me-1"></i> From IATO</h2>
@@ -73,7 +74,7 @@
     {{-- Your reports --}}
     <div class="ar-report-history card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 rounded-top-4 d-flex justify-content-between align-items-center px-4 pt-4 pb-2">
-            <div><h2 class="fs-6 fw-bold mb-0">Report Generation History</h2><p class="text-body-secondary mb-0">The reports you generated, kept for 90 days</p></div>
+            <div><h2 class="fs-6 fw-bold mb-0">Report Generation History</h2><p class="text-body-secondary mb-0">Saved report snapshots; downloads retain the data from generation time</p></div>
         </div>
         <div class="table-responsive">
             <table class="table align-middle mb-0">
@@ -182,41 +183,39 @@
         }
 
         // ---- Download as PDF (print window), Excel or CSV ----
-        function download(format, d) {
-            const name = d.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'report';
-            const save = (blob, file) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file; a.click(); URL.revokeObjectURL(a.href); };
-            const table = `<table border="1"><tr><th colspan="${d.head.length}" style="text-align:left">${esc(d.title)}</th></tr><tr><td colspan="${d.head.length}">${esc(d.sub)}</td></tr><tr>${d.head.map(h => `<th style="background:#EAF5F0">${esc(h)}</th>`).join('')}</tr>${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
-            if (format === 'csv') {
-                const csv = [[d.title], [d.sub], [], d.head, ...d.rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-                save(new Blob(['﻿' + csv], { type: 'text/csv' }), name + '.csv');
-                return toast('Downloaded as CSV.');
-            }
-            if (format === 'excel') {
-                save(new Blob(['﻿<html><head><meta charset="utf-8"></head><body>' + table + '</body></html>'], { type: 'application/vnd.ms-excel' }), name + '.xls');
-                return toast('Downloaded as Excel.');
-            }
-            const w = window.open('', '_blank');
-            if (!w) return toast('Allow pop-ups to open the PDF.');
-            w.document.write(`<!doctype html><title>${esc(d.title)}</title><style>body{font-family:sans-serif;padding:24px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}</style>${table}`);
-            w.document.close();
-            w.print();
-            toast('Print window opened. Choose "Save as PDF".');
+        async function generate(key, format = 'XLSX', startDownload = true) {
+            const res = await fetch(@json(route('office.reports.generate')), {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
+                body: JSON.stringify({key, format}),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Could not generate this report.');
+            HISTORY.unshift(result.history);
+            drawHistory();
+            toast('Report saved. You can download this snapshot again after refreshing.');
+            if (startDownload) window.location = result.history.download + '?format=' + format;
+            return result.history;
         }
         // A "Download" button with PDF / Excel / CSV
-        function downloadMenu(getData) {
+        function downloadMenu(source) {
             const wrap = document.createElement('div');
             wrap.className = 'dropdown d-inline-block';
             wrap.innerHTML = `<button type="button" class="btn btn-sm btn-light border fw-semibold text-nowrap dropdown-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"><i class="bi bi-download me-1"></i> Download</button>
                 <ul class="dropdown-menu shadow-sm">
                     <li><h6 class="dropdown-header">Download as</h6></li>
-                    <li><button type="button" class="dropdown-item" data-format="pdf"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF <span class="small text-body-secondary">· print, then Save as PDF</span></button></li>
+                    <li><button type="button" class="dropdown-item" data-format="pdf"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF</button></li>
                     <li><button type="button" class="dropdown-item" data-format="excel"><i class="bi bi-file-earmark-excel text-success me-2"></i>Excel</button></li>
                     <li><button type="button" class="dropdown-item" data-format="csv"><i class="bi bi-filetype-csv text-primary me-2"></i>CSV</button></li>
                 </ul>`;
             // Afterwards focus goes back to the button, so Escape still closes the drawer
-            wrap.querySelectorAll('[data-format]').forEach(b => b.addEventListener('click', () => {
-                download(b.dataset.format, getData());
-                wrap.querySelector('.dropdown-toggle').focus();
+            wrap.querySelectorAll('[data-format]').forEach(b => b.addEventListener('click', async () => {
+                const format = {excel: 'XLSX', pdf: 'PDF', csv: 'CSV'}[b.dataset.format];
+                b.disabled = true;
+                try {
+                    if (source.id) window.location = source.download + '?format=' + format;
+                    else await generate(source.template, format);
+                } catch (error) { toast(error.message); }
+                finally { b.disabled = false; }
             }));
             return wrap;
         }
@@ -241,7 +240,7 @@
             $('reportTitle').textContent = r.title;
             $('reportSub').textContent = `From ${r.by} · ${r.at}`;
             $('reportMessage').textContent = r.message;
-            $('reportDownload').replaceChildren(downloadMenu(() => build(r.kind, r.title)));
+            $('reportDownload').replaceChildren(downloadMenu({template: r.kind}));
             $('reportAsk').href = `${MESSAGES}?new=1&subject=${encodeURIComponent('About: ' + r.title)}`;
             drawer.show();
             drawReceived();
@@ -249,31 +248,35 @@
 
         // ---- Your reports ----
         function drawHistory() {
+            if (!HISTORY.length) { $('history').innerHTML = '<tr><td colspan="4" class="text-body-secondary px-4 py-3">No generated reports yet.</td></tr>'; return; }
             $('history').replaceChildren(...HISTORY.map(h => {
                 const tr = document.createElement('tr');
                 if (h.isNew) tr.className = 'table-success';
-                tr.innerHTML = `<td class="ps-4"><div class="fw-semibold">${esc(TEMPLATES[h.template][0])}</div><div class="small text-body-secondary">${esc(LABEL)}</div></td><td class="small">${esc(h.period)}</td><td class="small text-body-secondary text-nowrap">${esc(h.at)}</td><td class="pe-4 text-end"></td>`;
-                tr.lastElementChild.appendChild(downloadMenu(() => build(h.template, TEMPLATES[h.template][0])));
+                tr.innerHTML = `<td class="ps-4"><div class="fw-semibold">${esc(h.name)}</div><div class="small text-body-secondary">${esc(LABEL)}</div></td><td class="small">${esc(h.period)}</td><td class="small text-body-secondary text-nowrap">${esc(h.at)}</td><td class="pe-4 text-end"></td>`;
+                tr.lastElementChild.appendChild(downloadMenu(h));
                 return tr;
             }));
         }
-        function generate(key) {
-            HISTORY.forEach(h => h.isNew = false);
-            HISTORY.unshift({ template: key, period: YEARS[3], at: now(), isNew: true });
-            drawHistory();
-            toast(`${TEMPLATES[key][0]} is ready. Click Download to pick PDF, Excel, or CSV. (Demo only — not saved yet.)`);
-        }
-        document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => generate(b.dataset.template)));
+        document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            try { await generate(b.dataset.template); } catch (error) { toast(error.message); } finally { b.disabled = false; }
+        }));
 
         // ---- Preview: the report's table before you generate it ----
         const previewDrawer = bootstrap.Offcanvas.getOrCreateInstance($('previewDrawer'));
-        document.querySelectorAll('[data-preview]').forEach(b => b.addEventListener('click', () => {
-            const key = b.dataset.preview, d = build(key, TEMPLATES[key][0]);
+        document.querySelectorAll('[data-preview]').forEach(b => b.addEventListener('click', async () => {
+            const key = b.dataset.preview;
+            let d;
+            try {
+                const response = await fetch(@json(url('/office-reports/preview')) + '/' + encodeURIComponent(key), {headers: {'Accept': 'application/json'}});
+                d = await response.json();
+                if (!response.ok) throw new Error(d.message || 'Could not load the preview.');
+            } catch (error) { toast(error.message); return; }
             $('previewTitle').textContent = d.title;
             $('previewSub').textContent = d.sub;
             $('previewTable').innerHTML = `<thead class="table-light"><tr>${d.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-            $('previewGenerate').onclick = () => { previewDrawer.hide(); generate(key); };
-            $('previewDownload').replaceChildren(downloadMenu(() => build(key, TEMPLATES[key][0])));
+            $('previewGenerate').onclick = async () => { previewDrawer.hide(); try { await generate(key); } catch (error) { toast(error.message); } };
+            $('previewDownload').replaceChildren(downloadMenu({template: key}));
             previewDrawer.show();
         }));
 

@@ -33,6 +33,7 @@
 @endif
 
 @section('content')
+    @if ($needsProgramAssignment ?? false)<div class="alert alert-info">No program is assigned to this account. Ask IATO to set its assigned college and program in User Accounts.</div>@endif
     {{-- Same id as the Executive Analytics, so "Export PDF" prints every tab (iaris.css section 9) --}}
     <div id="executiveReport">
         <div class="ar-tab-bar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">

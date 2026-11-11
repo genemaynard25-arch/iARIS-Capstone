@@ -33,6 +33,7 @@
 @endpush
 
 @section('content')
+    @if ($needsProgramAssignment ?? false)<div class="alert alert-info">No program is assigned to this account. Ask IATO to set its assigned college and program in User Accounts.</div>@endif
     {{-- Every applicant this AY, by status --}}
     <div class="admin-stat-grid row row-cols-2 row-cols-xl-4 g-3 mb-4" id="tiles"></div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\ApplicantRecords;
+use App\Support\RegistrarData;
 
 class CollegeRecordController extends Controller
 {
@@ -14,22 +15,22 @@ class CollegeRecordController extends Controller
     public function index()
     {
         $user = auth()->user();
+        if ($user->role === 'program_chair') {
+            return $user->isGradChair() ? app(GraduateRecordController::class)->index() : app(CollegeController::class)->applicants(request());
+        }
 
-        $students = collect(ApplicantRecords::forLevel("college"))
-            ->map(fn($a) => $a + ["year" => "—"])
+        $students = collect(ApplicantRecords::forLevel('college'))
+            ->map(fn ($a) => $a + ['year' => '—'])
             ->when($user->role === 'dean', fn ($rows) => $rows
-                ->where('college', CollegeController::college()['code'])->values())
-            ->when($user->role === 'program_chair' && $user->assigned_college,
-                fn ($rows) => $rows->where('college', $user->assigned_college)->values())
+                ->filter(fn ($row) => CollegeController::matchesCollege($row['college'], CollegeController::college()['code']))->values())
             ->all();
 
-        return view("applicants.index", [
-            "scope" => "college",
-            "academicYear" => ApplicantRecords::academicYear(),
-            "periodLabel" => now()->format("F Y"),
-            "applicants" => \App\Support\RegistrarData::forRecords($students, 'college'),
+        return view('applicants.index', [
+            'scope' => 'college',
+            'academicYear' => ApplicantRecords::academicYear(),
+            'periodLabel' => now()->format('F Y'),
+            'applicants' => RegistrarData::forRecords($students, 'college'),
             'groupOrder' => $user->role === 'dean' ? [CollegeController::college()['code']] : ['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'],
         ]);
     }
 }
-

@@ -102,6 +102,7 @@ class AccountController extends Controller
             'filterDepartments' => collect($users)->pluck('department')->filter()->unique()->sort()->values()->all(),
             'filterRoles' => collect($users)->pluck('role')->unique()->all(),
             'colleges' => $this->colleges,
+            'programOptions' => CollegeController::programOptions(),
         ]);
     }
 
@@ -122,7 +123,8 @@ class AccountController extends Controller
                 Rule::in(array_diff(array_keys($this->roles), ['admin'])),
             ],
             'department' => ['required', Rule::in($this->departments)],
-            'assigned_college' => ['nullable', Rule::in($this->colleges)],
+            'assigned_college' => ['nullable', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in($this->colleges)],
+            'assigned_program' => ['nullable', 'string', 'max:150', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in(CollegeController::programOptions())],
         ]);
 
         $tempPassword = Str::password(12);
@@ -135,9 +137,10 @@ class AccountController extends Controller
             'department' => $validated['department'],
             'status' => 'Pending',
             'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
+            'assigned_program' => $validated['role'] === 'program_chair' && $validated['department'] !== 'Graduate Programs' ? ($validated['assigned_program'] ?? null) : null,
             'assigned_level' => $validated['role'] === 'registrar'
                 ? ($validated['department'] === 'IS Registrar' ? 'is' : 'college')
-                : null,
+                : ($validated['role'] === 'program_chair' ? ($validated['department'] === 'Graduate Programs' ? 'graduate_school' : 'college') : null),
             // Only IATO Staff edit records at all (everyone else here is a viewer - see canEdit()).
             'access_type' => $validated['role'] === 'iato_staff' ? 'editor' : 'viewer',
         ]);
@@ -171,10 +174,11 @@ class AccountController extends Controller
             ],
             'department' => ['required', Rule::in($this->departments)],
             'status' => ['required', Rule::in(array_keys($this->statuses))],
-            'assigned_college' => ['nullable', Rule::in($this->colleges)],
+            'assigned_college' => ['nullable', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in($this->colleges)],
+            'assigned_program' => ['nullable', 'string', 'max:150', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in(CollegeController::programOptions())],
         ]);
 
-        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college', 'assigned_level']);
+        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college', 'assigned_program', 'assigned_level']);
 
         $user->update([
             'name' => trim($validated['first'].' '.$validated['last']),
@@ -182,9 +186,10 @@ class AccountController extends Controller
             'department' => $validated['department'],
             'status' => $validated['status'],
             'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
+            'assigned_program' => $validated['role'] === 'program_chair' && $validated['department'] !== 'Graduate Programs' ? ($validated['assigned_program'] ?? null) : null,
             'assigned_level' => $validated['role'] === 'registrar'
                 ? ($validated['department'] === 'IS Registrar' ? 'is' : 'college')
-                : $user->assigned_level,
+                : ($validated['role'] === 'program_chair' ? ($validated['department'] === 'Graduate Programs' ? 'graduate_school' : 'college') : $user->assigned_level),
             'access_type' => $validated['role'] === 'iato_staff' ? 'editor' : 'viewer',
         ]);
 
@@ -284,6 +289,8 @@ class AccountController extends Controller
             'lastLogin' => $user->last_login_at?->toIso8601String(),
             'joined' => $user->created_at?->toDateString(),
             'permanent' => $user->role === 'admin',
+            'assignedCollege' => $user->assigned_college,
+            'assignedProgram' => $user->assigned_program,
         ];
     }
 }

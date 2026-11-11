@@ -17,6 +17,9 @@ class AnalyticsController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        if ($user->isDeanOrChair() && ! $user->isAdmin()) {
+            return redirect()->route($request->query('tab') === 'reports' ? 'college.reports' : 'college.analytics');
+        }
         $tabs = array_keys(array_filter([
             'overview' => $user->canAccess('analytics'),
             'insights' => $user->canAccess('analytics'),
@@ -145,6 +148,7 @@ class AnalyticsController extends Controller
 
     public function reanalyze(Request $request, AiAssistant $ai)
     {
+        abort_if(auth()->user()->isDeanOrChair() && ! auth()->user()->isAdmin(), 403);
         $summary = AdmissionStats::summary();
         $rows = AdmissionStats::byLevel()->filter(fn (array $r) => $r['pct_change'] !== null);
 

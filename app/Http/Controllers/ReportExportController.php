@@ -17,6 +17,7 @@ class ReportExportController extends Controller
 {
     public function generate(Request $request): JsonResponse
     {
+        abort_if($request->user()->isDeanOrChair() && ! $request->user()->isAdmin(), 403);
         $data = $request->validate([
             'key' => 'nullable|string|max:50', 'format' => 'required|in:XLSX,PDF,Print',
             'period' => 'required|string|max:255', 'year' => ['nullable', 'regex:/^\d{4}-\d{4}$/'],
@@ -64,6 +65,7 @@ class ReportExportController extends Controller
 
     public function preview(Request $request, string $key): JsonResponse
     {
+        abort_if($request->user()->isDeanOrChair() && ! $request->user()->isAdmin(), 403);
         $data = $request->validate(['period' => 'required|in:Current School Year,Previous School Year', 'year' => ['nullable', 'regex:/^\d{4}-\d{4}$/']]);
         $source = app(ReportController::class)->data($data['period'], $data['year'] ?? null);
         $report = collect($source['sections'])->pluck('reports')->flatten(1)->firstWhere('key', $key);
@@ -94,11 +96,26 @@ class ReportExportController extends Controller
         $saved = DB::table('generated_reports')->where('id', $report)->first();
         abort_unless($saved, 404);
         abort_unless($request->user()->isAdmin() || $saved->user_id === $request->user()->id, 403);
+        if (str_starts_with($saved->template_key ?? '', 'office-') && $request->has('format')) {
+            $saved->format = $request->validate(['format' => 'required|in:XLSX,PDF,CSV'])['format'];
+        }
         $tables = json_decode($saved->snapshot, true, 512, JSON_THROW_ON_ERROR);
         AuditLog::record('export', 'Reports', $request->boolean('preview') ? 'Report Viewed' : 'Report Downloaded', ($request->boolean('preview') ? "Viewed report {$report}" : "Downloaded report {$report}").": {$saved->title}; {$saved->format}.");
         $filename = Str::slug($saved->title).'-'.($saved->school_year ?? 'custom');
         if ($request->boolean('preview')) {
             return view('reports.print', ['saved' => $saved, 'tables' => $tables, 'print' => false]);
+        }
+        if ($saved->format === 'CSV') {
+            return response()->streamDownload(function () use ($tables) {
+                $stream = fopen('php://output', 'w');
+                fwrite($stream, "\xEF\xBB\xBF");
+                foreach ($tables as $table) {
+                    foreach ([[$table['title']], $table['columns'], ...$table['rows']] as $row) {
+                        fputcsv($stream, array_map(fn ($value) => preg_match('/^[\s]*[=+@-]/', (string) $value) ? "'".$value : $value, $row), escape: '');
+                    }
+                }
+                fclose($stream);
+            }, $filename.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
         }
         if ($saved->format === 'Print') {
             return view('reports.print', ['saved' => $saved, 'tables' => $tables, 'print' => true]);

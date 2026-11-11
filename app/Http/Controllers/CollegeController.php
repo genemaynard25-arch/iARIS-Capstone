@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
+use App\Models\AuditLog;
 use App\Support\AdmissionStats;
 use App\Support\ApplicantRecords;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CollegeController extends Controller
@@ -166,6 +168,30 @@ class CollegeController extends Controller
         return ['code' => $code] + self::COLLEGES[$code];
     }
 
+    public static function programOptions(): array
+    {
+        $catalog = collect(self::COLLEGES)->pluck('programs')->flatMap(fn ($programs) => array_column($programs, 'name'));
+
+        return $catalog->merge(Applicant::whereNull('archived_at')->distinct()->pluck('program_or_track'))->filter()->unique()->sort()->values()->all();
+    }
+
+    private static function inCollege(Applicant $applicant, string $code): bool
+    {
+        if ($applicant->level !== 'college') {
+            return true;
+        }
+
+        return self::matchesCollege($applicant->college ?: ApplicantRecords::collegeFor($applicant->program_or_track ?? ''), $code);
+    }
+
+    public static function matchesCollege(?string $value, string $code): bool
+    {
+        $normalize = fn ($name) => preg_replace('/[^A-Z0-9]/', '', strtoupper((string) $name));
+        $actual = $normalize($value);
+
+        return in_array($actual, [$normalize($code), $normalize(self::COLLEGES[$code]['name'] ?? '')], true);
+    }
+
     /** Where these pages live for the signed-in user: /principal for the IS Principal, /college otherwise. */
     public static function base(): string
     {
@@ -198,7 +224,15 @@ class CollegeController extends Controller
     {
         $level = self::levelFor($collegeCode);
         $applicants = Applicant::whereIn('level', $collegeCode === 'IPACE' ? ['ipace', 'eteeap'] : [$level])
-            ->whereNull('archived_at')->get();
+            ->whereNull('archived_at')->get()->filter(fn ($a) => self::inCollege($a, $collegeCode));
+
+        if ($level === 'college' && ! auth()->user()->isProgramChair()) {
+            foreach ($applicants->pluck('program_or_track')->filter()->unique() as $name) {
+                if (! collect($programs)->contains(fn ($p) => in_array(mb_strtolower(trim($name)), array_map(fn ($value) => mb_strtolower(trim($value)), (array) ($p['match'] ?? $p['name'])), true))) {
+                    $programs['P-'.substr(sha1($name), 0, 8)] = ['name' => $name];
+                }
+            }
+        }
 
         if ($collegeCode === 'IPACE') {
             $programs = [];
@@ -269,7 +303,7 @@ class CollegeController extends Controller
             return true;
         }
 
-        return in_array(trim((string) $a->program_or_track), array_map(fn ($name) => trim((string) $name), (array) ($p['match'] ?? $p['name'])), true);
+        return in_array(mb_strtolower(trim((string) $a->program_or_track)), array_map(fn ($name) => mb_strtolower(trim((string) $name)), (array) ($p['match'] ?? $p['name'])), true);
     }
 
     // An Integrated School applicant's sub-level; older rows without one are read from the program column
@@ -310,9 +344,11 @@ class CollegeController extends Controller
             default => 'Pending',
         };
 
-        return Applicant::where('level', $level)
+        $paid = ApplicantRecords::paidFees('reservation_fee');
+
+        return Applicant::where('level', $level)->where('school_year', self::schoolYears()[3])->whereNull('archived_at')
             ->get()
-            ->filter(fn ($a) => self::groupOf($a, $scope) !== null)
+            ->filter(fn ($a) => self::inCollege($a, $collegeCode) && self::groupOf($a, $scope) !== null)
             ->map(fn ($a) => [
                 'id' => $a->reference_number,
                 'name' => "{$a->last_name}, {$a->first_name}",
@@ -328,7 +364,7 @@ class CollegeController extends Controller
                 'phone' => $a->contact_number,
                 'address' => $a->address,
                 'exam' => null,
-                'paid' => null,
+                'paid' => isset($paid[$a->id]) ? (string) ($paid[$a->id][1] ?? 'Paid; date not recorded') : null,
             ])
             ->sortByDesc('applied')
             ->values()
@@ -378,11 +414,14 @@ class CollegeController extends Controller
     {
         $isChair = auth()->user()->isProgramChair();
         $college = self::college();
+        $assignedProgram = auth()->user()->assigned_program;
+        $chairPrograms = $assignedProgram && auth()->user()->assigned_college ? ['ASSIGNED' => ['name' => $assignedProgram]] : [];
 
         return [
+            'needsProgramAssignment' => $isChair && $chairPrograms === [],
             'isChair' => $isChair,
             // Short name of what you see: "CITE", "Integrated School", or a program chair's program
-            'label' => $isChair ? 'BS Computer Science' : ($college['label'] ?? $college['code']),
+            'label' => $isChair ? ($assignedProgram ?: 'Program not assigned') : ($college['label'] ?? $college['code']),
             'college' => ['code' => $college['code'], 'name' => $college['name'], 'subtitle' => $college['subtitle'] ?? $college['name']],
             // What the groups are called ("program" or "level") and what you see ("your college", "your school", "iPACE and ETEEAP")
             'word' => $college['word'] ?? 'program',
@@ -396,7 +435,7 @@ class CollegeController extends Controller
             // The address of these pages: /college for deans and program chairs, /principal for the IS Principal
             'base' => self::base(),
             'programs' => $isChair
-                ? self::realPrograms('CITE', ['BSCS' => self::COLLEGES['CITE']['programs']['BSCS']])
+                ? self::realPrograms($college['code'], $chairPrograms)
                 : self::realPrograms($college['code'], $college['programs']),
             'years' => array_map(fn ($year) => 'AY '.substr($year, 0, 4).'–'.substr($year, 7, 2), self::schoolYears()),
         ];
@@ -484,7 +523,7 @@ class CollegeController extends Controller
                 $applicants = Applicant::where('school_year', $year)
                     ->whereIn('level', $levels)->whereNull('archived_at')->get()
                     ->when($deanCollege && $levels === ['college'], fn ($rows) => $rows->filter(
-                        fn ($a) => ($a->college ?: ApplicantRecords::collegeFor($a->program_or_track ?? '')) === $deanCollege
+                        fn ($a) => self::inCollege($a, $deanCollege)
                     ));
                 $reserved = $applicants->pluck('id')->intersect(array_keys(ApplicantRecords::paidFees('reservation_fee')))->count();
 
@@ -508,7 +547,7 @@ class CollegeController extends Controller
     {
         $applicants = Applicant::whereIn('level', $common['college']['code'] === 'IPACE' ? ['ipace', 'eteeap'] : [self::levelFor($common['college']['code'])])
             ->where('school_year', self::schoolYears()[3])->whereNull('archived_at')->get()
-            ->filter(fn ($a) => self::groupOf($a, $common['programs']) !== null);
+            ->filter(fn ($a) => self::inCollege($a, $common['college']['code']) && self::groupOf($a, $common['programs']) !== null);
         $ids = $applicants->pluck('id');
         $paid = fn ($fee) => $ids->intersect(array_keys(ApplicantRecords::paidFees($fee)))->count();
 
@@ -535,9 +574,88 @@ class CollegeController extends Controller
             // a 'paid' value (payments aren't tracked yet), so this is honestly empty outside Director.
             'paidRows' => array_values(array_map(fn ($a) => [$a['id'], $a['name'], $common['programs'][$a['program']]['name'] ?? $a['program_name'] ?? $a['program'], $a['paid']],
                 array_filter(auth()->user()->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::realApplicantsIn($common['programs'], $common['college']['code']), fn ($a) => $a['paid']))),
-            // Reports you generated before (kept for 90 days)
-            'history' => [],
+            'history' => DB::table('generated_reports')->where('user_id', auth()->id())->where('template_key', 'like', 'office-%')->latest('id')->limit(100)->get()->map(fn ($row) => self::officeHistoryRow($row))->all(),
         ]);
+    }
+
+    private function scopedReport(string $key): array
+    {
+        $user = auth()->user();
+        abort_unless($user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector(), 403);
+        $common = $this->common();
+        abort_if($common['needsProgramAssignment'], 422, 'Ask IATO to assign this account to a college and program first.');
+        $names = ['programs' => 'Applicant Summary', 'paid' => 'Paid Reservations', 'trend' => 'Enrollment Trends', 'funnel' => 'Conversion Funnel'];
+        abort_unless(isset($names[$key]), 404);
+        $programs = $common['programs'];
+        $sum = fn ($field, $i) => array_sum(array_map(fn ($p) => $p[$field][$i], $programs));
+        $percentage = fn ($value, $base) => $base > 0 ? round($value / $base * 100, 1).'%' : 'N/A';
+        $year = self::schoolYears()[3];
+        if ($key === 'programs') {
+            $columns = ['Program / Level', 'Pending', 'Submitted', 'Paid Reservation', 'Applicants'];
+            $rows = array_values(array_map(fn ($p) => [$p['name'], ...$p['status'], $p['applicants'][3]], $programs));
+        } elseif ($key === 'paid') {
+            $columns = ['Applicant no.', 'Name', 'Program / Level', 'Paid on'];
+            $applicants = $user->isDirector() ? array_merge(...array_values(self::directorApplicants())) : self::realApplicantsIn($programs, $common['college']['code']);
+            $rows = [];
+            foreach ($applicants as $a) {
+                if ($a['paid']) {
+                    $rows[] = [$a['id'], $a['name'], $programs[$a['program']]['name'] ?? $a['program_name'] ?? $a['program'], $a['paid']];
+                }
+            }
+        } elseif ($key === 'trend') {
+            $columns = ['Academic year', 'Applicants', 'Enrolled (completed applications)', 'Conversion'];
+            $rows = [];
+            foreach (self::schoolYears() as $i => $schoolYear) {
+                $rows[] = [$schoolYear, $sum('applicants', $i), $sum('enrolled', $i), $percentage($sum('enrolled', $i), $sum('applicants', $i))];
+            }
+        } else {
+            $columns = ['Step', 'Applicants', 'Share of applied'];
+            $rows = [];
+            foreach (['Applied', 'Took exam', 'Passed', 'Paid Reservation', 'Enrolled (completed applications)'] as $i => $stage) {
+                $rows[] = [$stage, $sum('funnel', $i), $percentage($sum('funnel', $i), $sum('funnel', 0))];
+            }
+        }
+
+        return ['title' => $names[$key].' — '.$common['label'], 'sub' => $common['label'].' · SY '.$year, 'head' => $columns, 'rows' => $rows, 'year' => $year];
+    }
+
+    private static function officeHistoryRow(object $row): array
+    {
+        return ['id' => $row->id, 'template' => substr($row->template_key, 7), 'name' => $row->title, 'period' => $row->period, 'at' => $row->created_at, 'download' => route('office.reports.download', $row->id)];
+    }
+
+    public function previewOfficeReport(string $key)
+    {
+        return response()->json($this->scopedReport($key));
+    }
+
+    public function generateOfficeReport(Request $request)
+    {
+        $data = $request->validate(['key' => 'required|in:programs,paid,trend,funnel', 'format' => 'required|in:XLSX,PDF,CSV']);
+        $table = $this->scopedReport($data['key']);
+        $id = DB::transaction(function () use ($request, $data, $table) {
+            $id = DB::table('generated_reports')->insertGetId([
+                'user_id' => $request->user()->id, 'generated_by_name' => $request->user()->name,
+                'template_key' => 'office-'.$data['key'], 'title' => $table['title'], 'recipient' => $request->user()->roleInfo()[0].' (self)',
+                'period' => 'AY '.$table['year'], 'school_year' => $table['year'], 'format' => $data['format'],
+                'snapshot' => json_encode([['title' => $table['title'], 'columns' => $table['head'], 'rows' => $table['rows']]], JSON_THROW_ON_ERROR), 'created_at' => now(),
+            ]);
+            AuditLog::record('report', 'Reports', 'Office Report Generated', 'Generated report '.$id.': '.$table['title'].'. Saved snapshot for the assigned scope.');
+
+            return $id;
+        });
+
+        return response()->json(['history' => self::officeHistoryRow(DB::table('generated_reports')->where('id', $id)->first())]);
+    }
+
+    public function downloadOfficeReport(Request $request, int $report)
+    {
+        $user = $request->user();
+        abort_unless($user->isAdmin() || $user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector(), 403);
+        $saved = DB::table('generated_reports')->where('id', $report)->first();
+        abort_unless($saved && str_starts_with($saved->template_key ?? '', 'office-'), 404);
+
+        return app(ReportExportController::class)->download($request, $report);
     }
 
     // Messages with IATO: the same page as the Executive Office's

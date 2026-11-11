@@ -26,7 +26,7 @@
     @if (array_sum($locationChart) > 0)
         <script>
             const LOCATION = @json(array_filter($locationChart, fn ($count) => $count > 0));
-            const PROVINCE_COLORS = @json(\App\Support\AddressClassifier::COLORS);
+            const PROVINCE_COLORS = @json(\App\Support\AddressClassifier::colors());
             new Chart(document.getElementById('dashboardLocationChart'), {
                 type: 'doughnut',
                 data: { labels: Object.keys(LOCATION), datasets: [{ data: Object.values(LOCATION), backgroundColor: Object.keys(LOCATION).map(label => PROVINCE_COLORS[label] || '#859791'), borderWidth: 0, hoverOffset: 4 }] },

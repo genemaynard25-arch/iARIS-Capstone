@@ -38,6 +38,7 @@
 @endif
 
 @section('content')
+    @if ($needsProgramAssignment ?? false)<div class="alert alert-info">No program is assigned to this account. Ask IATO to set its assigned college and program in User Accounts.</div>@endif
     <p class="small text-body-secondary">Enrollment figures use completed applications as an enrollment proxy.</p>
     @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">

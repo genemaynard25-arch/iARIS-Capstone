@@ -254,6 +254,12 @@
                             <div class="form-text">Scopes this account's College Records to just this college.</div>
                         </div>
 
+                        <div class="col-12 d-none" id="userProgramField">
+                            <label for="userProgram" class="form-label small fw-bold">Assigned program</label>
+                            <input class="form-control" id="userProgram" list="userProgramOptions" maxlength="150" placeholder="Select the program this chair manages">
+                            <datalist id="userProgramOptions">@foreach ($programOptions as $program)<option value="{{ $program }}">@endforeach</datalist>
+                            <div class="form-text">Use the program name recorded in the applicant data.</div>
+                        </div>
                         {{-- Edit only --}}
                         <div class="col-12" id="userStatusField">
                             <label for="userStatus" class="form-label small fw-bold text-uppercase text-body-secondary">Account status</label>
@@ -733,15 +739,21 @@
                 field('userDepartment').value = user.department;
                 field('userStatus').value = user.status;
                 field('userCollege').value = user.assignedCollege || '';
+                field('userProgram').value = user.assignedProgram || '';
             }
             updateCollegeFieldVisibility();
             userModal.show();
         }
 
                    function updateCollegeFieldVisibility() {
+                const chair = field('userRole').value === 'program_chair' && field('userDepartment').value !== 'Graduate Programs';
+                field('userProgramField').classList.toggle('d-none', !chair);
+                field('userProgram').required = chair;
+                field('userCollege').required = chair;
                 field('userCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes(field('userRole').value));
             }
                 field('userRole').addEventListener('change', updateCollegeFieldVisibility);
+                field('userDepartment').addEventListener('change', updateCollegeFieldVisibility);
 
         document.getElementById('addUserButton').addEventListener('click', () => openUserForm());
 
@@ -768,6 +780,7 @@
                 last: field('userLast').value.trim(),
                 role: field('userRole').value,
                 department: field('userDepartment').value,
+                assigned_program: field('userRole').value === 'program_chair' ? (field('userProgram').value || null) : null,
                 assigned_college: ['dean', 'program_chair'].includes(field('userRole').value) ? (field('userCollege').value || null) : null,
             };
 

@@ -16,12 +16,17 @@ class ReportController extends Controller
     // Reports is now a tab of the Analytics & Reports page. Old links to /reports land on that tab.
     public function index()
     {
+        if (auth()->user()->isDeanOrChair() && ! auth()->user()->isAdmin()) {
+            return redirect()->route('college.reports');
+        }
+
         return redirect('/analytics?tab=reports');
     }
 
     // Legacy PDF endpoint; saved exports use ReportExportController.
     public function pdf(string $key)
     {
+        abort_if(auth()->user()->isDeanOrChair() && ! auth()->user()->isAdmin(), 403);
         $validated = request()->validate(['period' => 'nullable|in:Current School Year,Previous School Year']);
         $data = $this->data($validated['period'] ?? 'Current School Year');
         $report = collect($data['sections'])
