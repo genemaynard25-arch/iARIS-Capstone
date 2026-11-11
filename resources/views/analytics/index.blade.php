@@ -151,7 +151,7 @@
             @include('analytics.partials.chart-card', ['id' => 'funnel', 'title' => 'Conversion funnel', 'subtitle' => 'Applicant pipeline from application to enrollment', 'body' => 'analytics.partials.funnel'])
         </div>
         <div class="col-12 col-xl-6">
-            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by province', 'subtitle' => 'Province inferred from the address; unrecognized addresses are grouped together', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
+            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by Province', 'subtitle' => 'Province inferred from the address; unrecognized addresses are grouped together', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
         </div>
     </div>
 
@@ -343,7 +343,7 @@
         // Chart colours (checked with the dataviz palette validator).
         const COLORS = {
             single: '#00674F',                                        // one-series charts
-            locations: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#859791'],
+            locations: @json(\App\Support\AddressClassifier::COLORS),
             years: ['#7FC4AB', '#2E8A6E', '#00503D'],                 // ordered: oldest (light) → newest (dark)
             grid: '#E7ECEA',
             text: 'rgba(26, 43, 38, 0.6)',
@@ -423,24 +423,32 @@
             const { labels, values } = CHARTS.locations;
             const total = values.reduce((a, b) => a + b, 0);
             document.getElementById('locationsDonutExtras').classList.toggle('d-none', type !== 'donut');
-            document.getElementById('locationsBox').classList.toggle('chart-box-donut', type === 'donut');
+            document.getElementById('locationsBox').classList.toggle('province-chart-plot--bar', type !== 'donut');
+            document.getElementById('locationsLegend').classList.toggle('d-none', type !== 'donut');
+            const message = document.getElementById('locationsMessage');
+            message.textContent = labels.length === 1 ? `All ${format(total)} applicants in this scope are classified under ${labels[0]}.` : (total === 0 ? 'No applicants match this scope.' : '');
+            message.hidden = !message.textContent;
+            const palette = labels.map(label => COLORS.locations[label] || '#859791');
             if (type === 'donut') {
                 document.getElementById('locationsTotal').textContent = format(total);
                 const legend = document.getElementById('locationsLegend');
                 legend.replaceChildren(...labels.map((label, i) => {
                     const li = document.createElement('li');
-                    li.className = 'd-flex align-items-center gap-2 small';
-                    li.innerHTML = '<span class="rounded-1 flex-shrink-0" style="width:10px;height:10px"></span><span class="flex-grow-1"></span><span class="fw-bold text-body-secondary"></span>';
-                    li.children[0].style.background = COLORS.locations[i];
+                    li.className = '';
+                    li.innerHTML = '<i aria-hidden="true"></i> <span></span> <strong></strong>';
+                    li.children[0].style.background = palette[i];
                     li.children[1].textContent = label;
-                    li.children[2].textContent = (total > 0 ? Math.round(values[i] / total * 100) : 0) + '%';
+                    li.children[2].append(format(values[i]) + ' ');
+                    const percentage = document.createElement('small');
+                    percentage.textContent = '(' + (total > 0 ? Number((values[i] / total * 100).toFixed(1)) : 0) + '%)';
+                    li.children[2].append(percentage);
                     return li;
                 }));
             }
             draw('locations', type === 'donut'
                 ? { type: 'doughnut',
-                    data: { labels, datasets: [{ data: values, backgroundColor: COLORS.locations, borderColor: '#fff', borderWidth: 2, hoverOffset: 4 }] },
-                    options: { maintainAspectRatio: false, cutout: '70%' } }
+                    data: { labels, datasets: [{ data: values, backgroundColor: palette, borderWidth: 0, hoverOffset: 4 }] },
+                    options: { maintainAspectRatio: false, cutout: '76%' } }
                 : { type: 'bar',
                     data: { labels, datasets: [bar('', values, COLORS.single)] },
                     options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: { ...axis(true), beginAtZero: true }, y: axis(false) } } });

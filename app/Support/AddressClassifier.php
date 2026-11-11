@@ -7,6 +7,8 @@ class AddressClassifier
 {
     public const GROUPS = ['Batangas', 'Cavite', 'Laguna', 'Rizal', 'Quezon', 'Other / Unspecified province'];
 
+    public const COLORS = ['Batangas' => '#00674F', 'Cavite' => '#339879', 'Laguna' => '#7FC4AB', 'Rizal' => '#C9E8DC', 'Quezon' => '#2558D9', 'Other / Unspecified province' => '#859791'];
+
     public static function classify(?string $address): string
     {
         $value = strtoupper(trim((string) $address));

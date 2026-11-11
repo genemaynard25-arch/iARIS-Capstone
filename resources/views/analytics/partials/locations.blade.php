@@ -1,17 +1,4 @@
-<div class="d-flex flex-wrap align-items-center gap-4">
-    <div class="chart-box position-relative flex-grow-1" id="locationsBox">
-        <canvas id="chart-locations" role="img" aria-label="Applicants by location"></canvas>
-    </div>
-    {{-- Shown only for the donut: total in the middle + legend with percentages --}}
-    <div id="locationsDonutExtras" class="flex-grow-1">
-        <div class="mb-3">
-            <div class="fs-3 fw-bold lh-1" id="locationsTotal"></div>
-            <div class="small text-body-secondary">{{ $locationPreview ? 'preview applicants' : 'total applicants' }}</div>
-        </div>
-        <ul class="list-unstyled d-flex flex-column gap-2 mb-0" id="locationsLegend"></ul>
-    </div>
-</div>
-
-@if ($locationPreview)
-    <p class="ar-preview-note mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Mockup data only. These sample locations are not included in the imported applicant totals.</p>
-@endif
+@include('partials.province-chart', [
+    'provinceCounts' => array_combine($charts['locations']['labels'], $charts['locations']['values']),
+    'provinceIds' => ['box' => 'locationsBox', 'canvas' => 'chart-locations', 'extras' => 'locationsDonutExtras', 'total' => 'locationsTotal', 'legend' => 'locationsLegend', 'message' => 'locationsMessage'],
+])

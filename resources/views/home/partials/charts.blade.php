@@ -32,26 +32,10 @@
                     <h2 class="fs-6 fw-bold mb-0">Applicants by Province</h2>
                     <a href="{{ url('/analytics') }}" class="small fw-semibold text-decoration-none">Full report</a>
                 </div>
-                @php($locationTotal = array_sum($locationChart))
-                @if ($locationTotal === 0)
-                    <div class="rounded-3 bg-body-tertiary text-body-secondary text-center py-5 flex-grow-1 d-flex flex-column justify-content-center">
-                        <i class="bi bi-geo-alt fs-2 d-block mb-2"></i>
-                        <span class="small">No admission data imported yet.</span>
-                    </div>
-                @else
-                    @php($locationColors = array_combine(\App\Support\AddressClassifier::GROUPS, ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#859791']))
-                    <div class="dashboard-location-preview flex-grow-1">
-                        <div id="dashboardLocationBox">
-                            <canvas id="dashboardLocationChart" role="img" aria-label="Applicant locations: {{ implode(', ', array_map(fn ($g) => "$g {$locationChart[$g]}", array_keys($locationChart))) }}"></canvas>
-                            <div class="dashboard-location-center"><strong>{{ number_format($locationTotal) }}</strong><small>APPLICANTS</small></div>
-                        </div>
-                        <ul class="dashboard-location-legend list-unstyled mb-0">
-                            @foreach ($locationChart as $location => $count)
-                                <li><i style="background: {{ $locationColors[$location] }}" aria-hidden="true"></i><span>{{ $location }}</span><strong class="ms-auto">{{ number_format($count) }}</strong></li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                @include('partials.province-chart', [
+                    'provinceCounts' => $locationChart,
+                    'provinceIds' => ['box' => 'dashboardLocationBox', 'canvas' => 'dashboardLocationChart', 'extras' => 'dashboardLocationExtras', 'total' => 'dashboardLocationTotal', 'legend' => 'dashboardLocationLegend', 'message' => 'dashboardLocationMessage'],
+                ])
                 <p class="small text-body-secondary mt-3 mb-0">Province inferred from the address; unrecognized addresses are grouped as Other / Unspecified province.</p>
             </div>
         </div>

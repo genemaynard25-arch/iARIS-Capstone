@@ -25,10 +25,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     @if (array_sum($locationChart) > 0)
         <script>
-            const LOCATION = @json($locationChart);
+            const LOCATION = @json(array_filter($locationChart, fn ($count) => $count > 0));
+            const PROVINCE_COLORS = @json(\App\Support\AddressClassifier::COLORS);
             new Chart(document.getElementById('dashboardLocationChart'), {
                 type: 'doughnut',
-                data: { labels: Object.keys(LOCATION), datasets: [{ data: Object.values(LOCATION), backgroundColor: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#859791'], borderWidth: 0, hoverOffset: 4 }] },
+                data: { labels: Object.keys(LOCATION), datasets: [{ data: Object.values(LOCATION), backgroundColor: Object.keys(LOCATION).map(label => PROVINCE_COLORS[label] || '#859791'), borderWidth: 0, hoverOffset: 4 }] },
                 options: { maintainAspectRatio: false, cutout: '76%', plugins: { legend: { display: false } } },
             });
         </script>
