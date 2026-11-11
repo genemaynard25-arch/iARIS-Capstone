@@ -229,7 +229,7 @@
                     <span class="rounded-3 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-file-earmark-text"></i></span>
                     <span class="flex-grow-1"><span class="d-block small ${r.status === 'new' ? 'fw-bold' : 'fw-semibold'}">${esc(r.title)}</span><span class="d-block small text-body-secondary">From ${esc(r.by)} (${esc(r.role)}) · ${esc(r.at)}</span></span>
                     <span class="badge rounded-pill ${r.status === 'new' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-tertiary text-body-secondary'}">${r.status === 'new' ? 'New' : 'Read'}</span>
-                </button>`).join('');
+                </button>`).join('') || '<p class="small text-body-secondary px-4 py-3 mb-0">No reports received from IATO yet.</p>';
             $('received').querySelectorAll('[data-report]').forEach(b => b.addEventListener('click', () => openReport(+b.dataset.report)));
             // The sidebar's red badge counts unread reports
             const unread = RECEIVED.filter(r => r.status === 'new').length, badge = $('reportsBadge');

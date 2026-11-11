@@ -28,7 +28,7 @@
             const LOCATION = @json($locationChart);
             new Chart(document.getElementById('dashboardLocationChart'), {
                 type: 'doughnut',
-                data: { labels: Object.keys(LOCATION), datasets: [{ data: Object.values(LOCATION), backgroundColor: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC'], borderWidth: 0, hoverOffset: 4 }] },
+                data: { labels: Object.keys(LOCATION), datasets: [{ data: Object.values(LOCATION), backgroundColor: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#7C3AED', '#859791'], borderWidth: 0, hoverOffset: 4 }] },
                 options: { maintainAspectRatio: false, cutout: '76%', plugins: { legend: { display: false } } },
             });
         </script>

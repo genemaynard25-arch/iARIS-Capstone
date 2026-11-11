@@ -2,37 +2,26 @@
 
 namespace App\Support;
 
-/**
- * Buckets a free-text address (as imported - "Tanauan City, Batangas", "Calamba, Laguna", ...)
- * into one of the four groups the dashboard's "Applicants by Location" chart shows. Matches on
- * substrings since the portal export has no separate city/province columns to key on.
- */
+/** Province-level groups inferred only from explicit place names in the free-text address. */
 class AddressClassifier
 {
-    public const GROUPS = ['Lipa City', 'Batangas', 'CALABARZON', 'Others'];
+    public const GROUPS = ['Batangas', 'Cavite', 'Laguna', 'Rizal', 'Quezon', 'Metro Manila', 'Other / Unspecified province'];
 
     public static function classify(?string $address): string
     {
         $value = strtoupper(trim((string) $address));
-
-        if ($value === '') {
-            return 'Others';
+        if (preg_match('/\b(QUEZON CITY|METRO MANILA|NCR)\b/', $value)) {
+            return 'Metro Manila';
         }
-
-        if (str_contains($value, 'LIPA')) {
-            return 'Lipa City';
+        foreach (['Batangas', 'Cavite', 'Laguna', 'Rizal', 'Quezon'] as $province) {
+            if (preg_match('/\b'.strtoupper($province).'\b/', $value)) {
+                return $province;
+            }
         }
-
-        if (str_contains($value, 'BATANGAS')) {
+        if (preg_match('/\bLIPA(?: CITY)?\b/', $value)) {
             return 'Batangas';
         }
 
-        // The rest of CALABARZON (Region IV-A), Batangas itself already its own bucket above.
-        // Quezon City is Metro Manila, not Quezon province - excluded so it doesn't match here.
-        if (preg_match('/\b(CAVITE|LAGUNA|RIZAL)\b|\bQUEZON\b(?!\s*CITY)/', $value)) {
-            return 'CALABARZON';
-        }
-
-        return 'Others';
+        return 'Other / Unspecified province';
     }
 }

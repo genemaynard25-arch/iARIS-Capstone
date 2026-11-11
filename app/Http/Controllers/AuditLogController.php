@@ -8,7 +8,7 @@ class AuditLogController extends Controller
 {
     public function index()
     {
-        $entries = AuditLog::with('user')->latest()->take(500)->get();
+        $entries = AuditLog::with('user')->latest()->orderByDesc('id')->get();
 
         $people = $entries->pluck('user')->filter()->unique('id')->mapWithKeys(fn ($u) => [
             (string) $u->id => [

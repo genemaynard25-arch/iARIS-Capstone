@@ -42,6 +42,7 @@
 @endsection
 
 @section('content')
+    <p class="small text-body-secondary">Enrollment figures and projections use completed applications as an enrollment proxy; they are not verified registrar enrollment totals.</p>
     @foreach($importYearWarnings as $warning)
         @include('partials.import-year-warning', ['warning' => $warning])
     @endforeach
@@ -150,7 +151,7 @@
             @include('analytics.partials.chart-card', ['id' => 'funnel', 'title' => 'Conversion funnel', 'subtitle' => 'Applicant pipeline from application to enrollment', 'body' => 'analytics.partials.funnel'])
         </div>
         <div class="col-12 col-xl-6">
-            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by location', 'subtitle' => 'Where applicants in the selected scope come from', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
+            @include('analytics.partials.chart-card', ['id' => 'locations', 'title' => 'Applicants by province', 'subtitle' => 'Province inferred from the address; unrecognized addresses are grouped together', 'types' => ['donut' => 'Donut chart', 'bar' => 'Bar chart'], 'body' => 'analytics.partials.locations'])
         </div>
     </div>
 
@@ -342,7 +343,7 @@
         // Chart colours (checked with the dataviz palette validator).
         const COLORS = {
             single: '#00674F',                                        // one-series charts
-            locations: ['#00674F', '#4DAB8E', '#A8D5C5', '#D4EDE5'],  // 3 distinct hues + grey for "Others"
+            locations: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#7C3AED', '#859791'],
             years: ['#7FC4AB', '#2E8A6E', '#00503D'],                 // ordered: oldest (light) → newest (dark)
             grid: '#E7ECEA',
             text: 'rgba(26, 43, 38, 0.6)',

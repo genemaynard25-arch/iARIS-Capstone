@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Models\ImportBatch;
+use App\Models\TempAdmin;
 use App\Models\User;
+use App\Support\AddressClassifier;
 use App\Support\AdmissionStats;
 use App\Support\ApplicantRecords;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 class HomeController extends Controller
@@ -14,7 +17,7 @@ class HomeController extends Controller
     /**
      * Admin dashboard, from the database: AdmissionStats (the totals, same as Analytics, both
      * computed live from applicants), applicants (this week's chart, recent applicants, pending count), import_batches and
-     * users (notifications). Applicants by Location has no data in the database yet.
+     * users (notifications), and addresses for province-level location totals.
      *
      * 'tone' is a Bootstrap colour name (primary, info, warning, danger); the
      * views turn it into classes like bg-warning-subtle text-warning-emphasis.
@@ -50,7 +53,7 @@ class HomeController extends Controller
 
         return view('home', [
             'academicYear' => ApplicantRecords::academicYear(),
-            'periodLabel' => 'Week of ' . now()->startOfWeek()->format('M j') . '–' . now()->endOfWeek()->format('M j, Y'),
+            'periodLabel' => 'Week of '.now()->startOfWeek()->format('M j').'–'.now()->endOfWeek()->format('M j, Y'),
             'stats' => $this->stats(),
             'weekChart' => $this->applicationsThisWeek(),
             'locationChart' => $this->applicantsByLocation(),
@@ -65,15 +68,15 @@ class HomeController extends Controller
     {
         $schoolYear = AdmissionStats::currentSchoolYear();
         if (! $schoolYear) {
-            return array_fill_keys(\App\Support\AddressClassifier::GROUPS, 0);
+            return array_fill_keys(AddressClassifier::GROUPS, 0);
         }
 
         $counts = Applicant::where('school_year', $schoolYear)
             ->whereNull('archived_at')
             ->get(['address'])
-            ->countBy(fn (Applicant $a) => \App\Support\AddressClassifier::classify($a->address));
+            ->countBy(fn (Applicant $a) => AddressClassifier::classify($a->address));
 
-        return collect(\App\Support\AddressClassifier::GROUPS)
+        return collect(AddressClassifier::GROUPS)
             ->mapWithKeys(fn ($group) => [$group => $counts->get($group, 0)])
             ->all();
     }
@@ -89,7 +92,7 @@ class HomeController extends Controller
             return null;
         }
 
-        $tempAdmin = \App\Models\TempAdmin::active()->where('user_id', $user->id)->with('grantedBy')->latest('starts_at')->first();
+        $tempAdmin = TempAdmin::active()->where('user_id', $user->id)->with('grantedBy')->latest('starts_at')->first();
 
         return [
             'tempAdmin' => $tempAdmin ? [
@@ -114,19 +117,14 @@ class HomeController extends Controller
         $enrolled = $summary['enrolledCurrent'];
         $change = $total - $previous;
         $pending = Applicant::whereNull('archived_at')->whereIn('application_status', ['pooling', 'not_submitted'])->count();
-        // Not applicants.created_at: the importer overwrites that with the portal's own APP.
-        // DATE, which can be weeks old by the time the file is actually imported. "This week"
-        // means imported this week - import_batches.created_at is never touched after insert.
-        $addedThisWeek = Applicant::join('import_batches', 'import_batches.id', '=', 'applicants.imported_batch_id')
-            ->where('import_batches.created_at', '>=', now()->startOfWeek())
-            ->count();
+        $addedThisWeek = $this->weeklyApplicants()->count();
         $none = $total === 0;
 
         return [
             [
                 'label' => 'Total Applicants',
                 'value' => $total,
-                'change' => $none ? 'No admission data imported yet' : ($previous ? ($change >= 0 ? '+' : '') . number_format($change) . ' vs last SY' : 'No previous SY to compare'),
+                'change' => $none ? 'No admission data imported yet' : ($previous ? ($change >= 0 ? '+' : '').number_format($change).' vs last SY' : 'No previous SY to compare'),
                 'trend' => ! $none && $previous && $change > 0 ? 'up' : 'neutral',
                 'tag' => 'All levels',
                 'tone' => 'primary',
@@ -134,15 +132,15 @@ class HomeController extends Controller
             [
                 'label' => 'Paid Reservations',
                 'value' => $reserved,
-                'change' => 'of ' . number_format($total) . ' applicants',
+                'change' => 'of '.number_format($total).' applicants',
                 'trend' => 'neutral',
-                'tag' => ($total ? number_format($reserved / $total * 100, 1) : '0.0') . '% conversion',
+                'tag' => ($total ? number_format($reserved / $total * 100, 1) : '0.0').'% conversion',
                 'tone' => 'info',
             ],
             [
                 'label' => 'Enrolled',
                 'value' => $enrolled,
-                'change' => 'Officially enrolled',
+                'change' => 'Completed applications (enrollment proxy)',
                 'trend' => 'neutral',
                 'tag' => 'Active enrollees',
                 'tone' => 'primary',
@@ -150,7 +148,7 @@ class HomeController extends Controller
             [
                 'label' => 'Pending Applications',
                 'value' => $pending,
-                'change' => '+' . number_format($addedThisWeek) . ' applicants added this week',
+                'change' => '+'.number_format($addedThisWeek).' applicants added this week',
                 'trend' => $addedThisWeek ? 'up' : 'neutral',
                 'tag' => 'Needs action',
                 'tone' => 'warning',
@@ -158,26 +156,29 @@ class HomeController extends Controller
         ];
     }
 
-    /**
-     * Applicants imported per day this week (Mon–Sun), College vs Integrated School. Grouped by
-     * import_batches.created_at (when the file was imported), not applicants.created_at (the
-     * importer overwrites that with the portal's own APP. DATE - see stats()).
-     */
+    /** Active current-year applicants added by import or manual entry this week. */
+    private function weeklyApplicants(): Builder
+    {
+        return Applicant::leftJoin('import_batches', 'import_batches.id', '=', 'applicants.imported_batch_id')
+            ->whereNull('applicants.archived_at')
+            ->where('applicants.school_year', AdmissionStats::currentSchoolYear())
+            ->whereRaw('COALESCE(import_batches.created_at, applicants.recorded_at, applicants.created_at) BETWEEN ? AND ?', [now()->startOfWeek(), now()->endOfWeek()]);
+    }
+
     private function applicationsThisWeek(): array
     {
         $start = now()->startOfWeek();
-        $counts = Applicant::join('import_batches', 'import_batches.id', '=', 'applicants.imported_batch_id')
-            ->where('import_batches.created_at', '>=', $start)
-            ->whereIn('level', ['college', 'is'])
-            ->get(['level', 'import_batches.created_at as imported_at'])
-            ->groupBy(fn ($a) => $a->level . '|' . Carbon::parse($a->imported_at)->format('Y-m-d'))
-            ->map->count();
+        $counts = $this->weeklyApplicants()
+            ->whereIn('applicants.level', ['college', 'is'])
+            ->select('applicants.level')
+            ->selectRaw('COALESCE(import_batches.created_at, applicants.recorded_at, applicants.created_at) as added_at')
+            ->get()->groupBy(fn ($a) => $a->level.'|'.Carbon::parse($a->added_at)->format('Y-m-d'))->map->count();
         $days = collect(range(0, 6))->map(fn ($i) => $start->copy()->addDays($i));
 
         return [
             'labels' => $days->map(fn ($d) => $d->format('D'))->all(),
-            'college' => $days->map(fn ($d) => $counts['college|' . $d->format('Y-m-d')] ?? 0)->all(),
-            'is' => $days->map(fn ($d) => $counts['is|' . $d->format('Y-m-d')] ?? 0)->all(),
+            'college' => $days->map(fn ($d) => $counts['college|'.$d->format('Y-m-d')] ?? 0)->all(),
+            'is' => $days->map(fn ($d) => $counts['is|'.$d->format('Y-m-d')] ?? 0)->all(),
         ];
     }
 
@@ -213,12 +214,14 @@ class HomeController extends Controller
         $imports = ImportBatch::latest('created_at')->take(5)
             ->withCount(['applicants as saved_count'])
             ->get()->map(fn (ImportBatch $b) => [
-            'at' => Carbon::parse($b->created_at),
-            'icon' => $b->status === 'failed' ? 'bi-exclamation-triangle' : 'bi-cloud-arrow-up',
-            'tone' => $b->status === 'failed' ? 'danger' : 'info',
-            'title' => match ($b->status) { 'failed' => 'Data import failed', 'processing' => 'Data import in progress', default => 'Data import completed' },
-            'body' => number_format($b->saved_count) . ' records from ' . $b->original_filename,
-        ]);
+                'at' => Carbon::parse($b->created_at),
+                'icon' => $b->status === 'failed' ? 'bi-exclamation-triangle' : 'bi-cloud-arrow-up',
+                'tone' => $b->status === 'failed' ? 'danger' : 'info',
+                'title' => match ($b->status) {
+                    'failed' => 'Data import failed', 'processing' => 'Data import in progress', default => 'Data import completed'
+                },
+                'body' => number_format($b->saved_count).' records from '.$b->original_filename,
+            ]);
 
         // Only admins can approve accounts, so only they hear about requests
         $requests = ! auth()->user()->isAdmin() ? collect() : User::where('status', 'Pending')->latest()->take(5)->get()->map(fn (User $u) => [

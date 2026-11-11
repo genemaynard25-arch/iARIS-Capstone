@@ -9,7 +9,7 @@
         'admin' => ['name' => 'Super Admin', 'tone' => 'primary'],
         'principal' => ['name' => 'Integrated School Principal', 'tone' => 'secondary'],
         'assistant_principal' => ['name' => 'Assistant Principal', 'tone' => 'secondary'],
-        'program_chair' => ['name' => 'Program Chair, Graduate Programs', 'tone' => 'info'],
+        'program_chair' => ['name' => 'Program Chair', 'tone' => 'info'],
         'director' => ['name' => 'iPACE Director', 'tone' => 'warning'],
         'toic' => ['name' => 'TOIC (System Support)', 'tone' => 'dark'],
     ]);
@@ -67,7 +67,7 @@
             <select class="form-select w-auto" id="roleFilter" aria-label="Filter by role">
                 <option value="">All Roles</option>
                 @foreach ($roles as $key => $role)
-                    <option value="{{ $key }}">{{ $role['name'] }}</option>
+                    @if (in_array($key, $filterRoles, true))<option value="{{ $key }}">{{ $role['name'] }}</option>@endif
                 @endforeach
             </select>
             <select class="form-select w-auto" id="statusFilter" aria-label="Filter by status">
@@ -83,7 +83,7 @@
             </select>
             <select class="form-select w-auto" id="departmentFilter" aria-label="Filter by department">
                 <option value="">All Departments</option>
-                @foreach ($departments as $department)
+                @foreach ($filterDepartments as $department)
                     <option>{{ $department }}</option>
                 @endforeach
             </select>

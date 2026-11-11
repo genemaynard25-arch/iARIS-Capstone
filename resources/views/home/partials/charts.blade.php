@@ -29,7 +29,7 @@
         <div class="card border-0 shadow-sm rounded-4 h-100">
             <div class="card-body p-4 d-flex flex-column">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h2 class="fs-6 fw-bold mb-0">Applicants by Location</h2>
+                    <h2 class="fs-6 fw-bold mb-0">Applicants by Province</h2>
                     <a href="{{ url('/analytics') }}" class="small fw-semibold text-decoration-none">Full report</a>
                 </div>
                 @php($locationTotal = array_sum($locationChart))
@@ -39,7 +39,7 @@
                         <span class="small">No admission data imported yet.</span>
                     </div>
                 @else
-                    @php($locationColors = ['Lipa City' => '#00674F', 'Batangas' => '#339879', 'CALABARZON' => '#7FC4AB', 'Others' => '#C9E8DC'])
+                    @php($locationColors = array_combine(\App\Support\AddressClassifier::GROUPS, ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#7C3AED', '#859791']))
                     <div class="dashboard-location-preview flex-grow-1">
                         <div id="dashboardLocationBox">
                             <canvas id="dashboardLocationChart" role="img" aria-label="Applicant locations: {{ implode(', ', array_map(fn ($g) => "$g {$locationChart[$g]}", array_keys($locationChart))) }}"></canvas>
@@ -52,6 +52,7 @@
                         </ul>
                     </div>
                 @endif
+                <p class="small text-body-secondary mt-3 mb-0">Province inferred from the address; unrecognized addresses are grouped as Other / Unspecified province.</p>
             </div>
         </div>
     </div>

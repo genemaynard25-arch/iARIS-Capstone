@@ -90,14 +90,27 @@ class ApplicantRecords
             ->all();
     }
 
+    /** Older portal imports include a trailing middle initial in the first-name field. */
+    public static function nameParts(Applicant $applicant): array
+    {
+        $first = $applicant->first_name;
+        $mi = $applicant->middle_initial;
+        if (! $mi && preg_match('/^(.+)\s+([A-Za-z])\.?$/u', trim($first), $matches)) {
+            return [$matches[1], $matches[2]];
+        }
+
+        return [$first, $mi ?? ''];
+    }
+
     private static function shape(Applicant $a, ?array $payment, bool $examPaid = false): array
     {
+        [$first, $mi] = self::nameParts($a);
         $program = $a->program_or_track ?: '—';
         $row = [
             'id' => $a->reference_number,
             'last' => $a->last_name,
-            'first' => $a->first_name,
-            'mi' => '',
+            'first' => $first,
+            'mi' => $mi,
             'program' => $program,
             'status' => self::status($a, $payment !== null),
             'test' => self::testLabel($a->admission_test_status),
@@ -125,7 +138,7 @@ class ApplicantRecords
             'email' => $a->email,
             'contact' => $a->contact_number,
             'address' => $a->address,
-            'exam' => $a->exam_scheduled_at ? $a->exam_scheduled_at->format('M j, Y') . ' · ' . $a->exam_scheduled_at->format('g:i A') : null,
+            'exam' => $a->exam_scheduled_at ? $a->exam_scheduled_at->format('M j, Y').' · '.$a->exam_scheduled_at->format('g:i A') : null,
             // No peso amount: IATO doesn't need it, only whether the fee was paid (see 'status' above).
             'paid' => $payment && $payment[1] ? Carbon::parse($payment[1])->format('Y-m-d') : null,
         ];

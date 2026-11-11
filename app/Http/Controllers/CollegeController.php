@@ -22,88 +22,58 @@ class CollegeController extends Controller
      */
     private const COLLEGES = [
         'CITE' => ['name' => 'College of Information Technology and Engineering', 'programs' => [
-            'BSCS' => ['name' => 'BS Computer Science', 'applicants' => [82, 88, 94, 100], 'enrolled' => [20, 23, 25, 26],
-                'funnel' => [100, 74, 63, 30, 26], 'status' => [28, 42, 30], 'paidLastYear' => 29],
-            'BSIT' => ['name' => 'BS Information Technology', 'applicants' => [85, 95, 103, 114], 'enrolled' => [21, 24, 28, 30],
-                'funnel' => [114, 84, 71, 34, 30], 'status' => [32, 48, 34], 'paidLastYear' => 31],
-            'BSCpE' => ['name' => 'BS Computer Engineering', 'applicants' => [49, 51, 53, 56], 'enrolled' => [12, 13, 14, 14],
-                'funnel' => [56, 41, 35, 16, 14], 'status' => [16, 24, 16], 'paidLastYear' => 16],
-            'BSEE' => ['name' => 'BS Electrical Engineering', 'applicants' => [36, 38, 40, 42], 'enrolled' => [8, 9, 10, 11],
-                'funnel' => [42, 31, 26, 12, 11], 'status' => [12, 18, 12], 'paidLastYear' => 11],
-            'BSECE' => ['name' => 'BS Electronics Engineering', 'applicants' => [31, 33, 34, 35], 'enrolled' => [7, 8, 9, 9],
-                'funnel' => [35, 26, 22, 10, 9], 'status' => [10, 15, 10], 'paidLastYear' => 10],
-            'BSIE' => ['name' => 'BS Industrial Engineering', 'applicants' => [40, 43, 46, 50], 'enrolled' => [10, 11, 13, 13],
-                'funnel' => [50, 37, 31, 15, 13], 'status' => [14, 21, 15], 'paidLastYear' => 14],
-            'BSEMC' => ['name' => 'BS Entertainment & Multimedia Computing', 'applicants' => [29, 33, 38, 43], 'enrolled' => [7, 9, 10, 11],
-                'funnel' => [43, 32, 27, 13, 11], 'status' => [12, 18, 13], 'paidLastYear' => 12],
-            'BSArch' => ['name' => 'BS Architecture', 'applicants' => [67, 69, 70, 72], 'enrolled' => [16, 17, 18, 19],
-                'funnel' => [72, 54, 46, 21, 19], 'status' => [20, 31, 21], 'paidLastYear' => 21],
+            'BSCS' => ['name' => 'BS Computer Science'],
+            'BSIT' => ['name' => 'BS Information Technology'],
+            'BSCpE' => ['name' => 'BS Computer Engineering'],
+            'BSEE' => ['name' => 'BS Electrical Engineering'],
+            'BSECE' => ['name' => 'BS Electronics Engineering'],
+            'BSIE' => ['name' => 'BS Industrial Engineering'],
+            'BSEMC' => ['name' => 'BS Entertainment & Multimedia Computing'],
+            'BSArch' => ['name' => 'BS Architecture'],
         ]],
         'CBEAM' => ['name' => 'College of Business, Economics, Accountancy, and Management', 'programs' => [
-            'BSA' => ['name' => 'BS Accountancy', 'applicants' => [106, 112, 119, 126], 'enrolled' => [32, 32, 34, 35],
-                'funnel' => [126, 93, 79, 40, 35], 'status' => [34, 52, 40], 'paidLastYear' => 38],
-            'BSBA' => ['name' => 'BS Business Administration', 'applicants' => [149, 155, 162, 168], 'enrolled' => [44, 44, 46, 46],
-                'funnel' => [168, 124, 105, 52, 46], 'status' => [46, 70, 52], 'paidLastYear' => 51],
-            'BSEntrep' => ['name' => 'BS Entrepreneurship', 'applicants' => [36, 40, 43, 47], 'enrolled' => [9, 10, 11, 11],
-                'funnel' => [47, 35, 30, 13, 11], 'status' => [14, 20, 13], 'paidLastYear' => 12],
-            'BSLM' => ['name' => 'BS Legal Management', 'applicants' => [57, 58, 59, 60], 'enrolled' => [15, 15, 15, 15],
-                'funnel' => [60, 44, 37, 17, 15], 'status' => [18, 25, 17], 'paidLastYear' => 17],
+            'BSA' => ['name' => 'BS Accountancy'],
+            'BSBA' => ['name' => 'BS Business Administration'],
+            'BSEntrep' => ['name' => 'BS Entrepreneurship'],
+            'BSLM' => ['name' => 'BS Legal Management'],
         ]],
         'CEAS' => ['name' => 'College of Education, Arts and Sciences', 'programs' => [
-            'BSEd' => ['name' => 'Bachelor of Secondary Education', 'applicants' => [75, 74, 72, 71], 'enrolled' => [19, 18, 18, 17],
-                'funnel' => [71, 53, 45, 19, 17], 'status' => [22, 30, 19], 'paidLastYear' => 19],
-            'BAMMA' => ['name' => 'BA Multimedia Arts', 'applicants' => [46, 50, 54, 58], 'enrolled' => [14, 14, 16, 16],
-                'funnel' => [58, 43, 37, 18, 16], 'status' => [16, 24, 18], 'paidLastYear' => 17],
-            'BAComm' => ['name' => 'BA Communication', 'applicants' => [46, 47, 49, 50], 'enrolled' => [13, 13, 13, 13],
-                'funnel' => [50, 37, 31, 15, 13], 'status' => [14, 21, 15], 'paidLastYear' => 15],
-            'BSPsych' => ['name' => 'BS Psychology', 'applicants' => [87, 93, 100, 107], 'enrolled' => [25, 26, 28, 29],
-                'funnel' => [107, 79, 67, 33, 29], 'status' => [30, 44, 33], 'paidLastYear' => 31],
-            'BSBio' => ['name' => 'BS Biology', 'applicants' => [54, 57, 60, 63], 'enrolled' => [16, 16, 17, 17],
-                'funnel' => [63, 47, 40, 19, 17], 'status' => [18, 26, 19], 'paidLastYear' => 18],
+            'BSEd' => ['name' => 'Bachelor of Secondary Education'],
+            'BAMMA' => ['name' => 'BA Multimedia Arts'],
+            'BAComm' => ['name' => 'BA Communication'],
+            'BSPsych' => ['name' => 'BS Psychology'],
+            'BSBio' => ['name' => 'BS Biology'],
         ]],
         'CIHTM' => ['name' => 'College of International Hospitality and Tourism Management', 'programs' => [
-            'BSHM' => ['name' => 'BS Hospitality Management', 'applicants' => [116, 122, 128, 134], 'enrolled' => [33, 34, 36, 36],
-                'funnel' => [134, 99, 84, 41, 36], 'status' => [38, 55, 41], 'paidLastYear' => 40],
-            'BSTM' => ['name' => 'BS Tourism Management', 'applicants' => [64, 69, 74, 80], 'enrolled' => [16, 17, 18, 19],
-                'funnel' => [80, 59, 50, 22, 19], 'status' => [24, 34, 22], 'paidLastYear' => 21],
-            'BSCA' => ['name' => 'BS Culinary Arts', 'applicants' => [38, 39, 40, 41], 'enrolled' => [11, 11, 11, 11],
-                'funnel' => [41, 30, 26, 12, 11], 'status' => [12, 17, 12], 'paidLastYear' => 12],
+            'BSHM' => ['name' => 'BS Hospitality Management'],
+            'BSTM' => ['name' => 'BS Tourism Management'],
+            'BSCA' => ['name' => 'BS Culinary Arts'],
         ]],
         'CCJE' => ['name' => 'College of Criminal Justice Education', 'programs' => [
-            'BSCrim' => ['name' => 'BS Criminology', 'applicants' => [133, 141, 149, 158], 'enrolled' => [38, 39, 41, 42],
-                'funnel' => [158, 117, 99, 48, 42], 'status' => [44, 66, 48], 'paidLastYear' => 46],
-            'BSFS' => ['name' => 'BS Forensic Science', 'applicants' => [24, 27, 30, 33], 'enrolled' => [6, 7, 8, 8],
-                'funnel' => [33, 24, 20, 9, 8], 'status' => [10, 14, 9], 'paidLastYear' => 8],
+            'BSCrim' => ['name' => 'BS Criminology'],
+            'BSFS' => ['name' => 'BS Forensic Science'],
         ]],
         // Optional keys: 'title' — how the title reads when it isn't the code ("Dean, College of Nursing");
         // 'label' — the short name on the pages when it isn't the code; 'office' — Settings' office line;
         // 'word' — what the groups are called ('program' by default, 'level' for the Integrated School).
         'CON' => ['name' => 'College of Nursing', 'title' => 'College of Nursing', 'programs' => [
-            'BSN' => ['name' => 'BS Nursing', 'applicants' => [123, 129, 135, 142], 'enrolled' => [36, 37, 39, 39],
-                'funnel' => [142, 105, 89, 44, 39], 'status' => [40, 58, 44], 'paidLastYear' => 43],
+            'BSN' => ['name' => 'BS Nursing'],
         ]],
         // The College of Law (Account Management stores it as the department "College of Law"). Its applicants
         // show their degree and whether they passed the Bar.
         'LAW' => ['name' => 'College of Law', 'title' => 'College of Law', 'label' => 'College of Law', 'middle' => 'For Exam / Interview', 'programs' => [
-            'JD' => ['name' => 'Juris Doctor', 'applicants' => [118, 129, 138, 152], 'enrolled' => [30, 33, 35, 38],
-                'funnel' => [152, 124, 98, 46, 38], 'status' => [34, 72, 46], 'paidLastYear' => 43],
-            'LLM' => ['name' => 'Master of Laws', 'applicants' => [17, 19, 21, 24], 'enrolled' => [5, 6, 6, 7],
-                'funnel' => [24, 20, 16, 8, 7], 'status' => [5, 11, 8], 'paidLastYear' => 7],
-            'JSD' => ['name' => 'Doctor of Juridical Science', 'applicants' => [7, 8, 9, 10], 'enrolled' => [1, 1, 2, 2],
-                'funnel' => [10, 8, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
+            'JD' => ['name' => 'Juris Doctor'],
+            'LLM' => ['name' => 'Master of Laws'],
+            'JSD' => ['name' => 'Doctor of Juridical Science'],
         ]],
         // The Integrated School, for its Principal: the same pages by level instead of program (totals as in the mockup)
         'IS' => ['name' => 'Integrated School', 'title' => 'Integrated School', 'label' => 'Integrated School', 'subtitle' => 'Preschool to Grade 12',
             'office' => 'Integrated School · Preschool to Grade 12', 'word' => 'level', 'programs' => [
                 // 'match': what the applicants table calls this level (the import says Kindergarten)
-                'K' => ['name' => 'Preschool', 'match' => ['Kindergarten', 'Preschool'], 'applicants' => [51, 53, 55, 58], 'enrolled' => [12, 12, 13, 14],
-                    'funnel' => [58, 46, 39, 18, 14], 'status' => [10, 30, 18], 'paidLastYear' => 17],
-                'GS' => ['name' => 'Grade School', 'applicants' => [194, 199, 204, 214], 'enrolled' => [49, 52, 54, 55],
-                    'funnel' => [214, 173, 146, 74, 55], 'status' => [32, 108, 74], 'paidLastYear' => 72],
-                'JHS' => ['name' => 'Junior High School', 'applicants' => [205, 214, 221, 236], 'enrolled' => [52, 56, 58, 61],
-                    'funnel' => [236, 190, 160, 82, 61], 'status' => [36, 118, 82], 'paidLastYear' => 78],
-                'SHS' => ['name' => 'Senior High School', 'applicants' => [190, 202, 214, 234], 'enrolled' => [47, 52, 55, 60],
-                    'funnel' => [234, 189, 160, 80, 60], 'status' => [34, 120, 80], 'paidLastYear' => 74],
+                'K' => ['name' => 'Preschool', 'match' => ['Kindergarten', 'Preschool']],
+                'GS' => ['name' => 'Grade School'],
+                'JHS' => ['name' => 'Junior High School'],
+                'SHS' => ['name' => 'Senior High School'],
             ]],
         // The Assistant Principals: the Principal's pages for their own levels. Each group says which applicants it holds
         // (see inGroup): 'subs' = sub-levels, 'grades' = grade numbers, 'strand' = Senior High strand.
@@ -134,42 +104,27 @@ class CollegeController extends Controller
         // 'middle': what "For Exam" is called here.
         'GRAD' => ['name' => 'Graduate Programs', 'title' => 'Graduate Programs', 'label' => 'Graduate Programs', 'subtitle' => 'Graduate Programs · under CBEAM',
             'office' => 'Graduate Programs · under CBEAM', 'scope' => 'the Graduate Programs', 'middle' => 'For Exam / Interview', 'programs' => [
-                'MBA' => ['name' => 'Master of Business Administration', 'level' => "Master's", 'applicants' => [74, 81, 88, 96], 'enrolled' => [17, 19, 21, 22],
-                    'funnel' => [96, 77, 63, 33, 22], 'status' => [25, 38, 33], 'paidLastYear' => 30],
-                'MEd' => ['name' => 'Master of Education', 'level' => "Master's", 'applicants' => [61, 64, 68, 72], 'enrolled' => [14, 15, 16, 17],
-                    'funnel' => [72, 58, 47, 25, 17], 'status' => [19, 28, 25], 'paidLastYear' => 24],
-                'MIT' => ['name' => 'Master of Information Technology', 'level' => "Master's", 'applicants' => [39, 43, 48, 54], 'enrolled' => [9, 11, 12, 13],
-                    'funnel' => [54, 43, 35, 19, 13], 'status' => [14, 21, 19], 'paidLastYear' => 17],
-                'MPA' => ['name' => 'Master of Public Administration', 'level' => "Master's", 'applicants' => [33, 35, 36, 38], 'enrolled' => [8, 8, 8, 9],
-                    'funnel' => [38, 31, 25, 13, 9], 'status' => [10, 15, 13], 'paidLastYear' => 13],
-                'PhD' => ['name' => 'PhD in Education', 'level' => 'Doctoral', 'applicants' => [19, 21, 22, 24], 'enrolled' => [4, 5, 5, 5],
-                    'funnel' => [24, 19, 16, 8, 5], 'status' => [6, 10, 8], 'paidLastYear' => 7],
+                'MBA' => ['name' => 'Master of Business Administration', 'level' => "Master's"],
+                'MEd' => ['name' => 'Master of Education', 'level' => "Master's"],
+                'MIT' => ['name' => 'Master of Information Technology', 'level' => "Master's"],
+                'MPA' => ['name' => 'Master of Public Administration', 'level' => "Master's"],
+                'PhD' => ['name' => 'PhD in Education', 'level' => 'Doctoral'],
             ]],
         // iPACE and ETEEAP, for the iPACE Director (who heads both). Two units: each program has a 'unit',
         // and the same program can be in both (so the codes start with I- or E-). Unit totals as in the mockup.
         // 'profiles': the Learner profile on the Briefing, per unit: [title, [[group, [[label, count], …]], …], note]
         'IPACE' => ['name' => 'Institute for Professional Advancement and Continuing Education', 'title' => 'iPACE', 'label' => 'iPACE + ETEEAP',
             'subtitle' => 'Institute for Professional Advancement and Continuing Education · with ETEEAP', 'scope' => 'iPACE and ETEEAP', 'programs' => [
-                'I-BSIT' => ['unit' => 'iPACE', 'name' => 'BS Information Technology', 'applicants' => [46, 62, 82, 104], 'enrolled' => [12, 16, 21, 26],
-                    'funnel' => [104, 69, 61, 30, 26], 'status' => [29, 45, 30], 'paidLastYear' => 23],
-                'I-BSCS' => ['unit' => 'iPACE', 'name' => 'BS Computer Science', 'applicants' => [28, 37, 47, 58], 'enrolled' => [7, 10, 12, 15],
-                    'funnel' => [58, 38, 33, 17, 15], 'status' => [16, 25, 17], 'paidLastYear' => 14],
-                'I-BSBA' => ['unit' => 'iPACE', 'name' => 'BS Business Administration', 'applicants' => [33, 44, 57, 72], 'enrolled' => [9, 11, 15, 18],
-                    'funnel' => [72, 48, 42, 21, 18], 'status' => [20, 31, 21], 'paidLastYear' => 17],
-                'I-BSN' => ['unit' => 'iPACE', 'name' => 'BS Nursing', 'applicants' => [26, 32, 39, 46], 'enrolled' => [7, 9, 11, 12],
-                    'funnel' => [46, 31, 27, 14, 12], 'status' => [12, 20, 14], 'paidLastYear' => 12],
-                'I-BEED' => ['unit' => 'iPACE', 'name' => 'Bachelor of Elementary Education', 'applicants' => [17, 21, 27, 32], 'enrolled' => [5, 6, 7, 9],
-                    'funnel' => [32, 21, 19, 10, 9], 'status' => [9, 13, 10], 'paidLastYear' => 8],
-                'E-BSIT' => ['unit' => 'ETEEAP', 'name' => 'BS Information Technology', 'applicants' => [16, 20, 24, 30], 'enrolled' => [5, 6, 6, 7],
-                    'funnel' => [30, 19, 16, 8, 7], 'status' => [9, 13, 8], 'paidLastYear' => 6],
-                'E-BSBA' => ['unit' => 'ETEEAP', 'name' => 'BS Business Administration', 'applicants' => [13, 16, 20, 24], 'enrolled' => [3, 5, 5, 5],
-                    'funnel' => [24, 16, 13, 6, 5], 'status' => [7, 11, 6], 'paidLastYear' => 5],
-                'E-BEED' => ['unit' => 'ETEEAP', 'name' => 'Bachelor of Elementary Education', 'applicants' => [9, 11, 14, 16], 'enrolled' => [2, 3, 4, 4],
-                    'funnel' => [16, 10, 8, 4, 4], 'status' => [5, 7, 4], 'paidLastYear' => 3],
-                'E-BSN' => ['unit' => 'ETEEAP', 'name' => 'BS Nursing', 'applicants' => [9, 10, 12, 14], 'enrolled' => [3, 3, 3, 4],
-                    'funnel' => [14, 9, 8, 4, 4], 'status' => [4, 6, 4], 'paidLastYear' => 3],
-                'E-BSHRM' => ['unit' => 'ETEEAP', 'name' => 'BS Hotel & Restaurant Management', 'applicants' => [5, 6, 8, 10], 'enrolled' => [1, 1, 2, 2],
-                    'funnel' => [10, 7, 6, 2, 2], 'status' => [3, 5, 2], 'paidLastYear' => 2],
+                'I-BSIT' => ['unit' => 'iPACE', 'name' => 'BS Information Technology'],
+                'I-BSCS' => ['unit' => 'iPACE', 'name' => 'BS Computer Science'],
+                'I-BSBA' => ['unit' => 'iPACE', 'name' => 'BS Business Administration'],
+                'I-BSN' => ['unit' => 'iPACE', 'name' => 'BS Nursing'],
+                'I-BEED' => ['unit' => 'iPACE', 'name' => 'Bachelor of Elementary Education'],
+                'E-BSIT' => ['unit' => 'ETEEAP', 'name' => 'BS Information Technology'],
+                'E-BSBA' => ['unit' => 'ETEEAP', 'name' => 'BS Business Administration'],
+                'E-BEED' => ['unit' => 'ETEEAP', 'name' => 'Bachelor of Elementary Education'],
+                'E-BSN' => ['unit' => 'ETEEAP', 'name' => 'BS Nursing'],
+                'E-BSHRM' => ['unit' => 'ETEEAP', 'name' => 'BS Hotel & Restaurant Management'],
             ], 'profiles' => [
                 'iPACE' => ['Learner profile', [
                     ['Delivery mode', [['Online', 198], ['Blended', 114]]],
@@ -617,23 +572,7 @@ class CollegeController extends Controller
      */
     public static function received(bool $isChair): array
     {
-        $college = self::college();
-        if ($college['code'] === 'IPACE') {
-            return [];
-        }
-        $name = $isChair ? 'BS Computer Science' : ($college['label'] ?? $college['code']);
-
-        return [
-            ['title' => "{$name} Applicants Summary — AY 2025–26", 'kind' => 'programs', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
-                'at' => 'Jun 12, 2026 · 8:00 AM', 'status' => 'new',
-                'message' => "Here is the latest applicant summary for {$name}. Paid reservations are up this week. Let us know if you need a breakdown by program."],
-            ['title' => "{$name} Paid Reservations — as of May 30", 'kind' => 'paid', 'by' => 'Cruz, Jasmine', 'role' => 'IATO Staff',
-                'at' => 'May 30, 2026 · 3:15 PM', 'status' => 'read',
-                'message' => 'Attached is the list of paid reservations as of May 30.'],
-            ['title' => "{$name} Enrollment Trends — AY 2024–25", 'kind' => 'trend', 'by' => 'Renegado, Randolph', 'role' => 'Super Admin',
-                'at' => 'Jun 14, 2025 · 8:30 AM', 'status' => 'read',
-                'message' => 'Year-end enrollment trends for '.($college['scope'] ?? (str_starts_with($college['code'], 'IS') ? 'your school' : 'your college')).'.'],
-        ];
+        return [];
     }
 
     /**

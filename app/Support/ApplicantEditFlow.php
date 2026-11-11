@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Models\Applicant;
+use App\Models\ReviewQueueItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The actual field-level work behind the Applicants pipeline's add/edit/remove/restore/exam-status
@@ -133,11 +135,11 @@ class ApplicantEditFlow
         }
 
         $fields = [
-            'last' => 'Last Name', 'first' => 'First Name', 'email' => 'Email',
+            'last' => 'Last Name', 'first' => 'First Name', 'mi' => 'Middle Initial', 'email' => 'Email',
             'contact' => 'Contact No.', 'address' => 'Address', 'program' => 'Program / Track',
         ];
         $before = [
-            'last' => $applicant->last_name, 'first' => $applicant->first_name, 'email' => $applicant->email,
+            'last' => $applicant->last_name, 'first' => $applicant->first_name, 'mi' => $applicant->middle_initial, 'email' => $applicant->email,
             'contact' => $applicant->contact_number, 'address' => $applicant->address, 'program' => $applicant->program_or_track,
         ];
         foreach ($fields as $key => $label) {
@@ -188,7 +190,7 @@ class ApplicantEditFlow
     public static function diffForCreate(array $validated): array
     {
         $changes = [
-            ['Name', '—', "{$validated['last']}, {$validated['first']}"],
+            ['Name', '—', trim("{$validated['last']}, {$validated['first']} ".($validated['mi'] ?? ''))],
             [$validated['group'] === null ? 'Group' : 'College/Group', '—', $validated['group']],
             ['Program / Track', '—', $validated['program']],
             ['Status', '—', $validated['status']],
@@ -207,6 +209,7 @@ class ApplicantEditFlow
         $applicant->update([
             'last_name' => $validated['last'],
             'first_name' => $validated['first'],
+            'middle_initial' => mb_strtoupper(rtrim(trim($validated['mi'] ?? ''), '.')) ?: null,
             'gender' => strtolower($validated['gender']),
             'program_or_track' => $validated['program'],
             'college' => $applicant->level === 'college' ? $validated['group'] : $applicant->college,
@@ -220,17 +223,59 @@ class ApplicantEditFlow
         self::applyDetails($applicant, $validated);
     }
 
+    /** Detect a repeated application without treating a shared family email as one person. */
+    public static function ensureNotDuplicate(array $validated, string $level, bool $includePending = false): void
+    {
+        $normalize = fn ($value) => mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) $value)));
+        $year = Applicant::max('school_year') ?? now()->year.'-'.(now()->year + 1);
+        $candidates = Applicant::where('school_year', $year)->where('level', $level)->whereNull('archived_at')->get();
+        if ($includePending) {
+            foreach (ReviewQueueItem::where('type', 'edit')->where('status', 'waiting')->get() as $item) {
+                $action = $item->pending_action;
+                $payload = $action['payload'] ?? [];
+                if (($action['action'] ?? null) !== 'create' || ($payload['level'] ?? null) !== $level) {
+                    continue;
+                }
+                $entry = $payload['validated'];
+                $candidates->push(new Applicant([
+                    'first_name' => $entry['first'], 'last_name' => $entry['last'],
+                    'middle_initial' => $entry['mi'] ?? null, 'email' => $entry['email'] ?? null,
+                    'contact_number' => $entry['contact'] ?? null, 'program_or_track' => $entry['program'],
+                    'reference_number' => 'pending review '.$item->rq_number,
+                ]));
+            }
+        }
+        foreach ($candidates as $existing) {
+            [$existingFirst, $existingMi] = ApplicantRecords::nameParts($existing);
+            if ($normalize($existingFirst) !== $normalize($validated['first']) || $normalize($existing->last_name) !== $normalize($validated['last'])) {
+                continue;
+            }
+            if ($existingMi && ! empty($validated['mi']) && $normalize(rtrim($existingMi, '.')) !== $normalize(rtrim($validated['mi'], '.'))) {
+                continue;
+            }
+            $sameEmail = ! empty($validated['email']) && $normalize($existing->email) === $normalize($validated['email']);
+            $sameContact = ! empty($validated['contact']) && preg_replace('/\D/', '', (string) $existing->contact_number) === preg_replace('/\D/', '', $validated['contact']);
+            $sameProgram = $normalize($existing->program_or_track) === $normalize($validated['program']);
+            if ($sameEmail || $sameContact || $sameProgram) {
+                throw ValidationException::withMessages(['first' => 'An application already exists for this person in '.$year.' ('.$existing->reference_number.'). Open the existing record instead.']);
+            }
+        }
+    }
+
     public static function applyCreate(array $validated, string $level): Applicant
     {
-        $referenceNumber = 'APP-' . now()->format('Y') . '-' . str_pad((string) (Applicant::max('id') + 1), 4, '0', STR_PAD_LEFT);
+        self::ensureNotDuplicate($validated, $level);
+        $referenceNumber = 'APP-'.now()->format('Y').'-'.strtoupper(bin2hex(random_bytes(6)));
 
         $applicant = Applicant::create([
             'reference_number' => $referenceNumber,
-            'school_year' => Applicant::max('school_year') ?? (now()->format('Y') . '-' . (now()->year + 1)),
+            'recorded_at' => now(),
+            'school_year' => Applicant::max('school_year') ?? (now()->format('Y').'-'.(now()->year + 1)),
             'level' => $level,
             'sub_level' => $level === 'is' ? self::subLevelFromGroup($validated['group']) : null,
             'last_name' => $validated['last'],
             'first_name' => $validated['first'],
+            'middle_initial' => mb_strtoupper(rtrim(trim($validated['mi'] ?? ''), '.')) ?: null,
             'gender' => strtolower($validated['gender']),
             'program_or_track' => $validated['program'],
             'college' => $level === 'college' ? $validated['group'] : null,

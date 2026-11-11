@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Applicant;
+use App\Models\AuditLog;
+use App\Models\ReviewQueueItem;
+use App\Support\ApplicantEditFlow;
 use App\Support\ApplicantRecords;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ApplicantController extends Controller
 {
@@ -56,19 +61,20 @@ class ApplicantController extends Controller
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
-            ...\App\Support\ApplicantEditFlow::detailRules($request->input('exam_result')),
+            ...ApplicantEditFlow::detailRules($request->input('exam_result')),
         ]);
 
-        $module = \App\Support\ApplicantEditFlow::moduleFor($level);
+        ApplicantEditFlow::ensureNotDuplicate($validated, $level, true);
+        $module = ApplicantEditFlow::moduleFor($level);
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, null, $module, 'create', ['level' => $level, 'validated' => $validated],
-                \App\Support\ApplicantEditFlow::diffForCreate($validated), "{$validated['last']}, {$validated['first']}", '—');
+                ApplicantEditFlow::diffForCreate($validated), "{$validated['last']}, {$validated['first']}", '—');
         }
 
-        $applicant = \App\Support\ApplicantEditFlow::applyCreate($validated, $level);
+        $applicant = ApplicantEditFlow::applyCreate($validated, $level);
 
-        \App\Models\AuditLog::record(
+        AuditLog::record(
             'create',
             $module,
             'Applicant Created',
@@ -78,7 +84,7 @@ class ApplicantController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function update(Request $request, \App\Models\Applicant $applicant)
+    public function update(Request $request, Applicant $applicant)
     {
         if (! $request->user()->canEdit($applicant->level)) {
             abort(403, 'You do not have permission to edit this record.');
@@ -96,21 +102,21 @@ class ApplicantController extends Controller
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
-            ...\App\Support\ApplicantEditFlow::detailRules($request->input('exam_result')),
+            ...ApplicantEditFlow::detailRules($request->input('exam_result')),
         ]);
 
-        $module = \App\Support\ApplicantEditFlow::moduleFor($applicant->level);
+        $module = ApplicantEditFlow::moduleFor($applicant->level);
         $name = "{$applicant->last_name}, {$applicant->first_name}";
 
-        $diff = \App\Support\ApplicantEditFlow::diffForUpdate($applicant, $validated);
+        $diff = ApplicantEditFlow::diffForUpdate($applicant, $validated);
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, $applicant, $module, 'update', ['validated' => $validated], $diff, $name, 'Record Edit Requested');
         }
 
-        \App\Support\ApplicantEditFlow::applyUpdate($applicant, $validated);
+        ApplicantEditFlow::applyUpdate($applicant, $validated);
 
-        \App\Models\AuditLog::record(
+        AuditLog::record(
             'edit',
             $module,
             'Record Edited',
@@ -122,7 +128,7 @@ class ApplicantController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function destroy(Request $request, \App\Models\Applicant $applicant)
+    public function destroy(Request $request, Applicant $applicant)
     {
         if (! $request->user()->canEdit($applicant->level)) {
             abort(403, 'You do not have permission to remove this record.');
@@ -130,35 +136,35 @@ class ApplicantController extends Controller
 
         $name = "{$applicant->last_name}, {$applicant->first_name}";
         $refNumber = $applicant->reference_number;
-        $module = \App\Support\ApplicantEditFlow::moduleFor($applicant->level);
+        $module = ApplicantEditFlow::moduleFor($applicant->level);
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, $applicant, $module, 'destroy', [], [['Status', 'Active', 'Archived']], $name, 'Applicant Removal Requested');
         }
 
-        \App\Support\ApplicantEditFlow::applyDestroy($applicant);
+        ApplicantEditFlow::applyDestroy($applicant);
 
-        \App\Models\AuditLog::record('delete', $module, 'Applicant Removed', "Removed applicant **{$name}** ({$refNumber})");
+        AuditLog::record('delete', $module, 'Applicant Removed', "Removed applicant **{$name}** ({$refNumber})");
 
         return response()->json(['ok' => true]);
     }
 
-    public function restore(Request $request, \App\Models\Applicant $applicant)
+    public function restore(Request $request, Applicant $applicant)
     {
         if (! $request->user()->canEdit($applicant->level)) {
             abort(403);
         }
 
-        $module = \App\Support\ApplicantEditFlow::moduleFor($applicant->level);
+        $module = ApplicantEditFlow::moduleFor($applicant->level);
         $name = "{$applicant->last_name}, {$applicant->first_name}";
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, $applicant, $module, 'restore', [], [['Status', 'Archived', 'Active']], $name, 'Applicant Restore Requested');
         }
 
-        \App\Support\ApplicantEditFlow::applyRestore($applicant);
+        ApplicantEditFlow::applyRestore($applicant);
 
-        \App\Models\AuditLog::record('edit', $module, 'Applicant Restored', "Restored applicant **{$name}** ({$applicant->reference_number})");
+        AuditLog::record('edit', $module, 'Applicant Restored', "Restored applicant **{$name}** ({$applicant->reference_number})");
 
         return response()->json(['ok' => true]);
     }
@@ -169,28 +175,28 @@ class ApplicantController extends Controller
      * A passing result (Passed, Qualified for Another Program, Reconsidered) issues the
      * Notice of Admission automatically — a failing or still-pending result revokes it.
      */
-    public function updateExamStatus(Request $request, \App\Models\Applicant $applicant)
+    public function updateExamStatus(Request $request, Applicant $applicant)
     {
         if (! $request->user()->canEdit($applicant->level)) {
             abort(403, 'You do not have permission to edit this record.');
         }
 
         $validated = $request->validate([
-            'admission_test_status' => 'required|in:' . implode(',', array_keys(\App\Support\ApplicantRecords::EXAM_STATUSES)),
+            'admission_test_status' => 'required|in:'.implode(',', array_keys(ApplicantRecords::EXAM_STATUSES)),
         ]);
 
         $before = $applicant->admission_test_status;
-        $module = \App\Support\ApplicantEditFlow::moduleFor($applicant->level);
+        $module = ApplicantEditFlow::moduleFor($applicant->level);
         $name = "{$applicant->last_name}, {$applicant->first_name}";
-        $diff = [['Exam Result', \App\Support\ApplicantRecords::EXAM_STATUSES[$before] ?? $before, \App\Support\ApplicantRecords::EXAM_STATUSES[$validated['admission_test_status']]]];
+        $diff = [['Exam Result', ApplicantRecords::EXAM_STATUSES[$before] ?? $before, ApplicantRecords::EXAM_STATUSES[$validated['admission_test_status']]]];
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, $applicant, $module, 'exam_status', ['validated' => $validated], $diff, $name, 'Exam Result Change Requested');
         }
 
-        \App\Support\ApplicantEditFlow::applyExamStatus($applicant, $validated['admission_test_status']);
+        ApplicantEditFlow::applyExamStatus($applicant, $validated['admission_test_status']);
 
-        \App\Models\AuditLog::record(
+        AuditLog::record(
             'edit',
             $module,
             'Exam Result Updated',
@@ -199,7 +205,7 @@ class ApplicantController extends Controller
             array_map(fn ($c) => ['field' => $c[0], 'before' => $c[1], 'after' => $c[2]], $diff),
         );
 
-        $reservationPaid = \Illuminate\Support\Facades\DB::table('payments')
+        $reservationPaid = DB::table('payments')
             ->where('applicant_id', $applicant->id)
             ->where('fee_type', 'reservation_fee')
             ->where('status', 'paid')
@@ -208,9 +214,9 @@ class ApplicantController extends Controller
         return response()->json([
             'ok' => true,
             'exam_status' => $applicant->admission_test_status,
-            'exam_label' => \App\Support\ApplicantRecords::EXAM_STATUSES[$applicant->admission_test_status],
+            'exam_label' => ApplicantRecords::EXAM_STATUSES[$applicant->admission_test_status],
             'noa_issued' => $applicant->noa_issued,
-            'status' => \App\Support\ApplicantRecords::status($applicant->fresh(), $reservationPaid),
+            'status' => ApplicantRecords::status($applicant->fresh(), $reservationPaid),
         ]);
     }
 
@@ -220,10 +226,10 @@ class ApplicantController extends Controller
         return $request->user()->role === 'iato_staff' && ! $request->user()->isAdmin();
     }
 
-    protected function stageForReview(Request $request, ?\App\Models\Applicant $applicant, string $module, string $action, array $payload, array $diff, string $subject, string $title)
+    protected function stageForReview(Request $request, ?Applicant $applicant, string $module, string $action, array $payload, array $diff, string $subject, string $title)
     {
-        $item = \App\Models\ReviewQueueItem::create([
-            'rq_number' => \App\Models\ReviewQueueItem::nextRqNumber(),
+        $item = ReviewQueueItem::create([
+            'rq_number' => ReviewQueueItem::nextRqNumber(),
             'type' => 'edit',
             'title' => $title,
             'applicant_id' => $applicant?->id,
@@ -239,7 +245,7 @@ class ApplicantController extends Controller
             'pending_action' => ['action' => $action, 'payload' => $payload],
         ]);
 
-        \App\Models\AuditLog::record('edit', $module, $title, "{$request->user()->name} submitted a change for **{$subject}** — sent to Review Queue as **{$item->rq_number}**");
+        AuditLog::record('edit', $module, $title, "{$request->user()->name} submitted a change for **{$subject}** — sent to Review Queue as **{$item->rq_number}**");
 
         return response()->json(['ok' => true, 'review' => true, 'rq_number' => $item->rq_number]);
     }
@@ -268,7 +274,7 @@ class ApplicantController extends Controller
     {
         $row = fn (array $a, string $division, string $dept, string $deptLabel, string $program) => [
             'id' => $a['id'],
-            'name' => trim("{$a['last']}, {$a['first']} " . ($a['mi'] ? "{$a['mi']}." : '')),
+            'name' => trim("{$a['last']}, {$a['first']} ".($a['mi'] ? "{$a['mi']}." : '')),
             'division' => $division,
             'dept' => $dept,
             'dept_label' => $deptLabel,

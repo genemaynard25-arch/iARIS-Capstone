@@ -194,7 +194,7 @@ class ReportController extends Controller
                     ],
                     [
                         'key' => 'dept', 'title' => 'Enrolled vs Reserved per Level', 'icon' => 'bi-person-video3', 'tone' => 'info',
-                        'description' => 'Officially enrolled students per level compared against how many paid their reservation fee.',
+                        'description' => 'Completed applications (enrollment proxy) per level compared against paid reservations.',
                         'recipient' => 'Dean / Program Chair',
                         'columns' => ['Level', 'Enrolled', 'Paid Reservation', '% Converted'],
                         'rows' => $byLevel->map(function (array $row) {
@@ -202,7 +202,7 @@ class ReportController extends Controller
 
                             return [$row['level_program'], number_format($row['enrolled']), number_format($row['reserved']), $pct];
                         })->values()->all(),
-                        'note' => 'There\'s no enrollment target set anywhere in iARIS yet — this compares actual enrolled vs actual paid-reservation counts, not a target.',
+                        'note' => 'Enrollment figures use completed applications as a proxy, not verified registrar enrollment. Reservation counts reflect paid reservation fees.',
                     ],
                 ],
             ],

@@ -18,6 +18,8 @@ class Applicant extends Model
         'sub_level',
         'year_level',
         'first_name',
+        'middle_initial',
+        'recorded_at',
         'last_name',
         'gender',
         'feeder_school',
@@ -65,6 +67,8 @@ class Applicant extends Model
             // matched by a plain WHERE and would silently break every real query this session
             // built against them.
             'first_name' => 'encrypted',
+            'middle_initial' => 'encrypted',
+            'recorded_at' => 'datetime',
             'last_name' => 'encrypted',
             'gender' => 'encrypted',
             'feeder_school' => 'encrypted',

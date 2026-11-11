@@ -38,6 +38,7 @@
 @endif
 
 @section('content')
+    <p class="small text-body-secondary">Enrollment figures use completed applications as an enrollment proxy.</p>
     @unless ((auth()->user()->isDirector() || auth()->user()->isGradChair() || auth()->user()->role === 'dean'))
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
         <span class="badge rounded-pill bg-body-tertiary text-body-secondary border d-inline-flex align-items-center gap-1 px-3"><i class="bi bi-eye"></i> Read-only view</span>
@@ -126,7 +127,7 @@
                     <a href="{{ $base }}/reports" class="small fw-bold text-decoration-none">All reports →</a>
                 </div>
                 <div class="list-group list-group-flush rounded-bottom-4">
-                    @foreach ($reports as $r)
+                    @forelse ($reports as $r)
                         <a href="{{ $base }}/reports" class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
                             <span class="rounded-3 bg-primary-subtle text-primary-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-file-earmark-text"></i></span>
                             <div class="flex-grow-1">
@@ -135,7 +136,9 @@
                             </div>
                             <span class="badge rounded-pill {{ $r['status'] === 'new' ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-tertiary text-body-secondary' }}">{{ $r['status'] === 'new' ? 'New' : 'Read' }}</span>
                         </a>
-                    @endforeach
+                    @empty
+                        <p class="small text-body-secondary px-4 py-3 mb-0">No reports received from IATO yet.</p>
+                    @endforelse
                 </div>
             </div>
         </div>

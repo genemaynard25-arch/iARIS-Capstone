@@ -14,7 +14,7 @@
     $stats = [
         ['label' => 'Scholarship applicants', 'value' => $scholars->count(), 'sub' => 'Answered Yes on the application', 'tone' => 'primary'],
         ['label' => 'Passed the exam', 'value' => $passedScholars->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
-        ['label' => 'Confirmed scholars', 'value' => $scholars->where('lamp', 'Match')->count(), 'sub' => 'Checked by LAMP', 'tone' => 'primary'],
+        ['label' => 'Confirmed scholars', 'value' => $scholars->where('lamp', 'Match')->count(), 'sub' => 'LAMP decision confirmed by IATO', 'tone' => 'primary'],
         ['label' => 'Waiting for LAMP', 'value' => $passedScholars->where('lamp', 'Pending Check')->count(), 'sub' => 'Passed, not yet checked', 'tone' => 'warning'],
     ];
 @endphp
@@ -64,6 +64,16 @@
     <div class="records-scholar-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Admissions only notes Yes when an applicant applies for a scholarship, and their exam result. The LAMP Office decides the scholarship type and collects the documents, so iARIS does not show them.</span></div>
 
     <div class="records-table-card card border-0 shadow-sm rounded-4">
+        <form method="get" action="{{ route('records.scholars') }}" class="d-flex flex-wrap align-items-center gap-2 px-4 pt-3">
+            <label for="scholarYear" class="small fw-semibold">School year</label>
+            <select name="year" id="scholarYear" class="form-select w-auto">
+                @foreach ($schoolYears as $year)
+                    <option value="{{ $year }}" @selected($year === $selectedSchoolYear)>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button class="btn btn-light border" type="submit">Apply</button>
+            <span class="small text-body-secondary">Active applicants for {{ $selectedSchoolYear }}</span>
+        </form>
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
@@ -409,11 +419,12 @@
 
         // How each LAMP result looks in the drawer
         const LAMP_CARD = {
+            'Awaiting IATO': { alert: 'info', icon: 'bi-hourglass-split', heading: 'LAMP checked — awaiting IATO confirmation', record: 'text-info-emphasis' },
+            'Not Scholar': { alert: 'secondary', icon: 'bi-x-circle', heading: 'LAMP checked — not a scholar', record: 'text-secondary-emphasis' },
             'Match': { alert: 'success', icon: 'bi-check-circle-fill', heading: 'Records match', record: 'text-success-emphasis' },
             'Discrepancy': { alert: 'danger', icon: 'bi-exclamation-circle-fill', heading: 'Discrepancy detected', record: 'text-danger-emphasis' },
             'Not Found': { alert: 'secondary', icon: 'bi-question-circle-fill', heading: 'Not found in LAMP records', record: 'text-danger-emphasis' },
-            // Every real scholar today — iARIS has no real LAMP dataset to compare against yet.
-            'Pending Check': { alert: 'warning', icon: 'bi-clock-fill', heading: 'Waiting on LAMP to confirm', record: 'text-warning-emphasis' },
+            'Pending Check': { alert: 'warning', icon: 'bi-clock-fill', heading: 'No saved LAMP decision yet', record: 'text-warning-emphasis' },
         };
 
         let drawerScholar = null;   // the scholar in the drawer (Edit / Remove use it)
@@ -501,12 +512,7 @@
             drawer: bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('applicantDrawer')),
             labels: () => ({ group: 'College / Unit', program: 'Program' }),
             groupOrder: [], statuses: STATUS_ORDER, statusLabels: {}, noun: 'scholar',
-            // "Santos, Maria Isabel L." -> last / first / middle initial
-            toForm: s => {
-                const [last, rest = ''] = s.name.split(', ');
-                const mi = (rest.match(/ ([A-Z])\.$/) || [])[1] || '';
-                return { ...s, last, first: rest.replace(/ [A-Z]\.$/, ''), mi, group: s.unit, scholarship: s.scholarship_status };
-            },
+            toForm: s => ({ ...s, group: s.unit, scholarship: s.scholarship_status }),
         };
     </script>
 @endsection
