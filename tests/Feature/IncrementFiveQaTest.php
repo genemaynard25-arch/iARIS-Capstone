@@ -57,6 +57,23 @@ class IncrementFiveQaTest extends OfficeTestCase
         $this->postJson('/applicants', $this->entry())->assertOk();
     }
 
+    public function test_manual_mobile_numbers_are_validated_on_create_and_edit_and_saved_with_country_code(): void
+    {
+        $this->actingAs($this->office('admin'));
+        foreach (['091712345678', '+6391712345678', '08171234567', '+12025550123', '09abcdefgh9', '123', '+63+9171234567'] as $invalid) {
+            $this->postJson('/applicants', $this->entry(['contact' => $invalid]))->assertUnprocessable()->assertJsonValidationErrors('contact');
+        }
+        $this->postJson('/applicants', $this->entry(['contact' => '09171234567']))->assertOk();
+        $applicant = Applicant::latest('id')->firstOrFail();
+        $this->assertSame('+639171234567', $applicant->contact_number);
+        $this->putJson('/applicants/'.$applicant->reference_number, $this->entry(['contact' => '+639181234567']))->assertOk();
+        $this->assertSame('+639181234567', $applicant->fresh()->contact_number);
+        $this->putJson('/applicants/'.$applicant->reference_number, $this->entry(['contact' => '+63918123456789']))->assertUnprocessable()->assertJsonValidationErrors('contact');
+        $this->assertSame('+639181234567', $applicant->fresh()->contact_number);
+        $this->putJson('/applicants/'.$applicant->reference_number, $this->entry(['contact' => '0918 123 4567']))->assertOk();
+        $this->assertSame('+639181234567', $applicant->fresh()->contact_number);
+    }
+
     public function test_staff_cannot_queue_the_same_new_application_twice(): void
     {
         RolePermission::updateOrCreate(['role' => 'iato_staff', 'module' => 'college'], ['enabled' => true, 'can_edit' => true]);
@@ -96,7 +113,8 @@ class IncrementFiveQaTest extends OfficeTestCase
     {
         $this->assertSame('Batangas', AddressClassifier::classify('Purok 3 Brgy. Kawit, Lipa City, Batangas'));
         $this->assertSame('Laguna', AddressClassifier::classify('Calamba City, Laguna'));
-        $this->assertSame('Metro Manila', AddressClassifier::classify('Quezon City'));
+        $this->assertSame('Other / Unspecified province', AddressClassifier::classify('Quezon City'));
+        $this->assertNotContains('Metro Manila', AddressClassifier::GROUPS);
         $this->assertSame('Quezon', AddressClassifier::classify('Lucena, Quezon'));
         $this->assertSame('Other / Unspecified province', AddressClassifier::classify(null));
         $this->assertNotContains('Lipa City', AddressClassifier::GROUPS);

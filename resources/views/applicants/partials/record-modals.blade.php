@@ -54,7 +54,9 @@
                     </div>
                     <div class="col-sm-6">
                         <label for="recContact" class="form-label small fw-bold text-uppercase">Mobile number <span class="text-danger">*</span></label>
-                        <input type="tel" class="form-control" id="recContact" required placeholder="0917 000 0000">
+                        <input type="tel" class="form-control" id="recContact" required maxlength="13" minlength="11" pattern="(09[0-9]{9}|\+639[0-9]{9})" placeholder="+639171234567" autocomplete="tel" aria-describedby="recContactHelp recContactError">
+                        <div class="form-text" id="recContactHelp">Use 09171234567 or +639171234567. Saved with the +63 country code.</div>
+                        <div class="invalid-feedback" id="recContactError">Enter 11 digits starting with 09, or +63 followed by a 10-digit mobile number starting with 9.</div>
                     </div>
                     <div class="col-12">
                         <label for="recAddress" class="form-label small fw-bold text-uppercase">Address <span class="text-danger">*</span></label>
@@ -228,6 +230,11 @@
     // Runs after the page's own script and Bootstrap have loaded
     document.addEventListener('DOMContentLoaded', () => {
         const $ = id => document.getElementById(id);
+        const normalizeMobile = value => {
+            const compact = String(value ?? '').trim().replace(/[\s()-]+/g, '');
+            return /^09[0-9]{9}$/.test(compact) ? '+63' + compact.slice(1) : compact;
+        };
+        $('recContact').addEventListener('blur', e => { e.target.value = normalizeMobile(e.target.value); });
         const R = window.RECORD_FORM;   // set by the page (see the comment at the top)
         const recordModal = bootstrap.Modal.getOrCreateInstance($('recordModal'));
         const removeModal = bootstrap.Modal.getOrCreateInstance($('removeModal'));
@@ -322,7 +329,7 @@
             if (editing) {
                 const set = (id, value) => { if (value && value !== '—') $(id).value = value; };
                 set('recLast', f.last); set('recFirst', f.first); set('recMi', f.mi);
-                set('recGender', f.gender); set('recEmail', f.email); set('recContact', f.contact);
+                set('recGender', f.gender); set('recEmail', f.email); set('recContact', normalizeMobile(f.contact));
                 set('recAddress', f.address); set('recGroup', f.group); fillPrograms(f.program); set('recProgram', f.program);
                 set('recStatus', f.status); set('recApplied', f.applied);
                 fillYears(f.year_level || f.year || f.level);

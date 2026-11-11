@@ -38,6 +38,24 @@ class ApplicantEditFlow
         };
     }
 
+    public static function normalizeContact(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+        $compact = preg_replace('/[\s()\-]+/u', '', trim($value));
+        if (preg_match('/\A09[0-9]{9}\z/', $compact)) {
+            return '+63'.substr($compact, 1);
+        }
+
+        return $compact;
+    }
+
+    public static function contactRules(): array
+    {
+        return ['nullable', 'string', 'max:13', 'regex:/\A\+639[0-9]{9}\z/'];
+    }
+
     /** Additional fields collected by the manual form; optional for older API clients. */
     public static function detailRules(?string $examResult = null): array
     {

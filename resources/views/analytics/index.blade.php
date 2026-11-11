@@ -343,7 +343,7 @@
         // Chart colours (checked with the dataviz palette validator).
         const COLORS = {
             single: '#00674F',                                        // one-series charts
-            locations: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#7C3AED', '#859791'],
+            locations: ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#859791'],
             years: ['#7FC4AB', '#2E8A6E', '#00503D'],                 // ordered: oldest (light) → newest (dark)
             grid: '#E7ECEA',
             text: 'rgba(26, 43, 38, 0.6)',

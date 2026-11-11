@@ -49,20 +49,24 @@ class ApplicantController extends Controller
             abort(403, 'You do not have permission to add applicants here.');
         }
 
+        if ($request->has('contact')) {
+            $request->merge(['contact' => ApplicantEditFlow::normalizeContact($request->input('contact'))]);
+        }
+
         $validated = $request->validate([
             'last' => 'required|string|max:100',
             'first' => 'required|string|max:100',
             'mi' => 'nullable|string|max:5',
             'gender' => 'required|in:Male,Female',
             'email' => 'nullable|email|max:150',
-            'contact' => 'nullable|string|max:30',
+            'contact' => ApplicantEditFlow::contactRules(),
             'address' => 'nullable|string|max:255',
             'group' => 'required|string|max:100',
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
             ...ApplicantEditFlow::detailRules($request->input('exam_result')),
-        ]);
+        ], ['contact.regex' => 'Enter a Philippine mobile number such as 09171234567 or +639171234567.', 'contact.max' => 'A Philippine mobile number must have 11 digits starting with 09, or 12 digits starting with +63.']);
 
         ApplicantEditFlow::ensureNotDuplicate($validated, $level, true);
         $module = ApplicantEditFlow::moduleFor($level);
@@ -90,20 +94,24 @@ class ApplicantController extends Controller
             abort(403, 'You do not have permission to edit this record.');
         }
 
+        if ($request->has('contact')) {
+            $request->merge(['contact' => ApplicantEditFlow::normalizeContact($request->input('contact'))]);
+        }
+
         $validated = $request->validate([
             'last' => 'required|string|max:100',
             'first' => 'required|string|max:100',
             'mi' => 'nullable|string|max:5',
             'gender' => 'required|in:Male,Female',
             'email' => 'nullable|email|max:150',
-            'contact' => 'nullable|string|max:30',
+            'contact' => ApplicantEditFlow::contactRules(),
             'address' => 'nullable|string|max:255',
             'group' => 'required|string|max:100',
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
             'applied' => 'required|date',
             ...ApplicantEditFlow::detailRules($request->input('exam_result')),
-        ]);
+        ], ['contact.regex' => 'Enter a Philippine mobile number such as 09171234567 or +639171234567.', 'contact.max' => 'A Philippine mobile number must have 11 digits starting with 09, or 12 digits starting with +63.']);
 
         $module = ApplicantEditFlow::moduleFor($applicant->level);
         $name = "{$applicant->last_name}, {$applicant->first_name}";

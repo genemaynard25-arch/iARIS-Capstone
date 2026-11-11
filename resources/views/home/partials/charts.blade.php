@@ -39,7 +39,7 @@
                         <span class="small">No admission data imported yet.</span>
                     </div>
                 @else
-                    @php($locationColors = array_combine(\App\Support\AddressClassifier::GROUPS, ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#7C3AED', '#859791']))
+                    @php($locationColors = array_combine(\App\Support\AddressClassifier::GROUPS, ['#00674F', '#339879', '#7FC4AB', '#C9E8DC', '#2558D9', '#859791']))
                     <div class="dashboard-location-preview flex-grow-1">
                         <div id="dashboardLocationBox">
                             <canvas id="dashboardLocationChart" role="img" aria-label="Applicant locations: {{ implode(', ', array_map(fn ($g) => "$g {$locationChart[$g]}", array_keys($locationChart))) }}"></canvas>
