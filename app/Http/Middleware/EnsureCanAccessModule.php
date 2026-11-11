@@ -19,7 +19,14 @@ class EnsureCanAccessModule
             }
         }
 
-        if (! $request->user()->canAccess($module)) {
+        $user = $request->user();
+        if (($user->isDeanOrChair() || $user->isPrincipalOffice())
+            && in_array($module, ['college', 'is', 'graduate', 'law'], true)
+            && ! $user->canAccess('applicants')) {
+            abort(403, 'Your role does not have access to this module.');
+        }
+
+        if (! $user->canAccess($module)) {
             abort(403, 'Your role does not have access to this module.');
         }
 

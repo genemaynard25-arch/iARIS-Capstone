@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RolePermission;
 use App\Support\ApplicantEditFlow;
 use App\Support\ApplicantRecords;
 use Tests\OfficeTestCase;
@@ -36,6 +37,7 @@ class AdditionalQaTest extends OfficeTestCase
             ->assertDontSee('data-category="College of Information Technology and Engineering"', false);
         $this->assertSame(2, collect(ApplicantRecords::forLevel('college'))->where('college', 'CITE')->count());
 
+        RolePermission::updateOrCreate(['role' => 'dean', 'module' => 'applicants'], ['enabled' => true]);
         $dean = $this->office('dean');
         $dean->update(['assigned_college' => 'CITE', 'assigned_level' => 'college']);
         $this->actingAs($dean)->get('/college/applicants')->assertOk()

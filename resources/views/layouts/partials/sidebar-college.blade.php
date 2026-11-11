@@ -31,25 +31,26 @@
                 // Badges: unread reports (red; the Reports page updates it) and conversations IATO answered
                 $unread = collect(\App\Http\Controllers\CollegeController::received($isChair))->where('status', 'new')->count();
                 $answered = \App\Http\Controllers\CollegeController::answeredMessages();
-                // [label, what it's for, icon, url, active pattern, badge html]
+                // [label, what it's for, icon, url, active pattern, badge html, permission module]
                 $menu = [
                     'MENU' => [
-                        ['Briefing', 'Summary and alerts', 'bi-compass', "/{$base}", $base, ''],
-                        ['Applicants', ($isChair ? 'BSCS' : $code) . ' · view only', 'bi-people', "/{$base}/applicants", "{$base}/applicants*", ''],
-                        ['Analytics', $isPrincipal ? 'Trends, levels, insights' : 'Trends, programs, insights', 'bi-bar-chart-line', "/{$base}/analytics", "{$base}/analytics*", ''],
+                        ['Briefing', 'Summary and alerts', 'bi-compass', "/{$base}", $base, '', 'dashboard'],
+                        ['Applicants', ($isChair ? 'BSCS' : $code) . ' · view only', 'bi-people', "/{$base}/applicants", "{$base}/applicants*", '', 'applicants'],
+                        ['Analytics', $isPrincipal ? 'Trends, levels, insights' : 'Trends, programs, insights', 'bi-bar-chart-line', "/{$base}/analytics", "{$base}/analytics*", '', 'analytics'],
                         ['Reports', 'From IATO and your own', 'bi-file-earmark-text', "/{$base}/reports", "{$base}/reports*",
-                            '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>'],
+                            '<span class="badge rounded-pill bg-danger ms-auto ' . ($unread ? '' : 'd-none') . '" id="reportsBadge">' . $unread . '</span>', 'reports'],
                     ],
                     'HELP' => [
                         ['Messages', 'Talk with IATO', 'bi-chat-dots', "/{$base}/messages", "{$base}/messages*",
-                            '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>'],
+                            '<span class="badge rounded-pill nav-count ms-auto ' . ($answered ? '' : 'd-none') . '" id="messagesBadge" title="IATO answered">' . $answered . '</span>', null],
                     ],
                 ];
             @endphp
             @foreach ($menu as $title => $links)
                 <div class="small fw-bold tracking-wide text-iaris-pale px-3 mb-1">{{ $title }}</div>
                 <nav class="nav nav-pills flex-column mb-3">
-                    @foreach ($links as [$label, $hint, $icon, $url, $match, $badge])
+                    @foreach ($links as [$label, $hint, $icon, $url, $match, $badge, $module])
+                        @continue($module && ! $isDirector && ! auth()->user()->canAccess($module))
                         <a href="{{ url($url) }}" class="nav-link {{ request()->is($match) ? 'active' : '' }}" @if (request()->is($match)) aria-current="page" @endif>
                             <i class="bi {{ $icon }}"></i>
                             <span class="d-flex flex-column lh-sm"><span>{{ $label }}</span><small class="fw-normal text-white-50">{{ $hint }}</small></span>

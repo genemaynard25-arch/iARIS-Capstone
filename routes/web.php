@@ -168,10 +168,10 @@ Route::get('/office-reports/preview/{key}', [CollegeController::class, 'previewO
 Route::get('/office-reports/{report}', [CollegeController::class, 'downloadOfficeReport'])->middleware('auth')->whereNumber('report')->name('office.reports.download');
 
 // College dashboard for Deans and Program Chairs (their own sidebar: see layouts/app.blade.php)
-Route::get('/college', [CollegeController::class, 'dashboard'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.dashboard');
-Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.applicants');
-Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.analytics');
-Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.reports');
+Route::get('/college', [CollegeController::class, 'dashboard'])->middleware(['auth', 'role:isDeanOrChair', 'module:dashboard'])->name('college.dashboard');
+Route::get('/college/applicants', [CollegeController::class, 'applicants'])->middleware(['auth', 'role:isDeanOrChair', 'module:applicants'])->name('college.applicants');
+Route::get('/college/analytics', [CollegeController::class, 'analytics'])->middleware(['auth', 'role:isDeanOrChair', 'module:analytics'])->name('college.analytics');
+Route::get('/college/reports', [CollegeController::class, 'reports'])->middleware(['auth', 'role:isDeanOrChair', 'module:reports'])->name('college.reports');
 Route::get('/college/messages', [CollegeController::class, 'messages'])->middleware(['auth', 'role:isDeanOrChair'])->name('college.messages');
 
 // Integrated School Principal: the same pages as a Dean, by level (their own sidebar: see layouts/app.blade.php)
@@ -196,10 +196,10 @@ Route::middleware(['auth', 'role:isDirector'])->prefix('director')->name('direct
 });
 
 Route::middleware(['auth', 'role:isPrincipalOffice'])->prefix('principal')->name('principal.')->group(function () {
-    Route::get('/', [CollegeController::class, 'dashboard'])->name('dashboard');
-    Route::get('/applicants', [CollegeController::class, 'applicants'])->name('applicants');
-    Route::get('/analytics', [CollegeController::class, 'analytics'])->name('analytics');
-    Route::get('/reports', [CollegeController::class, 'reports'])->name('reports');
+    Route::get('/', [CollegeController::class, 'dashboard'])->middleware('module:dashboard')->name('dashboard');
+    Route::get('/applicants', [CollegeController::class, 'applicants'])->middleware('module:applicants')->name('applicants');
+    Route::get('/analytics', [CollegeController::class, 'analytics'])->middleware('module:analytics')->name('analytics');
+    Route::get('/reports', [CollegeController::class, 'reports'])->middleware('module:reports')->name('reports');
     Route::get('/messages', [CollegeController::class, 'messages'])->name('messages');
 });
 

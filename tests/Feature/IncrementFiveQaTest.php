@@ -158,6 +158,7 @@ class IncrementFiveQaTest extends OfficeTestCase
         $this->assertSame([], CollegeController::received(false));
         $dean = $this->office('dean');
         $dean->update(['assigned_college' => 'CEAS']);
+        RolePermission::updateOrCreate(['role' => 'dean', 'module' => 'dashboard'], ['enabled' => true]);
         $this->actingAs($dean)->get('/college')->assertOk()->assertViewHas('reports', []);
     }
 

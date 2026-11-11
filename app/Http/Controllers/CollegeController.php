@@ -581,6 +581,7 @@ class CollegeController extends Controller
     private function scopedReport(string $key): array
     {
         $user = auth()->user();
+        abort_if(($user->isDeanOrChair() || $user->isPrincipalOffice()) && ! $user->canAccess('reports'), 403, 'Your role does not have access to this module.');
         abort_unless($user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector(), 403);
         $common = $this->common();
         abort_if($common['needsProgramAssignment'], 422, 'Ask IATO to assign this account to a college and program first.');
@@ -651,6 +652,7 @@ class CollegeController extends Controller
     public function downloadOfficeReport(Request $request, int $report)
     {
         $user = $request->user();
+        abort_if(($user->isDeanOrChair() || $user->isPrincipalOffice()) && ! $user->canAccess('reports'), 403, 'Your role does not have access to this module.');
         abort_unless($user->isAdmin() || $user->isDeanOrChair() || $user->isPrincipalOffice() || $user->isDirector(), 403);
         $saved = DB::table('generated_reports')->where('id', $report)->first();
         abort_unless($saved && str_starts_with($saved->template_key ?? '', 'office-'), 404);

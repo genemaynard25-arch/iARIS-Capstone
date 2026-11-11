@@ -11,6 +11,16 @@ use Tests\OfficeTestCase;
 
 class OfficeScopeAndReportsTest extends OfficeTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        foreach (['dean', 'program_chair'] as $role) {
+            foreach (['dashboard', 'applicants', 'analytics', 'reports'] as $module) {
+                RolePermission::updateOrCreate(['role' => $role, 'module' => $module], ['enabled' => true]);
+            }
+        }
+    }
+
     public function test_dashboard_pending_and_recent_applicants_only_use_the_current_school_year(): void
     {
         $current = $this->applicant(['school_year' => '2026-2027', 'application_status' => 'pooling', 'created_at' => '2026-01-01']);
