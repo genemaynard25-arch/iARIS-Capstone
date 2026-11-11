@@ -67,7 +67,7 @@ class ApplicantController extends Controller
             'group' => 'required|string|max:100',
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
-            'applied' => 'required|date',
+            'applied' => 'required|date_format:Y-m-d|before_or_equal:today',
             ...ApplicantEditFlow::detailRules($request->input('exam_result')),
         ], ['contact.regex' => 'Enter a Philippine mobile number such as 09171234567 or +639171234567.', 'contact.max' => 'A Philippine mobile number must have 11 digits starting with 09, or 12 digits starting with +63.']);
 
@@ -112,7 +112,7 @@ class ApplicantController extends Controller
             'group' => 'required|string|max:100',
             'program' => 'required|string|max:150',
             'status' => 'required|in:Pending,For Exam,Passed,Not Qualified,Paid',
-            'applied' => 'required|date',
+            'applied' => 'required|date_format:Y-m-d|before_or_equal:today',
             ...ApplicantEditFlow::detailRules($request->input('exam_result')),
         ], ['contact.regex' => 'Enter a Philippine mobile number such as 09171234567 or +639171234567.', 'contact.max' => 'A Philippine mobile number must have 11 digits starting with 09, or 12 digits starting with +63.']);
 

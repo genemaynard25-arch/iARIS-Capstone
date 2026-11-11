@@ -100,7 +100,8 @@
                     <input type="hidden" id="recStatus" value="Pending">
                     <div class="col-sm-6">
                         <label for="recApplied" class="form-label small fw-bold text-uppercase">Date Applied <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="recApplied" required>
+                        <input type="date" class="form-control" id="recApplied" max="{{ today()->toDateString() }}" required>
+                        <div class="invalid-feedback">Date applied must be today or earlier.</div>
                         <div class="invalid-feedback">Pick the date.</div>
                     </div>
                 </div>
@@ -346,7 +347,7 @@
                 }
                 if ($('recScholarship')) set('recScholarship', f.scholarship);
             } else {
-                $('recApplied').value = new Date().toISOString().slice(0, 10);
+                $('recApplied').value = $('recApplied').max;
                 fillYears();
             }
             bootstrap.Offcanvas.getInstance($('applicantDrawer'))?.hide();
