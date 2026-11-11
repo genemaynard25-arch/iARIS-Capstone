@@ -254,7 +254,7 @@
         </div>
     @endif
 
-    {{-- Forgot password modal. TODO: submit to Fortify's password.email route once reset emails are set up. Front end only for now. --}}
+    {{-- Forgot password uses Fortify's password broker and configured mail transport. --}}
     <div class="modal fade" id="forgotModal" {{ $openForgot ? 'data-open-on-load' : '' }} tabindex="-1" aria-labelledby="forgotTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4 overflow-hidden">
@@ -278,7 +278,7 @@
                 <label for="forgotEmail" class="form-label small fw-bold text-uppercase">Email Address</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white text-body-secondary"><i class="bi bi-envelope"></i></span>
-                    <input type="email" name="email" id="forgotEmail" class="form-control" placeholder="name@dlsl.edu.ph" required>
+                    <input type="email" name="email" id="forgotEmail" value="{{ old('email') }}" class="form-control" placeholder="name@dlsl.edu.ph" required>
                 </div>
                     <div class="form-text mb-4">Enter the email address linked to your iARIS account. You'll receive a password reset link within a few minutes.</div>
                     <div class="d-flex gap-2">
@@ -292,7 +292,7 @@
                         <i class="bi bi-envelope-check"></i>
                     </div>
                     <h4 class="fs-5 fw-bold">Reset link sent!</h4>
-                    <p class="text-body-secondary">Check your DLSL email inbox for the password reset link. It will expire in 30 minutes.</p>
+                    <p class="text-body-secondary">Check your DLSL email inbox for the password reset link. It will expire in {{ config('auth.passwords.'.config('auth.defaults.passwords').'.expire') }} minutes.</p>
                     <button type="button" class="btn btn-primary fw-bold w-100" data-bs-dismiss="modal">Done</button>
                 </div>
             </div>

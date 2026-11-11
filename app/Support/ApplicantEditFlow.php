@@ -213,6 +213,11 @@ class ApplicantEditFlow
             ['Name', '—', trim("{$validated['last']}, {$validated['first']} ".($validated['mi'] ?? ''))],
             [$validated['group'] === null ? 'Group' : 'College/Group', '—', $validated['group']],
             ['Program / Track', '—', $validated['program']],
+            ['Gender', '—', $validated['gender']],
+            ['Email', '—', $validated['email'] ?? '—'],
+            ['Contact No.', '—', $validated['contact'] ?? '—'],
+            ['Address', '—', $validated['address'] ?? '—'],
+            ['Date Applied', '—', $validated['applied']],
             ['Status', '—', $validated['status']],
         ];
         foreach (array_merge(self::DETAIL_FIELDS, ['exam_date', 'exam_time', 'exam_result', 'exam_fee_paid', 'reservation_fee_paid']) as $field) {

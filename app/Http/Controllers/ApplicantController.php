@@ -76,7 +76,7 @@ class ApplicantController extends Controller
 
         if ($this->needsReview($request)) {
             return $this->stageForReview($request, null, $module, 'create', ['level' => $level, 'validated' => $validated],
-                ApplicantEditFlow::diffForCreate($validated), "{$validated['last']}, {$validated['first']}", '—');
+                ApplicantEditFlow::diffForCreate($validated), "{$validated['last']}, {$validated['first']}", 'New Applicant Submitted');
         }
 
         $applicant = ApplicantEditFlow::applyCreate($validated, $level);

@@ -147,7 +147,7 @@ class ApplicantRecords
         return match ($a->level) {
             'college' => array_merge($row, [
                 'unit' => 'college',
-                'college' => $a->college ?: self::collegeFor($program),
+                'college' => CollegeCatalog::code($a->college ?: self::collegeFor($program)),
                 'year' => $a->year_level ?: '—',
             ]),
             'is' => array_merge($row, [

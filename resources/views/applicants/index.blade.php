@@ -225,9 +225,9 @@
         'eteeap' => ['group' => 'Program', 'age' => 'Age', 'education' => 'Highest Educ. Attainment', 'experience' => 'Work Experience', 'program' => 'Portfolio / Assessment'],
         default => ['group' => 'College', 'program' => 'Program'],
     };
-    $categoryField = $scope === 'ipace' ? 'program' : 'group';
-    $categoryLabel = match ($scope) { 'college' => 'College', 'is' => 'Level', 'ipace' => 'Delivery Mode', default => 'Program' };
-    $categoryOptions = collect($groupOrder ?? [])->merge($rows->pluck($categoryField))->filter(fn ($v) => $v && $v !== '—')->unique()->values();
+    $categoryField = $scope === 'ipace' || ($scope === 'college' && $isDean) ? 'program' : 'group';
+    $categoryLabel = match ($scope) { 'college' => $isDean ? 'Program' : 'College', 'is' => 'Level', 'ipace' => 'Delivery Mode', default => 'Program' };
+    $categoryOptions = collect($scope === 'college' && $isDean ? [] : ($groupOrder ?? []))->merge($rows->pluck($categoryField))->filter(fn ($v) => $v && $v !== '—')->unique()->values();
     if ($scope === 'ipace') $categoryOptions = collect(['Online', 'Blended']);
     $recordColumnCount = count($recordColumns) + ($isRegistrar ? 5 : 6);
 
@@ -286,7 +286,7 @@
             @if ($scope === 'is')
                 <select class="form-select w-auto" id="gradeFilter" aria-label="Filter by grade level">
                     <option value="">All Grade Levels</option>
-                    @foreach ($rows->pluck('level')->unique()->filter(fn ($grade) => $grade && $grade !== '—')->sort() as $grade)
+                    @foreach ($rows->pluck('level')->unique()->filter(fn ($grade) => $grade && $grade !== '—')->sort(SORT_NATURAL | SORT_FLAG_CASE) as $grade)
                         <option>{{ $grade }}</option>
                     @endforeach
                 </select>
@@ -602,9 +602,9 @@
         function setUpFiltersForTab() {
             const inTab = rows.filter(r => r.dataset.unit === state.unit);
             const labels = currentLabels();
-            fillSelect(groupFilter, labels.groupAll, inTab.map(r => r.dataset.group), GROUP_ORDER);
+            fillSelect(groupFilter, labels.groupAll, [...GROUP_ORDER, ...inTab.map(r => r.dataset.group)], GROUP_ORDER);
             if (labels.programAll) fillSelect(programFilter, labels.programAll, inTab.map(r => r.dataset.program));
-            programFilter.classList.toggle('d-none', !labels.programAll || ['college', 'is'].includes(SCOPE));
+            programFilter.classList.toggle('d-none', !labels.programAll || (['college', 'is'].includes(SCOPE) && !@json($scope === 'college' && $isDean)));
             document.getElementById('groupHeading').textContent = labels.group;
             document.getElementById('programHeading').textContent = SCOPE === 'is' ? 'Strand' : labels.program;
             state.group = state.program = '';

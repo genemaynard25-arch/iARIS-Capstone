@@ -142,6 +142,8 @@
 .review-page .admin-review-flow .card-body { gap: 10px !important; padding: 16px 20px !important; }
 .review-page .admin-review-flow .rounded-pill { background: #f2f5f4 !important; font-size: 11.5px; border: 0 !important; }
 .review-page .table { min-width: 960px; }
+.review-page #itemDrawer .table { min-width: 0; width: 100%; table-layout: fixed; }
+.review-page #itemDrawer .table th, .review-page #itemDrawer .table td { white-space: normal; overflow-wrap: anywhere; }
 .review-page .offcanvas { --bs-offcanvas-width: 640px; }
 .succession-page #steps { border: 1px solid var(--admin-border); border-radius: 10px; background: #fafcfb; margin: 0 0 24px !important; padding: 16px 10px; }
 .succession-page #steps > li { padding: 0 8px; }

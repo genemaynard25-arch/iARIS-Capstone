@@ -68,6 +68,13 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->role === 'registrar' && in_array($module, ['is', 'college', 'graduate', 'law', 'ipace', 'eteeap'], true)) {
+            $allowed = $this->assigned_level === 'is' ? ['is'] : ['college', 'graduate', 'law', 'ipace', 'eteeap'];
+            if (! in_array($module, $allowed, true)) {
+                return false;
+            }
+        }
+
         return RolePermission::where('role', $this->role)
             ->where('module', $module)
             ->where('enabled', true)
