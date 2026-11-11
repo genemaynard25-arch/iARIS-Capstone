@@ -154,7 +154,7 @@ class IncrementFiveQaTest extends OfficeTestCase
         for ($i = 0; $i < 501; $i++) {
             AuditLog::record('edit', 'Applicants', 'QA entry '.$i, 'Test entry');
         }
-        $this->get('/audit-logs')->assertOk()->assertViewHas('logs', fn ($logs) => $logs->contains('id', $oldest->id));
+        $this->get('/audit-logs?search=QA%20oldest%20entry')->assertOk()->assertViewHas('logs', fn ($logs) => $logs->contains('id', $oldest->id));
         $this->assertSame([], CollegeController::received(false));
         $dean = $this->office('dean');
         $dean->update(['assigned_college' => 'CEAS']);

@@ -75,6 +75,7 @@ class ImportController extends Controller
 
         try {
             return DB::transaction(function () use ($request, $validated, $batch) {
+                $batch->refresh();
                 $needsReview = $request->user()->role === 'iato_staff' && ! $request->user()->isAdmin();
 
                 $import = new ApplicantsImport($batch, $validated['school_year']);
@@ -106,7 +107,7 @@ class ImportController extends Controller
                 );
 
                 return redirect("/import/{$batch->id}");
-            });
+            }, 3);
         } catch (\Throwable $exception) {
             report($exception);
             $batch->update(['status' => 'failed']);

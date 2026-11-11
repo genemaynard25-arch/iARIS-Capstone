@@ -101,7 +101,7 @@ class ReviewQueueController extends Controller
             $item->update(['status' => 'approved', 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
 
             AuditLog::record('edit', $item->type === 'lamp' ? 'LAMP' : $item->unit, 'Review Queue Item Approved', "Approved **{$item->rq_number}**: {$item->title} — {$item->subject} ({$item->ref})", $request->user()->roleInfo()[0], $item->changes);
-        });
+        }, 3);
 
         return response()->json(['ok' => true]);
     }

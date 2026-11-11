@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Applicant;
 use App\Models\ReviewQueueItem;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -315,7 +316,11 @@ class ApplicantEditFlow
 
     public static function applyRestore(Applicant $applicant): void
     {
-        $applicant->update(['archived_at' => null]);
+        try {
+            $applicant->update(['archived_at' => null]);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages(['applicant' => 'An active application with this application number already exists for this school year. Review it before restoring this archived copy.']);
+        }
     }
 
     public static function applyExamStatus(Applicant $applicant, string $newStatus): void

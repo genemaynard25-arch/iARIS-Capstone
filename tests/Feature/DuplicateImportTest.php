@@ -124,12 +124,9 @@ class DuplicateImportTest extends OfficeTestCase
         $this->assertSame(2, ImportBatch::count());
     }
 
-    public function test_ambiguous_copies_pending_reviews_and_conversations_are_not_auto_archived(): void
+    public function test_pending_reviews_and_conversations_are_not_auto_archived(): void
     {
         [$wrong, $correct] = $this->copies();
-        $extra = $this->applicant(['school_year' => '2025-2026', 'external_app_no' => 'DUP-1']);
-        $this->archive($wrong)->assertConflict();
-        $extra->update(['external_app_no' => 'OTHER']);
         $source = $wrong->applicants()->first();
         $queue = ReviewQueueItem::create(['rq_number' => ReviewQueueItem::nextRqNumber(), 'type' => 'lamp', 'title' => 'Pending', 'applicant_id' => $source->id, 'submitted_at' => now(), 'status' => 'waiting']);
         $this->archive($wrong)->assertConflict();

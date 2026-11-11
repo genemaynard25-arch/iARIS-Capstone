@@ -12,10 +12,10 @@
     // pass or fail the exam" — the specific scholarship type is LAMP's call, not shown here.
     $passedScholars = $scholars->whereIn('exam', ['passed', 'qualified_other_degree', 'reconsidered']);
     $stats = [
-        ['label' => 'Scholarship applicants', 'value' => $scholars->count(), 'sub' => 'Answered Yes on the application', 'tone' => 'primary'],
-        ['label' => 'Passed the exam', 'value' => $passedScholars->count(), 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
-        ['label' => 'Confirmed scholars', 'value' => $scholars->where('lamp', 'Match')->count(), 'sub' => 'LAMP decision confirmed by IATO', 'tone' => 'primary'],
-        ['label' => 'Waiting for LAMP', 'value' => $passedScholars->where('lamp', 'Pending Check')->count(), 'sub' => 'Passed, not yet checked', 'tone' => 'warning'],
+        ['label' => 'Scholarship applicants', 'value' => $scholarTotals['total'], 'sub' => 'Answered Yes on the application', 'tone' => 'primary'],
+        ['label' => 'Passed the exam', 'value' => $scholarTotals['passed'], 'sub' => 'Pass or Reconsidered', 'tone' => 'purple'],
+        ['label' => 'Confirmed scholars', 'value' => $scholarTotals['confirmed'], 'sub' => 'LAMP decision confirmed by IATO', 'tone' => 'primary'],
+        ['label' => 'Waiting for LAMP', 'value' => $scholarTotals['waiting'], 'sub' => 'Passed, not yet checked', 'tone' => 'warning'],
     ];
 @endphp
 
@@ -74,6 +74,7 @@
             <button class="btn btn-light border" type="submit">Apply</button>
             <span class="small text-body-secondary">Active applicants for {{ $selectedSchoolYear }}</span>
         </form>
+        <div id="scholarLoadError" class="alert alert-danger mx-4 mt-3 d-none" role="alert"></div>
         {{-- Search, filters, sort --}}
         <div class="d-flex flex-wrap align-items-center gap-2 px-4 py-3 border-bottom">
             <div class="input-group" style="max-width: 300px;">
@@ -142,44 +143,7 @@
                     </tr>
                 </thead>
                 <tbody id="scholarRows">
-                    @foreach ($scholars as $i => $s)
-                        @php
-                            [$lampTone, $lampIcon] = $lampBadges[$s['lamp']];
-                        @endphp
-                        <tr class="scholar-row" style="cursor: pointer;" tabindex="0"
-                            data-unit="{{ $s['unit'] }}" data-index="{{ $i }}" data-status="{{ $s['status'] }}" data-exam="{{ $s['exam'] }}"
-                            data-scholarship="{{ $s['scholarship_status'] }}" data-lamp="{{ $s['lamp'] }}"
-                            data-search="{{ strtolower($s['name'] . ' ' . $s['id']) }}"
-                            data-applied="{{ $s['applied'] }}" data-name="{{ $s['name'] }}">
-                            <td class="ps-4">
-                                <div class="fw-semibold text-nowrap">{{ $s['name'] }}</div>
-                                <div class="small text-body-secondary">{{ $s['id'] }}</div>
-                            </td>
-                            <td>{{ $s['unit'] }}</td>
-                            <td>{{ $s['program'] }}</td>
-                            <td><span class="badge rounded-pill bg-{{ $s['exam_tone'] }}-subtle text-{{ $s['exam_tone'] }}-emphasis">{{ $s['exam_label'] }}</span></td>
-                            <td>
-                                <span class="badge rounded-pill bg-{{ $lampTone }}-subtle text-{{ $lampTone }}-emphasis"><i class="bi {{ $lampIcon }} me-1" aria-hidden="true"></i>{{ $s['lamp'] }}</span>
-                                {{-- "Waiting for LAMP" / "LAMP replied" / "Resolved" (filled in by the Ask LAMP script) --}}
-                                <div data-thread-tag></div>
-                            </td>
-                            <td class="small text-body-secondary text-nowrap">{{ $s['applied_label'] }}</td>
-                            <td class="pe-4 text-end text-nowrap">
-                                @if ($canEdit)
-                                    <button type="button" class="btn btn-sm btn-light border" title="View details" aria-label="View {{ $s['name'] }}"><i class="bi bi-eye" aria-hidden="true"></i></button>
-                                    <button type="button" class="btn btn-sm btn-light border" data-row-action="edit" title="Edit scholar" aria-label="Edit {{ $s['name'] }}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                                @else
-                                    <span class="btn btn-sm btn-light border"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                    <tr id="noResults" class="d-none">
-                        <td colspan="7" class="text-center text-body-secondary py-5">
-                            <i class="bi bi-search fs-3 d-block mb-2" aria-hidden="true"></i>
-                            No scholars match your search or filters.
-                        </td>
-                    </tr>
+                    @include('scholars.partials.rows')
                 </tbody>
             </table>
         </div>
@@ -296,52 +260,51 @@
 @section('scripts')
     <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
-        const SCHOLARS = @json($scholars);
+        let SCHOLARS = @json($scholars);
+        let PAGE = @json($pagination);
+        const FILTERS = @json((object) $filters);
+        const OPEN_SCHOLAR = @json($openScholar);
         const SCHOLARSHIP_TONES = @json($scholarshipTones);
-        const PAGE_SIZE = 10;
         const STATUS_ORDER = ['Pending', 'For Exam', 'Paid', 'Enrolled'];
 
-        const state = { unit: '', status: 'All', exam: '', scholarship: '', lamp: '', search: '', sort: 'newest', page: 1 };
+        const state = { unit: FILTERS.unit || '', status: FILTERS.status || 'All', exam: FILTERS.exam || '', scholarship: FILTERS.scholarship || '', lamp: FILTERS.lamp || '', search: FILTERS.search || '', sort: FILTERS.sort || 'newest', page: PAGE.page };
         const tbody = document.getElementById('scholarRows');
-        const rows = [...tbody.querySelectorAll('.scholar-row')];
-        let currentMatches = [];   // rows passing the filters (all pages), used by Export
+        let rows = [...tbody.querySelectorAll('.scholar-row')];
 
         // ---- Filtering, sorting, paging ----
-        function render() {
-            const lampMatches = r => !state.lamp
-                || (state.lamp === 'review' ? ['Discrepancy', 'Not Found'].includes(r.dataset.lamp) : r.dataset.lamp === state.lamp);
-
-            const matches = rows.filter(r =>
-                (!state.unit || r.dataset.unit === state.unit) &&
-                (state.status === 'All' || r.dataset.status === state.status) &&
-                (!state.exam || r.dataset.exam === state.exam) &&
-                (!state.scholarship || r.dataset.scholarship === state.scholarship) &&
-                lampMatches(r) &&
-                r.dataset.search.includes(state.search)
-            );
-
-            const byNewest = (a, b) => b.dataset.applied.localeCompare(a.dataset.applied);
-            const compare = {
-                newest: byNewest,
-                az: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
-                // Records that need review on top, newest first within each group
-                review: (a, b) => (a.dataset.lamp === 'Match') - (b.dataset.lamp === 'Match') || byNewest(a, b),
-            }[state.sort];
-            matches.sort(compare);
-            currentMatches = matches;
-
-            const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
-            state.page = Math.min(state.page, pages);
-            const start = (state.page - 1) * PAGE_SIZE;
-            const pageRows = matches.slice(start, start + PAGE_SIZE);
-
-            rows.forEach(r => r.classList.add('d-none'));
-            pageRows.forEach(r => { r.classList.remove('d-none'); tbody.insertBefore(r, document.getElementById('noResults')); });
-            document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
-            document.getElementById('showingText').textContent = matches.length
-                ? `Showing ${start + 1}–${start + pageRows.length} of ${matches.length} scholar${matches.length === 1 ? '' : 's'}`
-                : '';
-            renderPagination(pages);
+        let pendingRequest;
+        let searchTimer;
+        function queryParams() {
+            const params = new URLSearchParams({year: @json($selectedSchoolYear)});
+            Object.entries(state).forEach(([key,value]) => { if (value) params.set(key,value); });
+            return params;
+        }
+        function drawPage() {
+            state.page = PAGE.page;
+            document.getElementById('noResults').classList.toggle('d-none', PAGE.total > 0);
+            document.getElementById('showingText').textContent = PAGE.total ? `Showing ${PAGE.from}–${PAGE.to} of ${PAGE.total} scholars` : 'No scholars';
+            renderPagination(PAGE.pages);
+        }
+        async function render() {
+            pendingRequest?.abort(); pendingRequest = new AbortController();
+            const signal = pendingRequest.signal;
+            tbody.setAttribute('aria-busy', 'true');
+            try {
+                const params = queryParams();
+                const response = await fetch(location.pathname + '?' + params, {headers: {'Accept':'application/json'}, signal});
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Could not load scholarship applicants.');
+                if (signal.aborted) return;
+                SCHOLARS = data.scholars; PAGE = data.pagination; tbody.innerHTML = data.html;
+                rows = [...tbody.querySelectorAll('.scholar-row')];
+                window.RECORD_FORM.items = SCHOLARS; window.RECORD_FORM.rows = rows;
+                bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('applicantDrawer')).hide();
+                bindRows(); drawPage();
+                params.set('page',PAGE.page); history.replaceState(null,'',location.pathname+'?'+params);
+                document.getElementById('scholarLoadError').classList.add('d-none');
+            } catch(error) {
+                if (error.name !== 'AbortError') { const alert = document.getElementById('scholarLoadError'); alert.textContent = error.message; alert.classList.remove('d-none'); }
+            } finally { if (!signal.aborted) tbody.removeAttribute('aria-busy'); }
         }
 
         function renderPagination(pages) {
@@ -373,7 +336,7 @@
         }
 
         const setFilter = (key, value) => { state[key] = value; state.page = 1; render(); };
-        document.getElementById('search').addEventListener('input', e => setFilter('search', e.target.value.trim().toLowerCase()));
+        document.getElementById('search').addEventListener('input', e => { state.search = e.target.value.trim(); state.page = 1; clearTimeout(searchTimer); searchTimer = setTimeout(render, 300); });
         document.getElementById('unitFilter').addEventListener('change', e => setFilter('unit', e.target.value));
         document.getElementById('examFilter').addEventListener('change', e => setFilter('exam', e.target.value));
         document.getElementById('scholarshipFilter').addEventListener('change', e => setFilter('scholarship', e.target.value));
@@ -400,17 +363,7 @@
 
         // ---- Export: the filtered rows as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
-            const header = ['App No.', 'Name', 'Unit', 'Program / Grade', 'Exam result', 'LAMP check', 'Date applied'];
-            const lines = currentMatches.map(row => {
-                const s = SCHOLARS[row.dataset.index];
-                return [s.id, s.name, s.unit, s.program, s.exam_label, s.lamp, s.applied_label];
-            });
-            const csv = [header, ...lines].map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-            link.download = 'scholar-records.csv';
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const params = queryParams(); params.delete('page'); params.set('export','csv'); window.location = location.pathname+'?'+params;
         });
 
         // ---- Profile drawer ----
@@ -490,7 +443,7 @@
             });
         }
 
-        rows.forEach(row => {
+        function bindRows() { rows.forEach(row => {
             const open = () => openDrawer(SCHOLARS[row.dataset.index]);
             row.addEventListener('click', e => {
                 // The pencil opens the edit form instead of the drawer
@@ -498,12 +451,15 @@
                 open();
             });
             row.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
-        });
-
-        render();
+        }); }
+        bindRows();
+        document.getElementById('search').value = state.search;
+        [['unitFilter','unit'],['examFilter','exam'],['scholarshipFilter','scholarship'],['lampFilter','lamp'],['sort','sort']].forEach(([id,key]) => document.getElementById(id).value = state[key]);
+        document.querySelectorAll('#statusPills [data-status]').forEach(p => { p.classList.toggle('btn-primary',p.dataset.status===state.status); p.classList.toggle('btn-outline-secondary',p.dataset.status!==state.status); });
+        drawPage();
 
         // ?open=APP-2026-0383 opens that scholar's drawer (IATO's Messages "Open the record" links here)
-        const linkedScholar = SCHOLARS.find(s => s.id === new URLSearchParams(location.search).get('open'));
+        const linkedScholar = OPEN_SCHOLAR || SCHOLARS.find(s => s.id === new URLSearchParams(location.search).get('open'));
         if (linkedScholar) openDrawer(linkedScholar);
 
         // Tells the Add / Edit / Remove partial (applicants/partials/record-modals) where things are on this page

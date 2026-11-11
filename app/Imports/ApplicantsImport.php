@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Applicant;
 use App\Models\ImportBatch;
 use App\Support\AdmissionLevelClassifier;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -198,24 +199,34 @@ class ApplicantsImport implements ToModel, WithChunkReading, WithCustomCsvSettin
      */
     public static function commitRow(array $fields, ?Carbon $appliedAt, array $fees, int $batchId, string $schoolYear, string $level): Applicant
     {
-        $applicant = Applicant::where('external_app_no', $fields['external_app_no'])->where('school_year', $schoolYear)->first();
-        $isNew = $applicant === null;
-        $applicant ??= new Applicant;
+        return DB::transaction(function () use ($fields, $appliedAt, $fees, $batchId, $schoolYear, $level) {
+            $identity = ['external_app_no' => $fields['external_app_no'], 'school_year' => $schoolYear];
+            $created = false;
+            try {
+                $applicant = Applicant::query()->orderByRaw('archived_at IS NOT NULL')->orderByDesc('id')->firstOrCreate($identity, $fields + [
+                    'imported_batch_id' => $batchId, 'reference_number' => self::generateReferenceNumber($schoolYear, $level),
+                ]);
+                $created = $applicant->wasRecentlyCreated;
+            } catch (UniqueConstraintViolationException $exception) {
+                // A current read sees a competing import even under MySQL REPEATABLE READ.
+                $applicant = Applicant::where('school_year', $schoolYear)->where('active_external_app_no', $fields['external_app_no'])->lockForUpdate()->first();
+                if (! $applicant) {
+                    throw $exception;
+                }
+            }
+            $applicant = Applicant::whereKey($applicant->id)->lockForUpdate()->firstOrFail();
+            if (! $created) {
+                $applicant->fill($fields + ['imported_batch_id' => $batchId]);
+                $applicant->save();
+            }
+            if ($appliedAt) {
+                DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $appliedAt]);
+            }
+            self::recordPayment($applicant->id, 'application_fee', $fees['application_fee']);
+            self::recordPayment($applicant->id, 'reservation_fee', $fees['reservation_fee']);
 
-        $applicant->fill($fields + [
-            'imported_batch_id' => $batchId,
-            'reference_number' => $isNew ? self::generateReferenceNumber($schoolYear, $level) : $applicant->reference_number,
-        ]);
-        $applicant->save();
-
-        if ($appliedAt) {
-            DB::table('applicants')->where('id', $applicant->id)->update(['created_at' => $appliedAt]);
-        }
-
-        self::recordPayment($applicant->id, 'application_fee', $fees['application_fee']);
-        self::recordPayment($applicant->id, 'reservation_fee', $fees['reservation_fee']);
-
-        return $applicant;
+            return $applicant;
+        }, 3);
     }
 
     /** "REYES, JUAN H" -> ['REYES', 'JUAN H']. Falls back to splitting on whitespace if there's no comma. */

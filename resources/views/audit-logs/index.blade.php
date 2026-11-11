@@ -79,6 +79,7 @@
             @endforeach
         </div>
 
+        <div id="logLoadError" class="alert alert-danger mx-4 mt-3 d-none" role="alert"></div>
         {{-- Table (rows are drawn by the script from the LOGS list) --}}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -185,17 +186,19 @@
 @section('scripts')
     <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
-        const LOGS = @json($logs);
-        const PEOPLE = @json($people);
+        let LOGS = @json($logs);
+        let PAGE = @json($pagination);
+        let TOTALS = @json($totals);
+        const INITIAL_FILTERS = @json((object) $filters);
+        let PEOPLE = @json($people);
         const historicalActor = log => ({
             ...(PEOPLE[log.user] || { tone: 'secondary' }),
             name: log.actorName || PEOPLE[log.user]?.name || 'Deleted User',
             role: log.actorRole || PEOPLE[log.user]?.role || '',
         });
         const ACTIONS = @json($actions);
-        const PAGE_SIZE = 10;
 
-        const state = { search: '', user: '', module: '', days: '', group: '', page: 1 };
+        const state = { search: INITIAL_FILTERS.search || '', user: String(INITIAL_FILTERS.user || ''), module: INITIAL_FILTERS.module || '', days: INITIAL_FILTERS.days || '', group: INITIAL_FILTERS.group || '', page: PAGE.page };
         const tbody = document.getElementById('logRows');
         const drawer = bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('logDrawer'));
 
@@ -206,7 +209,7 @@
             return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
         };
         const logId = id => `LOG-${String(id).padStart(6, '0')}`;
-        const plain = text => text.replace(/\*\*/g, '');
+        const plain = text => (text || '').replace(/\*\*/g, '');
 
         // Turn **bold** into <b>bold</b>, after escaping everything else
         function boldText(el, text) {
@@ -223,32 +226,6 @@
             el.className = `badge rounded-2 text-wrap text-start lh-sm bg-${a.tone}-subtle text-${a.tone}-emphasis`;
             el.innerHTML = `<i class="bi ${a.icon} me-1" aria-hidden="true"></i>`;
             el.append(a.label);
-        }
-
-        // The academic year starts in August: "This AY" = since the latest August 1
-        function academicYearStart() {
-            const now = new Date();
-            return new Date(now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1, 7, 1);
-        }
-
-        // Does an entry fall inside the time filter?
-        function inTimeFilter(iso) {
-            const at = new Date(iso);
-            if (state.days === 'ay') return at >= academicYearStart();
-            if (state.days === 'custom') {
-                const from = document.getElementById('rangeFrom').value, to = document.getElementById('rangeTo').value;
-                return (!from || at >= new Date(from + 'T00:00')) && (!to || at <= new Date(to + 'T23:59:59'));
-            }
-            return withinDays(iso, Number(state.days));
-        }
-
-        // Entries from the last N days ("Today" = since midnight)
-        function withinDays(iso, days) {
-            if (!days) return true;
-            const since = new Date();
-            since.setHours(0, 0, 0, 0);
-            since.setDate(since.getDate() - (days - 1));
-            return new Date(iso) >= since;
         }
 
         // ---- Table ----
@@ -274,31 +251,41 @@
             return row;
         }
 
-        function filtered() {
-            return LOGS.filter(log => {
-                const person = historicalActor(log);
-                const text = `${person.name} ${person.role} ${ACTIONS[log.action].label} ${log.module} ${plain(log.details)} ${log.ip} ${log.id}`;
-                return (!state.user || log.user === state.user) &&
-                    (!state.module || log.module === state.module) &&
-                    (!state.group || ACTIONS[log.action].group === state.group) &&
-                    inTimeFilter(log.at) &&
-                    text.toLowerCase().includes(state.search);
-            });
+        let pendingRequest;
+        let searchTimer;
+        function queryParams() {
+            const params = new URLSearchParams();
+            Object.entries(state).forEach(([key,value]) => { if (value) params.set(key, value); });
+            if (state.days === 'custom') ['From', 'To'].forEach(suffix => { const value = document.getElementById('range'+suffix).value; if (value) params.set(suffix.toLowerCase(), value); });
+            return params;
         }
-
-        function render() {
-            const matches = filtered();
-            const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
-            state.page = Math.min(state.page, pages);
-            const start = (state.page - 1) * PAGE_SIZE;
-            const pageLogs = matches.slice(start, start + PAGE_SIZE);
-
-            tbody.replaceChildren(...pageLogs.map(buildRow));
-            document.getElementById('noResults').classList.toggle('d-none', matches.length > 0);
-            document.getElementById('showingText').textContent = matches.length
-                ? `Showing ${start + 1}–${start + pageLogs.length} of ${matches.length} log entr${matches.length === 1 ? 'y' : 'ies'}`
-                : '';
-            renderPagination(pages);
+        function drawPage() {
+            state.page = PAGE.page;
+            tbody.replaceChildren(...LOGS.map(buildRow));
+            document.getElementById('noResults').classList.toggle('d-none', PAGE.total > 0);
+            document.getElementById('showingText').textContent = PAGE.total ? `Showing ${PAGE.from}–${PAGE.to} of ${PAGE.total} log entries` : 'No log entries';
+            renderPagination(PAGE.pages);
+        }
+        async function render() {
+            pendingRequest?.abort();
+            pendingRequest = new AbortController();
+            const signal = pendingRequest.signal;
+            tbody.setAttribute('aria-busy', 'true');
+            try {
+                const params = queryParams();
+                const response = await fetch(location.pathname + '?' + params, {headers: {'Accept': 'application/json'}, signal});
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Could not load the logs.');
+                if (signal.aborted) return;
+                LOGS = data.logs; PEOPLE = data.people; PAGE = data.pagination; TOTALS = data.totals;
+                drawer.hide(); drawPage(); renderStats();
+                params.set('page', PAGE.page); history.replaceState(null, '', location.pathname + '?' + params);
+                document.getElementById('logLoadError').classList.add('d-none');
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    const alert = document.getElementById('logLoadError'); alert.textContent = error.message; alert.classList.remove('d-none');
+                }
+            } finally { if (!signal.aborted) tbody.removeAttribute('aria-busy'); }
         }
 
         function renderPagination(pages) {
@@ -331,10 +318,7 @@
 
         // The stat cards always count today's entries, whatever the filters say
         function renderStats() {
-            const today = LOGS.filter(log => withinDays(log.at, 1));
-            document.querySelector('[data-stat="today"]').textContent = today.length;
-            ['delete', 'permission', 'export'].forEach(key =>
-                document.querySelector(`[data-stat="${key}"]`).textContent = today.filter(log => log.action === key).length);
+            document.querySelectorAll('[data-stat]').forEach(el => el.textContent = TOTALS[el.dataset.stat] || 0);
         }
 
         // ---- Drawer ----
@@ -370,23 +354,12 @@
 
         // ---- Export: the filtered rows as a CSV file ----
         document.getElementById('exportButton').addEventListener('click', () => {
-            const quote = value => `"${String(value).replace(/"/g, '""')}"`;
-            const lines = [['Log ID', 'User', 'Role', 'Action', 'Module', 'Details', 'IP Address', 'Timestamp']].concat(
-                filtered().map(log => {
-                    const person = historicalActor(log);
-                    return [logId(log.id), person.name, person.role, ACTIONS[log.action].label,
-                        log.module, plain(log.details), log.ip, formatTime(log.at)];
-                }));
-            const link = document.createElement('a');
-            // The BOM (﻿) makes Excel read the ₱ and dashes correctly
-            link.href = URL.createObjectURL(new Blob(['﻿' + lines.map(row => row.map(quote).join(',')).join('\r\n')], { type: 'text/csv' }));
-            link.download = `iaris-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const params = queryParams(); params.delete('page'); params.set('export', 'csv');
+            window.location = location.pathname + '?' + params;
         });
 
         // ---- Filters ----
-        document.getElementById('search').addEventListener('input', e => { state.search = e.target.value.trim().toLowerCase(); state.page = 1; render(); });
+        document.getElementById('search').addEventListener('input', e => { state.search = e.target.value.trim().toLowerCase(); state.page = 1; clearTimeout(searchTimer); searchTimer = setTimeout(render, 300); });
         [['userFilter', 'user'], ['moduleFilter', 'module'], ['timeFilter', 'days']].forEach(([id, key]) =>
             document.getElementById(id).addEventListener('change', e => { state[key] = e.target.value; state.page = 1; render(); }));
 
@@ -407,7 +380,13 @@
             render();
         }));
 
+        document.getElementById('search').value = state.search;
+        [['userFilter','user'],['moduleFilter','module'],['timeFilter','days']].forEach(([id,key]) => document.getElementById(id).value = state[key]);
+        ['From','To'].forEach(suffix => document.getElementById('range'+suffix).value = INITIAL_FILTERS[suffix.toLowerCase()] || '');
+        document.getElementById('customRange').classList.toggle('d-none', state.days !== 'custom');
+        document.getElementById('customRange').classList.toggle('d-flex', state.days === 'custom');
+        document.querySelectorAll('#actionPills [data-group]').forEach(p => { p.classList.toggle('btn-primary', p.dataset.group === state.group); p.classList.toggle('btn-outline-secondary', p.dataset.group !== state.group); });
         renderStats();
-        render();
+        drawPage();
     </script>
 @endsection
