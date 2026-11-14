@@ -135,14 +135,13 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="d-none" id="approveCollegeField">
-                    <label for="approveCollege" class="form-label small fw-bold text-uppercase">Assigned college</label>
-                    <select class="form-select" id="approveCollege">
-                        <option value="">Not assigned yet</option>
-                        @foreach ($colleges as $college)
-                            <option>{{ $college }}</option>
-                        @endforeach
-                    </select>
+                <div class="mb-3 d-none" id="approveProgramField">
+                    <label for="approveProgram" class="form-label small fw-bold">Assigned program</label>
+                    <select class="form-select" id="approveProgram"><option value="">Select program</option></select>
+                </div>
+                <div class="mb-3 d-none" id="approveSubLevelField">
+                    <label for="approveSubLevel" class="form-label small fw-bold">School level</label>
+                    <select class="form-select" id="approveSubLevel"><option value="">Select school level</option></select>
                 </div>
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0">
@@ -180,8 +179,10 @@
         const declineModal = bootstrap.Modal.getOrCreateInstance($('declineModal'));
         let current = null; // the card being approved/declined
 
-        $('approveRole').addEventListener('change', () =>
-            $('approveCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes($('approveRole').value)));
+        const assignmentForm = window.IarisAccountAssignments.bind({
+            role: $('approveRole'), department: $('approveDept'), program: $('approveProgram'),
+            programField: $('approveProgramField'), subLevel: $('approveSubLevel'), subLevelField: $('approveSubLevelField'),
+        }, window.IarisAccountAssignmentChoices);
 
         $('requestCards').addEventListener('click', e => {
             const btn = e.target.closest('[data-decide]');
@@ -194,8 +195,7 @@
                 $('approveError').classList.add('d-none');
                 $('approveForm').reset();
                 $('approveRole').value = btn.dataset.roleGuess || '';
-                $('approveDept').value = btn.dataset.deptGuess || '';
-                $('approveCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes($('approveRole').value));
+                assignmentForm.refresh({department: btn.dataset.deptGuess || ''});
                 approveModal.show();
                 return;
             }
@@ -216,7 +216,8 @@
                     body: JSON.stringify({
                         role: $('approveRole').value,
                         department: $('approveDept').value,
-                        assigned_college: $('approveCollege').value || null,
+                        assigned_program: $('approveProgram').value || null,
+                        assigned_sub_level: $('approveSubLevel').value || null,
                     }),
                 });
                 if (!res.ok) {

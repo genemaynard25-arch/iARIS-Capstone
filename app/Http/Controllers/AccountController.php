@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\AccessRequest;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\AccountAssignments;
+use App\Support\CollegeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -17,7 +19,7 @@ class AccountController extends Controller
         'iato_staff' => ['name' => 'IATO Staff', 'tone' => 'primary'],
         'program_chair' => ['name' => 'Program Chair', 'tone' => 'info'],
         'dean' => ['name' => 'Dean', 'tone' => 'info'],
-        'principal' => ['name' => 'SHS Principal', 'tone' => 'secondary'],
+        'principal' => ['name' => 'Integrated School Principal', 'tone' => 'secondary'],
         'assistant_principal' => ['name' => 'Assistant Principal', 'tone' => 'secondary'],
         'registrar' => ['name' => 'Registrar', 'tone' => 'warning'],
         'lamp' => ['name' => 'LAMP Office', 'tone' => 'secondary'],
@@ -71,9 +73,10 @@ class AccountController extends Controller
 
     public function index()
     {
+        $programs = CollegeController::accountPrograms();
         $users = User::orderBy('name')
             ->get()
-            ->map(fn (User $user) => $this->present($user))
+            ->map(fn (User $user) => $this->present($user, $programs))
             ->values()
             ->all();
 
@@ -97,12 +100,14 @@ class AccountController extends Controller
                 ->all(),
             'roles' => $this->roles,
             'statuses' => $this->statuses,
-            'departments' => $this->departments,
+            'departments' => collect(AccountAssignments::DEPARTMENTS)->flatten()->unique()->values()->all(),
             'users' => $users,
             'filterDepartments' => collect($users)->pluck('department')->filter()->unique()->sort()->values()->all(),
             'filterRoles' => collect($users)->pluck('role')->unique()->all(),
             'colleges' => $this->colleges,
-            'programOptions' => CollegeController::programOptions(),
+            'roleDepartments' => AccountAssignments::DEPARTMENTS,
+            'accountPrograms' => $programs,
+            'assignmentSubLevels' => AccountAssignments::SUB_LEVELS,
         ]);
     }
 
@@ -122,10 +127,7 @@ class AccountController extends Controller
                 'required',
                 Rule::in(array_diff(array_keys($this->roles), ['admin'])),
             ],
-            'department' => ['required', Rule::in($this->departments)],
-            'assigned_college' => ['nullable', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in($this->colleges)],
-            'assigned_program' => ['nullable', 'string', 'max:150', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in(CollegeController::programOptions())],
-        ]);
+        ] + AccountAssignments::rules((string) $request->input('role'), (string) $request->input('department')));
 
         $tempPassword = Str::password(12);
 
@@ -136,14 +138,7 @@ class AccountController extends Controller
             'role' => $validated['role'],
             'department' => $validated['department'],
             'status' => 'Pending',
-            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
-            'assigned_program' => $validated['role'] === 'program_chair' && $validated['department'] !== 'Graduate Programs' ? ($validated['assigned_program'] ?? null) : null,
-            'assigned_level' => $validated['role'] === 'registrar'
-                ? ($validated['department'] === 'IS Registrar' ? 'is' : 'college')
-                : ($validated['role'] === 'program_chair' ? ($validated['department'] === 'Graduate Programs' ? 'graduate_school' : 'college') : null),
-            // Only IATO Staff edit records at all (everyone else here is a viewer - see canEdit()).
-            'access_type' => $validated['role'] === 'iato_staff' ? 'editor' : 'viewer',
-        ]);
+        ] + AccountAssignments::attributes($validated));
 
         AuditLog::record(
             'create',
@@ -172,26 +167,17 @@ class AccountController extends Controller
                 'required',
                 Rule::in(array_diff(array_keys($this->roles), ['admin'])),
             ],
-            'department' => ['required', Rule::in($this->departments)],
             'status' => ['required', Rule::in(array_keys($this->statuses))],
-            'assigned_college' => ['nullable', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in($this->colleges)],
-            'assigned_program' => ['nullable', 'string', 'max:150', Rule::requiredIf($request->input('role') === 'program_chair' && $request->input('department') !== 'Graduate Programs'), Rule::in(CollegeController::programOptions())],
-        ]);
+        ] + AccountAssignments::rules((string) $request->input('role'), (string) $request->input('department')));
 
-        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college', 'assigned_program', 'assigned_level']);
+        $before = $user->only(['name', 'role', 'department', 'status', 'assigned_college', 'assigned_program', 'assigned_level', 'assigned_sub_level']);
 
         $user->update([
             'name' => trim($validated['first'].' '.$validated['last']),
             'role' => $validated['role'],
             'department' => $validated['department'],
             'status' => $validated['status'],
-            'assigned_college' => in_array($validated['role'], ['dean', 'program_chair']) ? ($validated['assigned_college'] ?? null) : null,
-            'assigned_program' => $validated['role'] === 'program_chair' && $validated['department'] !== 'Graduate Programs' ? ($validated['assigned_program'] ?? null) : null,
-            'assigned_level' => $validated['role'] === 'registrar'
-                ? ($validated['department'] === 'IS Registrar' ? 'is' : 'college')
-                : ($validated['role'] === 'program_chair' ? ($validated['department'] === 'Graduate Programs' ? 'graduate_school' : 'college') : $user->assigned_level),
-            'access_type' => $validated['role'] === 'iato_staff' ? 'editor' : 'viewer',
-        ]);
+        ] + AccountAssignments::attributes($validated, $user));
 
         $diff = collect($before)
             ->map(fn ($value, $field) => $value != $user->{$field}
@@ -271,7 +257,7 @@ class AccountController extends Controller
         ]);
     }
 
-    protected function present(User $user): array
+    protected function present(User $user, ?array $programs = null): array
     {
         $parts = preg_split("/\s+/", trim($user->name));
         $last = array_pop($parts);
@@ -291,6 +277,13 @@ class AccountController extends Controller
             'permanent' => $user->role === 'admin',
             'assignedCollege' => $user->assigned_college,
             'assignedProgram' => $user->assigned_program,
+            'assignedSubLevel' => $user->assigned_sub_level,
+            'assignmentWarning' => $user->role !== 'admin' && (! in_array($user->department, AccountAssignments::DEPARTMENTS[$user->role] ?? [], true)
+                || ($user->role === 'assistant_principal' && ! isset(AccountAssignments::SUB_LEVELS[$user->assigned_sub_level]))
+                || ($user->role === 'program_chair' && $user->department !== 'Graduate Programs'
+                    && ! in_array($user->assigned_program, ($programs ?? CollegeController::accountPrograms())[$user->department] ?? [], true))
+                || ($user->role === 'program_chair' && $user->department === 'Graduate Programs' && ! $user->isGradChair())
+                || ($user->role === 'dean' && $user->assigned_college !== CollegeCatalog::code($user->department))),
         ];
     }
 }

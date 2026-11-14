@@ -6,6 +6,7 @@ use App\Models\Applicant;
 use App\Models\AuditLog;
 use App\Support\AdmissionStats;
 use App\Support\ApplicantRecords;
+use App\Support\CollegeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -173,6 +174,22 @@ class CollegeController extends Controller
         $catalog = collect(self::COLLEGES)->pluck('programs')->flatMap(fn ($programs) => array_column($programs, 'name'));
 
         return $catalog->merge(Applicant::whereNull('archived_at')->distinct()->pluck('program_or_track'))->filter()->unique()->sort()->values()->all();
+    }
+
+    public static function accountPrograms(): array
+    {
+        $choices = [];
+        foreach (['CITE', 'CBEAM', 'CEAS', 'CIHTM', 'CON', 'CCJE'] as $college) {
+            $choices[$college] = array_column(self::COLLEGES[$college]['programs'], 'name');
+        }
+        foreach (Applicant::where('level', 'college')->whereNull('archived_at')->distinct()->get(['college', 'program_or_track']) as $applicant) {
+            $college = CollegeCatalog::code($applicant->college);
+            if (isset($choices[$college]) && $applicant->program_or_track) {
+                $choices[$college][] = $applicant->program_or_track;
+            }
+        }
+
+        return array_map(fn ($programs) => collect($programs)->unique()->sort()->values()->all(), $choices);
     }
 
     private static function inCollege(Applicant $applicant, string $code): bool

@@ -224,10 +224,9 @@
                                 <option value="">Select role</option>
                                 {{-- IATO Admin isn't offered: there is one permanent admin, and temporary admins are set on Access Control --}}
                                 @foreach ($roles as $key => $role)
-                                    @continue(in_array($key, ['admin', 'assistant_principal']))
+                                    @continue($key === 'admin')
                                     <option value="{{ $key }}">{{ $role['name'] }}</option>
                                 @endforeach
-                                <option disabled>Assistant Principal — set up by IATO for now (one each for Grade School, Junior High, Senior High)</option>
                             </select>
                             <div class="invalid-feedback">Choose a role.</div>
                         </div>
@@ -242,23 +241,14 @@
                             <div class="invalid-feedback">Choose a department.</div>
                         </div>
 
-                        {{-- Assigned College Field --}}
-                        <div class="col-12 d-none" id="userCollegeField">
-                            <label for="userCollege" class="form-label small fw-bold text-uppercase text-body-secondary">Assigned College</label>
-                            <select class="form-select" id="userCollege">
-                                <option value="">Not assigned yet</option>
-                                @foreach ($colleges as $college)
-                                    <option>{{ $college }}</option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">Scopes this account's College Records to just this college.</div>
-                        </div>
-
                         <div class="col-12 d-none" id="userProgramField">
                             <label for="userProgram" class="form-label small fw-bold">Assigned program</label>
-                            <input class="form-control" id="userProgram" list="userProgramOptions" maxlength="150" placeholder="Select the program this chair manages">
-                            <datalist id="userProgramOptions">@foreach ($programOptions as $program)<option value="{{ $program }}">@endforeach</datalist>
-                            <div class="form-text">Use the program name recorded in the applicant data.</div>
+                            <select class="form-select" id="userProgram"><option value="">Select program</option></select>
+                            <div class="form-text">Only programs in the selected college are available. Graduate Programs chairs oversee Graduate Programs.</div>
+                        </div>
+                        <div class="col-12 d-none" id="userSubLevelField">
+                            <label for="userSubLevel" class="form-label small fw-bold">School level</label>
+                            <select class="form-select" id="userSubLevel"><option value="">Select school level</option></select>
                         </div>
                         {{-- Edit only --}}
                         <div class="col-12" id="userStatusField">
@@ -332,6 +322,10 @@
 @endsection
 
 @section('scripts')
+    <script>
+        window.IarisAccountAssignmentChoices = {departments: @json($roleDepartments), programs: @json($accountPrograms), subLevels: @json($assignmentSubLevels)};
+    </script>
+    <script src="{{ asset('js/account-assignments.js') }}"></script>
     <script src="{{ asset('js/pagination.js') }}"></script>
     <script>
         // Front end only: every change below lives in this USERS list in the browser
@@ -405,7 +399,7 @@
             cell('name').textContent = fullName(u);
             cell('email').textContent = u.email;
             setBadge(cell('role'), role.name, role.tone, u.permanent ? 'bi-star-fill' : null);
-            cell('department').textContent = u.department;
+            cell('department').textContent = (u.department || 'Unassigned') + (u.assignmentWarning ? ' — review assignment' : '');
             setBadge(cell('status'), u.status, STATUSES[u.status], 'bi-circle-fill small');
             setBadge(cell('mfa'), u.mfa ? 'MFA on' : 'No MFA', u.mfa ? 'primary' : 'danger', u.mfa ? 'bi-shield-check' : 'bi-exclamation-triangle');
             cell('activity').textContent = activityText;
@@ -712,6 +706,10 @@
         const userModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('userModal'));
         const userForm = document.getElementById('userForm');
         const field = id => document.getElementById(id);
+        const assignmentForm = window.IarisAccountAssignments.bind({
+            role: field('userRole'), department: field('userDepartment'), program: field('userProgram'),
+            programField: field('userProgramField'), subLevel: field('userSubLevel'), subLevelField: field('userSubLevelField'),
+        }, window.IarisAccountAssignmentChoices);
         let editing = null;   // the user being edited, or null when adding
 
         function openUserForm(user = null) {
@@ -736,24 +734,11 @@
                 field('userFirst').value = user.first;
                 field('userEmail').value = user.email;
                 field('userRole').value = user.role;
-                field('userDepartment').value = user.department;
                 field('userStatus').value = user.status;
-                field('userCollege').value = user.assignedCollege || '';
-                field('userProgram').value = user.assignedProgram || '';
             }
-            updateCollegeFieldVisibility();
+            assignmentForm.refresh(user ? {department: user.department, program: user.assignedProgram, subLevel: user.assignedSubLevel} : {});
             userModal.show();
         }
-
-                   function updateCollegeFieldVisibility() {
-                const chair = field('userRole').value === 'program_chair' && field('userDepartment').value !== 'Graduate Programs';
-                field('userProgramField').classList.toggle('d-none', !chair);
-                field('userProgram').required = chair;
-                field('userCollege').required = chair;
-                field('userCollegeField').classList.toggle('d-none', !['dean', 'program_chair'].includes(field('userRole').value));
-            }
-                field('userRole').addEventListener('change', updateCollegeFieldVisibility);
-                field('userDepartment').addEventListener('change', updateCollegeFieldVisibility);
 
         document.getElementById('addUserButton').addEventListener('click', () => openUserForm());
 
@@ -781,7 +766,7 @@
                 role: field('userRole').value,
                 department: field('userDepartment').value,
                 assigned_program: field('userRole').value === 'program_chair' ? (field('userProgram').value || null) : null,
-                assigned_college: ['dean', 'program_chair'].includes(field('userRole').value) ? (field('userCollege').value || null) : null,
+                assigned_sub_level: field('userRole').value === 'assistant_principal' ? field('userSubLevel').value : null,
             };
 
             try {
@@ -792,8 +777,8 @@
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                         body: JSON.stringify(payload),
                     });
-                    if (!res.ok) throw new Error();
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Unable to save this account.'));
                     Object.assign(editing, data.user);
                     toast(`${fullName(editing)} updated.`);
                 } else {
@@ -803,13 +788,13 @@
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                         body: JSON.stringify(payload),
                     });
-                    if (!res.ok) throw new Error();
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Unable to save this account.'));
                     USERS.push(data.user);
                     toast(`${fullName(data.user)} added as Pending. Temporary password: ${data.tempPassword} — share this with them directly.`);
                 }
             } catch (err) {
-                toast('Something went wrong saving this account. Please try again.');
+                toast(err.message || 'Something went wrong saving this account. Please try again.');
                 return;
             }
 
