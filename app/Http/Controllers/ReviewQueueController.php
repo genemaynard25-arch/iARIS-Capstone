@@ -22,7 +22,7 @@ class ReviewQueueController extends Controller
      *
      * Backed by the review_queue table. IATO Staff who aren't (currently) an admin have their
      * applicant edits/imports staged here instead of applied directly - see
-     * ApplicantController::stageForReview() and ImportController::stageImportForReview().
+     * ApplicantController::stageForReview() and AdmissionsImportService::stageImportForReview().
      *
      * type: edit (staff edit/create/remove/restore/exam-status), import (batch import)
      * status: waiting, approved, sent (sent back)

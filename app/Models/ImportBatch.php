@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ImportBatch extends Model
 {
@@ -10,6 +11,7 @@ class ImportBatch extends Model
 
     protected $fillable = [
         'uploaded_by',
+        'source_hash',
         'original_filename',
         'row_count',
         'error_count',
@@ -25,7 +27,7 @@ class ImportBatch extends Model
     }
 
     // The applicants this upload saved
-    public function applicants(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function applicants(): HasMany
     {
         return $this->hasMany(Applicant::class, 'imported_batch_id');
     }
